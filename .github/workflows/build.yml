@@ -1,0 +1,89 @@
+name: Sabuflix Multiplatform Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows Executable (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable Windows desktop build
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Prepare Single Windows Executable Artifact
+        run: |
+          mkdir dist
+          copy build\windows\x64\runner\Release\sabuflix.exe dist\sabuflix.exe
+          compress-archive -Path build\windows\x64\runner\Release\* -DestinationPath dist\sabuflix-windows-bundle.zip
+
+      - name: Upload Windows Executable (.exe) Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabuflix-windows.exe
+          path: dist/sabuflix.exe
+
+      - name: Upload Windows Full Bundle Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabuflix-windows-bundle.zip
+          path: dist/sabuflix-windows-bundle.zip
+
+  build-android:
+    name: Build Android Package (.apk)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android Release APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Prepare Android APK Artifact
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/sabuflix.apk
+
+      - name: Upload Android APK (.apk) Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabuflix.apk
+          path: dist/sabuflix.apk
