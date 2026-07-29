@@ -14,6 +14,8 @@ class MediaItem {
   final int? runtime;
   final int? numberOfSeasons;
   final String? trailerKey;
+  final String? imdbId;
+  final List<dynamic>? seasons; // To store season details for TV shows
 
   MediaItem({
     required this.id,
@@ -31,6 +33,8 @@ class MediaItem {
     this.runtime,
     this.numberOfSeasons,
     this.trailerKey,
+    this.imdbId,
+    this.seasons,
   });
 
   String get fullPosterPath {
@@ -82,6 +86,11 @@ class MediaItem {
       gNames = (json['genres'] as List).map((g) => g['name'].toString()).toList();
     }
 
+    String? parsedImdbId = json['imdb_id'];
+    if (parsedImdbId == null && json['external_ids'] != null) {
+      parsedImdbId = json['external_ids']['imdb_id'];
+    }
+
     return MediaItem(
       id: json['id'] ?? 0,
       title: titleStr,
@@ -98,6 +107,8 @@ class MediaItem {
       runtime: json['runtime'],
       numberOfSeasons: json['number_of_seasons'],
       trailerKey: json['trailerKey'],
+      imdbId: parsedImdbId ?? json['imdbId'],
+      seasons: json['seasons'],
     );
   }
 
@@ -118,6 +129,8 @@ class MediaItem {
       'runtime': runtime,
       'number_of_seasons': numberOfSeasons,
       'trailerKey': trailerKey,
+      'imdbId': imdbId,
+      'seasons': seasons,
     };
   }
 
@@ -127,6 +140,8 @@ class MediaItem {
     List<String>? genres,
     int? runtime,
     int? numberOfSeasons,
+    String? imdbId,
+    List<dynamic>? seasons,
   }) {
     return MediaItem(
       id: id,
@@ -144,6 +159,8 @@ class MediaItem {
       runtime: runtime ?? this.runtime,
       numberOfSeasons: numberOfSeasons ?? this.numberOfSeasons,
       trailerKey: trailerKey ?? this.trailerKey,
+      imdbId: imdbId ?? this.imdbId,
+      seasons: seasons ?? this.seasons,
     );
   }
 }

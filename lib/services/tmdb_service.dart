@@ -119,8 +119,8 @@ class TMDBService {
   }
 
   Future<MediaItem?> fetchMediaDetails(int id, String mediaType) async {
-    final endpoint = mediaType == 'tv' ? 'tv' : 'movie';
-    final url = Uri.parse('$baseUrl/$endpoint/$id?api_key=$apiKey&language=$defaultLang');
+    final endpoint = mediaType == 'tv' ? 'tv/$id?append_to_response=external_ids&' : 'movie/$id?';
+    final url = Uri.parse('$baseUrl/${endpoint}api_key=$apiKey&language=$defaultLang');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -142,6 +142,20 @@ class TMDBService {
       print('Error fetching media details: $e');
     }
     return null;
+  }
+
+  Future<List<dynamic>> fetchSeasonEpisodes(int tvId, int seasonNumber) async {
+    final url = Uri.parse('$baseUrl/tv/$tvId/season/$seasonNumber?api_key=$apiKey&language=$defaultLang');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['episodes'] ?? [];
+      }
+    } catch (e) {
+      print('Error fetching season episodes: $e');
+    }
+    return [];
   }
 
   Future<String?> fetchLogoPath(int id, String mediaType) async {
