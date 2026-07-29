@@ -366,28 +366,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           ),
                         ),
 
-                        if (widget.media.mediaType == 'tv')
-                          Positioned(
-                            right: 24,
-                            bottom: 96,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                _seek(85);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Abertura pulada')),
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: Colors.black.withValues(alpha: 0.5),
-                                foregroundColor: Colors.white,
-                                side: BorderSide(color: SabuflixTheme.accent.withValues(alpha: 0.5)),
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                                shape: const StadiumBorder(),
-                              ),
-                              icon: const Icon(Icons.fast_forward_rounded, size: 18, color: SabuflixTheme.accent),
-                              label: const Text('Pular Abertura'),
-                            ),
-                          ),
+
 
                         if (_showAudioMenu)
                           Positioned(
