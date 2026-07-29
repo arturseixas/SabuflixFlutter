@@ -3,48 +3,48 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Sabuflix design system.
 ///
-/// A warm, editorial visual language — deep warm-charcoal canvas, cream
-/// type, a signature terracotta accent used sparingly, and serif display
-/// headlines paired with a disciplined sans interface layer.
+/// A restrained, monochrome-first visual language modelled on Apple's
+/// Human Interface Guidelines — true-black canvas, the system gray scale,
+/// a single sparing accent, and frosted "Liquid Glass" materials for
+/// floating chrome. No badges, no decorative glyphs, no color noise.
 class SabuflixTheme {
   SabuflixTheme._();
 
-  // --- Core palette -------------------------------------------------
-  static const Color background = Color(0xFF262624);
-  static const Color surface = Color(0xFF30302E);
-  static const Color surfaceLight = Color(0xFF3A3935);
-  static const Color elevated = Color(0xFF44433E);
-  static const Color border = Color(0xFF3E3D39);
-  static const Color borderStrong = Color(0xFF52514B);
+  // --- Core palette — Apple's own system gray scale (dark mode) --------
+  static const Color background = Color(0xFF000000);
+  static const Color surface = Color(0xFF1C1C1E); // systemGray6
+  static const Color surfaceLight = Color(0xFF2C2C2E); // systemGray5
+  static const Color elevated = Color(0xFF3A3A3C); // systemGray4
+  static const Color border = Color(0xFF38383A);
+  static const Color borderStrong = Color(0xFF545458); // separator, opaque
 
-  // Signature accent — Sabuflix terracotta, used only for primary actions,
-  // active states, and the wordmark mark.
-  static const Color accent = Color(0xFFD97757);
-  static const Color accentHover = Color(0xFFE28A6C);
-  static const Color accentMuted = Color(0xFFB35F42);
+  // Signature accent — Apple's system blue, used only for selection state
+  // and small interactive affordances. Never for decoration.
+  static const Color accent = Color(0xFF0A84FF);
+  static const Color accentHover = Color(0xFF409CFF);
+  static const Color accentMuted = Color(0xFF0060C2);
 
-  // Supplementary semantic tokens.
-  static const Color gold = Color(0xFFE8B65A);
-  static const Color tvBadge = Color(0xFF8A9A6E);
-  static const Color movieBadge = accent;
-  static const Color success = Color(0xFF8A9A6E);
+  // Supplementary semantic tokens — Apple system colors.
+  static const Color gold = Color(0xFFFFD60A); // systemYellow, ratings only
+  static const Color success = Color(0xFF30D158); // systemGreen
 
-  // Text scale — warm cream on warm charcoal, never pure black/white.
-  static const Color textPrimary = Color(0xFFF5F4ED);
-  static const Color textSecondary = Color(0xFFB8B6AC);
-  static const Color textMuted = Color(0xFF87857A);
+  // Text scale — true label hierarchy, solid grays (not alpha) for
+  // predictable contrast over photography.
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFF98989D);
+  static const Color textMuted = Color(0xFF636366);
 
-  // --- Typography -----------------------------------------------------
-  // A warm editorial serif for display headlines (titles, hero copy),
-  // paired with Inter for interface chrome — the same pairing Claude uses.
+  // --- Typography -------------------------------------------------------
+  // Inter throughout — the closest license-clean match to San Francisco's
+  // proportions and tight optical tracking. One family, weight does the work.
   static TextStyle headline({
     double fontSize = 30,
-    FontWeight fontWeight = FontWeight.w600,
+    FontWeight fontWeight = FontWeight.w700,
     Color color = textPrimary,
-    double height = 1.14,
-    double letterSpacing = 0,
+    double height = 1.12,
+    double letterSpacing = -0.4,
   }) {
-    return GoogleFonts.fraunces(
+    return GoogleFonts.inter(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -57,10 +57,10 @@ class SabuflixTheme {
     double fontSize = 18,
     FontWeight fontWeight = FontWeight.w600,
     Color color = textPrimary,
-    double height = 1.25,
-    double letterSpacing = 0,
+    double height = 1.2,
+    double letterSpacing = -0.2,
   }) {
-    return GoogleFonts.fraunces(
+    return GoogleFonts.inter(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -70,16 +70,17 @@ class SabuflixTheme {
   }
 
   static TextStyle body({
-    double fontSize = 14,
+    double fontSize = 15,
     FontWeight fontWeight = FontWeight.normal,
     Color color = textSecondary,
-    double height = 1.5,
+    double height = 1.45,
   }) {
     return GoogleFonts.inter(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
       height: height,
+      letterSpacing: -0.1,
     );
   }
 
@@ -87,7 +88,7 @@ class SabuflixTheme {
     double fontSize = 12,
     FontWeight fontWeight = FontWeight.w600,
     Color color = textMuted,
-    double letterSpacing = 0.4,
+    double letterSpacing = 0.2,
   }) {
     return GoogleFonts.inter(
       fontSize: fontSize,
@@ -98,10 +99,10 @@ class SabuflixTheme {
   }
 
   static TextStyle caption({
-    double fontSize = 11,
-    FontWeight fontWeight = FontWeight.w600,
+    double fontSize = 12,
+    FontWeight fontWeight = FontWeight.w500,
     Color color = textSecondary,
-    double letterSpacing = 0.6,
+    double letterSpacing = -0.05,
   }) {
     return GoogleFonts.inter(
       fontSize: fontSize,
@@ -111,84 +112,53 @@ class SabuflixTheme {
     );
   }
 
-  // --- Brand wordmark ---------------------------------------------------
-  // A serif wordmark preceded by the terracotta asterisk mark — see
-  // widgets/wordmark.dart for the full composition.
+  // --- Brand wordmark -----------------------------------------------
+  // Plain type, nothing else — no mark, no glyph, no color accent.
   static TextStyle wordmark({
-    double fontSize = 22,
+    double fontSize = 20,
     Color color = textPrimary,
-  }) {
-    return GoogleFonts.fraunces(
-      fontSize: fontSize,
-      fontWeight: FontWeight.w600,
-      color: color,
-      letterSpacing: 0,
-      height: 1.0,
-    );
-  }
-
-  static TextStyle wordmarkGlyph({
-    double fontSize = 22,
-    Color color = accent,
   }) {
     return GoogleFonts.inter(
       fontSize: fontSize,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w600,
       color: color,
+      letterSpacing: -0.3,
       height: 1.0,
     );
   }
 
-  // --- Reusable shapes & surfaces ----------------------------------------
-  static BorderRadius get radiusSm => const BorderRadius.all(Radius.circular(8));
-  static BorderRadius get radiusMd => const BorderRadius.all(Radius.circular(12));
-  static BorderRadius get radiusLg => const BorderRadius.all(Radius.circular(16));
-  static BorderRadius get radiusXl => const BorderRadius.all(Radius.circular(22));
+  // --- Reusable shapes & motion ------------------------------------------
+  static BorderRadius get radiusSm => const BorderRadius.all(Radius.circular(10));
+  static BorderRadius get radiusMd => const BorderRadius.all(Radius.circular(14));
+  static BorderRadius get radiusLg => const BorderRadius.all(Radius.circular(20));
+  static BorderRadius get radiusXl => const BorderRadius.all(Radius.circular(28));
   static BorderRadius get radiusPill => const BorderRadius.all(Radius.circular(999));
 
-  static const Duration durationFast = Duration(milliseconds: 180);
-  static const Duration durationMed = Duration(milliseconds: 260);
+  static const Duration durationFast = Duration(milliseconds: 220);
+  static const Duration durationMed = Duration(milliseconds: 380);
   static const Curve curveStandard = Curves.easeOutCubic;
+  // A gentle overshoot that reads like UIKit's spring animations.
+  static const Curve curveSpring = Curves.easeOutBack;
 
   static List<BoxShadow> get shadowSm => [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.35),
-          blurRadius: 10,
-          offset: const Offset(0, 3),
+          color: Colors.black.withValues(alpha: 0.4),
+          blurRadius: 14,
+          offset: const Offset(0, 4),
         ),
       ];
 
   static List<BoxShadow> get shadowMd => [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.45),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
+          color: Colors.black.withValues(alpha: 0.5),
+          blurRadius: 28,
+          offset: const Offset(0, 10),
         ),
       ];
 
-  /// Subtle dark glass effect used by overlays / floating bars.
-  static BoxDecoration glassSurface({
-    Color? color,
-    double alpha = 0.88,
-    BorderRadius radius = const BorderRadius.all(Radius.circular(20)),
-    bool withBorder = true,
-  }) {
-    return BoxDecoration(
-      color: (color ?? surface).withValues(alpha: alpha),
-      borderRadius: radius,
-      border: withBorder ? Border.all(color: border, width: 1) : null,
-      boxShadow: shadowMd,
-    );
-  }
-
-  /// Flat outlined pill used for compact metadata tags (age rating, format).
-  static BoxDecoration tagDecoration({Color? borderColor}) {
-    return BoxDecoration(
-      color: surfaceLight,
-      borderRadius: radiusSm,
-      border: Border.all(color: borderColor ?? border),
-    );
-  }
+  /// Hairline used on the top/light edge of glass panels to fake a
+  /// specular highlight, matched by a darker line on the bottom edge.
+  static Border get glassBorder => Border.all(color: Colors.white.withValues(alpha: 0.14), width: 0.6);
 
   // --- Theme data ----------------------------------------------------
   static ThemeData get themeData {
@@ -200,10 +170,11 @@ class SabuflixTheme {
         secondary: accent,
         surface: surface,
         onSurface: textPrimary,
-        error: accentHover,
+        error: Color(0xFFFF453A),
       ),
-      splashColor: accent.withValues(alpha: 0.10),
-      highlightColor: accent.withValues(alpha: 0.06),
+      splashFactory: NoSplash.splashFactory,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
       dividerColor: border,
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
         bodyLarge: GoogleFonts.inter(color: textPrimary),
@@ -216,81 +187,81 @@ class SabuflixTheme {
         centerTitle: false,
         scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: textPrimary),
-        titleTextStyle: title(fontSize: 20, fontWeight: FontWeight.w700),
+        titleTextStyle: title(fontSize: 20, fontWeight: FontWeight.w600),
       ),
       iconTheme: const IconThemeData(color: textSecondary, size: 22),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: accent,
-          foregroundColor: Colors.white,
+          backgroundColor: textPrimary,
+          foregroundColor: background,
           disabledBackgroundColor: surfaceLight,
           elevation: 0,
           splashFactory: NoSplash.splashFactory,
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(10)),
+            borderRadius: BorderRadius.all(Radius.circular(980)),
           ),
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15, letterSpacing: -0.2),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: textPrimary,
-          backgroundColor: surfaceLight,
-          side: const BorderSide(color: borderStrong),
+          backgroundColor: Colors.white.withValues(alpha: 0.08),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(10)),
+            borderRadius: BorderRadius.all(Radius.circular(980)),
           ),
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, letterSpacing: -0.2),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: textSecondary,
+          splashFactory: NoSplash.splashFactory,
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceLight,
+        fillColor: Colors.white.withValues(alpha: 0.08),
         hintStyle: body(color: textMuted),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: radiusMd,
-          borderSide: const BorderSide(color: border),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: radiusMd,
-          borderSide: const BorderSide(color: border),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: radiusMd,
-          borderSide: const BorderSide(color: borderStrong, width: 1.4),
+          borderSide: const BorderSide(color: accent, width: 1.2),
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: surfaceLight,
-        selectedColor: accent,
+        backgroundColor: Colors.white.withValues(alpha: 0.08),
+        selectedColor: textPrimary,
         labelStyle: GoogleFonts.inter(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
-        secondaryLabelStyle: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
-        side: const BorderSide(color: border),
+        secondaryLabelStyle: GoogleFonts.inter(color: background, fontSize: 13, fontWeight: FontWeight.w600),
+        side: BorderSide.none,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(20)),
+          borderRadius: BorderRadius.all(Radius.circular(980)),
         ),
       ),
       sliderTheme: const SliderThemeData(
         trackHeight: 3,
-        activeTrackColor: accent,
-        inactiveTrackColor: borderStrong,
+        activeTrackColor: Colors.white,
+        inactiveTrackColor: Color(0x33FFFFFF),
         thumbColor: Colors.white,
-        overlayColor: Color(0x33FFFFFF),
-        thumbShape: RoundSliderThumbShape(enabledThumbRadius: 7),
+        overlayColor: Color(0x1FFFFFFF),
+        thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6),
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
-          color: surfaceLight,
+          color: elevated,
           borderRadius: const BorderRadius.all(Radius.circular(8)),
-          border: Border.all(color: border),
         ),
         textStyle: GoogleFonts.inter(color: textPrimary, fontSize: 12),
       ),
@@ -298,12 +269,9 @@ class SabuflixTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: elevated,
         contentTextStyle: GoogleFonts.inter(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
-        shape: RoundedRectangleBorder(
-          borderRadius: radiusMd,
-          side: const BorderSide(color: border),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: radiusMd),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(color: accent),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: textPrimary),
     );
     return base;
   }

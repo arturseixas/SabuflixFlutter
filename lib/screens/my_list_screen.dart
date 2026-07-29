@@ -44,7 +44,7 @@ class MyListScreen extends StatelessWidget {
               child: SizedBox(
                 width: 26,
                 height: 26,
-                child: CircularProgressIndicator(color: SabuflixTheme.accent, strokeWidth: 2.5),
+                child: CircularProgressIndicator(color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
               ),
             )
           : favorites.isEmpty

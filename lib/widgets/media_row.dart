@@ -28,7 +28,7 @@ class MediaRow extends StatelessWidget {
           ),
         ),
         SizedBox(
-          height: 232,
+          height: 254,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),

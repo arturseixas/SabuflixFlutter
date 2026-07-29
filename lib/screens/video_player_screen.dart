@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media_item.dart';
 import '../theme/sabuflix_theme.dart';
+import '../widgets/glass_container.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final MediaItem media;
@@ -131,27 +133,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             Positioned(
               top: 24,
               right: 24,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: SabuflixTheme.radiusPill,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(color: SabuflixTheme.accent, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _selectedQuality,
-                      style: SabuflixTheme.label(fontSize: 10, color: Colors.white),
-                    ),
-                  ],
+              child: GlassContainer(
+                borderRadius: SabuflixTheme.radiusPill,
+                blur: 20,
+                fillOpacity: 0.3,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                child: Text(
+                  _selectedQuality,
+                  style: SabuflixTheme.label(fontSize: 10, color: Colors.white, letterSpacing: 0.3),
                 ),
               ),
             ),
@@ -160,8 +149,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
                 opacity: _showControls ? 1.0 : 0.0,
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.5),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Container(
+                  color: Colors.black.withValues(alpha: 0.4),
                   child: Stack(
                     children: [
                       Positioned(
@@ -252,13 +243,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             ),
                             const SizedBox(width: 28),
                             Container(
-                              width: 68,
-                              height: 68,
+                              width: 70,
+                              height: 70,
                               alignment: Alignment.center,
-                              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                              decoration: BoxDecoration(
+                                color: SabuflixTheme.accent,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: SabuflixTheme.accent.withValues(alpha: 0.45),
+                                    blurRadius: 20,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
                               child: IconButton(
-                                iconSize: 36,
-                                icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: SabuflixTheme.background),
+                                iconSize: 38,
+                                icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white),
                                 onPressed: () {
                                   setState(() {
                                     _isPlaying = !_isPlaying;
@@ -296,13 +297,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             _startHideTimer();
                           },
                           style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.black.withValues(alpha: 0.4),
+                            backgroundColor: Colors.black.withValues(alpha: 0.5),
                             foregroundColor: Colors.white,
-                            side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusPill),
+                            side: BorderSide(color: SabuflixTheme.accent.withValues(alpha: 0.5)),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: const StadiumBorder(),
                           ),
-                          icon: const Icon(Icons.fast_forward_rounded, size: 18),
+                          icon: const Icon(Icons.fast_forward_rounded, size: 18, color: SabuflixTheme.accent),
                           label: const Text('Pular Abertura'),
                         ),
                       ),
@@ -345,11 +346,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           children: [
                             SliderTheme(
                               data: SliderThemeData(
-                                trackHeight: 3.5,
-                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                activeTrackColor: Colors.white,
+                                trackHeight: 4.0,
+                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                                activeTrackColor: SabuflixTheme.accent,
                                 inactiveTrackColor: Colors.white.withValues(alpha: 0.25),
-                                thumbColor: Colors.white,
+                                thumbColor: SabuflixTheme.accent,
+                                overlayColor: SabuflixTheme.accent.withValues(alpha: 0.2),
                               ),
                               child: Slider(
                                 value: _currentPosition.clamp(0, _totalDuration),
@@ -376,6 +378,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       ),
                     ],
                   ),
+                  ),
                 ),
               ),
           ],
@@ -400,35 +403,34 @@ class _PopupMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
+    return GlassContainer(
+      borderRadius: SabuflixTheme.radiusMd,
+      blur: 30,
+      fillOpacity: 0.65,
       padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: SabuflixTheme.elevated,
-        borderRadius: SabuflixTheme.radiusMd,
-        border: Border.all(color: SabuflixTheme.border),
-        boxShadow: SabuflixTheme.shadowMd,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: options.map((o) {
-          final isSelected = selected == o;
-          return ListTile(
-            dense: true,
-            shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
-            title: Text(
-              o,
-              style: SabuflixTheme.body(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : SabuflixTheme.textSecondary,
+      child: SizedBox(
+        width: width,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: options.map((o) {
+            final isSelected = selected == o;
+            return ListTile(
+              dense: true,
+              shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
+              title: Text(
+                o,
+                style: SabuflixTheme.body(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? Colors.white : SabuflixTheme.textSecondary,
+                ),
               ),
-            ),
-            trailing: isSelected ? const Icon(Icons.check_rounded, color: SabuflixTheme.accent, size: 18) : null,
-            onTap: () => onSelect(o),
-          );
-        }).toList(),
+              trailing: isSelected ? const Icon(Icons.check_rounded, color: SabuflixTheme.accent, size: 18) : null,
+              onTap: () => onSelect(o),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

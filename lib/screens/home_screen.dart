@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
@@ -26,7 +27,7 @@ class HomeScreen extends StatelessWidget {
                     width: 28,
                     height: 28,
                     child: CircularProgressIndicator(
-                      color: SabuflixTheme.accent,
+                      color: SabuflixTheme.textPrimary,
                       strokeWidth: 2.5,
                     ),
                   ),
@@ -40,7 +41,7 @@ class HomeScreen extends StatelessWidget {
             )
           : RefreshIndicator(
               onRefresh: () => catalog.loadCatalog(),
-              color: SabuflixTheme.accent,
+              color: SabuflixTheme.textPrimary,
               backgroundColor: SabuflixTheme.surface,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -48,9 +49,15 @@ class HomeScreen extends StatelessWidget {
                   if (!isDesktop)
                     SliverAppBar(
                       floating: true,
-                      backgroundColor: SabuflixTheme.background.withValues(alpha: 0.96),
+                      backgroundColor: Colors.transparent,
                       elevation: 0,
                       centerTitle: false,
+                      flexibleSpace: ClipRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                          child: Container(color: SabuflixTheme.background.withValues(alpha: 0.5)),
+                        ),
+                      ),
                       title: const SabuflixWordmark(fontSize: 19),
                       actions: const [
                         Padding(

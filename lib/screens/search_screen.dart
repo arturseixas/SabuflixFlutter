@@ -4,6 +4,7 @@ import '../providers/search_provider.dart';
 import '../services/tmdb_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/media_card.dart';
+import '../widgets/glass_container.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -34,12 +35,11 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: SabuflixTheme.surfaceLight,
-                  borderRadius: SabuflixTheme.radiusMd,
-                  border: Border.all(color: SabuflixTheme.border),
-                ),
+              child: GlassContainer(
+                borderRadius: SabuflixTheme.radiusPill,
+                blur: 24,
+                fillOpacity: 0.35,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _searchController,
                   style: SabuflixTheme.body(fontSize: 15, color: SabuflixTheme.textPrimary),
@@ -48,8 +48,11 @@ class _SearchScreenState extends State<SearchScreen> {
                     hintText: 'Pesquisar filmes, séries e gêneros',
                     hintStyle: SabuflixTheme.body(fontSize: 15, color: SabuflixTheme.textMuted),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    fillColor: Colors.transparent,
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    prefixIcon: const Icon(Icons.search_rounded, color: SabuflixTheme.textMuted, size: 22),
+                    prefixIcon: const Icon(Icons.search_rounded, color: SabuflixTheme.accent, size: 22),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.close_rounded, color: SabuflixTheme.textMuted, size: 20),
@@ -78,17 +81,15 @@ class _SearchScreenState extends State<SearchScreen> {
                       selected: isSelected,
                       showCheckmark: false,
                       selectedColor: SabuflixTheme.accent,
-                      backgroundColor: SabuflixTheme.surfaceLight,
+                      backgroundColor: Colors.white.withValues(alpha: 0.08),
                       labelStyle: SabuflixTheme.body(
                         fontSize: 13,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                         color: isSelected ? Colors.white : SabuflixTheme.textSecondary,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: SabuflixTheme.radiusPill,
-                        side: BorderSide(
-                          color: isSelected ? SabuflixTheme.accent : SabuflixTheme.border,
-                        ),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(999)),
+                        side: BorderSide.none,
                       ),
                       onSelected: (_) {
                         if (isSelected) {
@@ -110,7 +111,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       child: SizedBox(
                         width: 26,
                         height: 26,
-                        child: CircularProgressIndicator(color: SabuflixTheme.accent, strokeWidth: 2.5),
+                        child: CircularProgressIndicator(color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
                       ),
                     )
                   : searchProvider.searchResults.isEmpty
