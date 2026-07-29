@@ -32,8 +32,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     super.initState();
     _startHideTimer();
     _startPlaybackTimer();
-
-    // Enable landscape immersive mode
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
@@ -117,7 +115,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Video Backdrop stream preview
             CachedNetworkImage(
               imageUrl: widget.media.fullBackdropPath,
               fit: BoxFit.cover,
@@ -126,69 +123,58 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
             ),
 
-            // Vignette darken overlay
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              color: Colors.black.withValues(alpha: _isPlaying ? 0.5 : 0.8),
+              color: Colors.black.withValues(alpha: _isPlaying ? 0.45 : 0.75),
             ),
 
-            // Live status badge overlay
             Positioned(
-              top: 25,
-              right: 25,
+              top: 24,
+              right: 24,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: SabuflixTheme.surface.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: SabuflixTheme.terracotta, width: 1.5),
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: SabuflixTheme.radiusPill,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: SabuflixTheme.terracotta,
-                        shape: BoxShape.circle,
-                      ),
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(color: SabuflixTheme.accent, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'SABUFLIX STREAM [$_selectedQuality]',
-                      style: SabuflixTheme.sansBody(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      _selectedQuality,
+                      style: SabuflixTheme.label(fontSize: 10, color: Colors.white),
                     ),
                   ],
                 ),
               ),
             ),
 
-            // Controls Overlay
             if (_showControls)
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
                 opacity: _showControls ? 1.0 : 0.0,
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.55),
+                  color: Colors.black.withValues(alpha: 0.5),
                   child: Stack(
                     children: [
-                      // Header bar
                       Positioned(
-                        top: 20,
-                        left: 20,
-                        right: 220,
+                        top: 16,
+                        left: 16,
+                        right: 200,
                         child: Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 26),
                               onPressed: () => Navigator.pop(context),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,15 +184,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     widget.media.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: SabuflixTheme.serifHeader(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    style: SabuflixTheme.title(fontSize: 18, color: Colors.white),
                                   ),
                                   Text(
-                                    '${widget.media.formattedYear} • Reprodução Sabuflix HD',
-                                    style: SabuflixTheme.sansBody(color: SabuflixTheme.textSecondary, fontSize: 12),
+                                    widget.media.formattedYear,
+                                    style: SabuflixTheme.body(color: SabuflixTheme.textSecondary, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -215,34 +197,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         ),
                       ),
 
-                      // Header action icons
                       Positioned(
-                        top: 20,
-                        right: 80,
+                        top: 16,
+                        right: 12,
                         child: Row(
                           children: [
-                            // Watch official trailer action
                             TextButton.icon(
                               onPressed: _openOfficialTrailer,
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.white,
-                                backgroundColor: SabuflixTheme.terracotta,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                                backgroundColor: Colors.white.withValues(alpha: 0.12),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
                               ),
-                              icon: const Icon(Icons.movie_rounded, size: 18, color: Colors.white),
-                              label: Text(
-                                'Trailer Oficial',
-                                style: SabuflixTheme.sansBody(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                              ),
+                              icon: const Icon(Icons.smart_display_outlined, size: 18, color: Colors.white),
+                              label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                             ),
-                            const SizedBox(width: 8),
-
-                            // Subtitles menu toggle
+                            const SizedBox(width: 4),
                             IconButton(
-                              icon: const Icon(Icons.subtitles, color: Colors.white),
+                              icon: const Icon(Icons.subtitles_outlined, color: Colors.white),
                               onPressed: () {
                                 setState(() {
                                   _showSubtitleMenu = !_showSubtitleMenu;
@@ -250,10 +223,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 });
                               },
                             ),
-
-                            // Quality menu toggle
                             IconButton(
-                              icon: const Icon(Icons.settings, color: Colors.white),
+                              icon: const Icon(Icons.settings_outlined, color: Colors.white),
                               onPressed: () {
                                 setState(() {
                                   _showQualityMenu = !_showQualityMenu;
@@ -265,13 +236,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         ),
                       ),
 
-                      // Center Controls (10s back, play/pause, 10s forward)
                       Center(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             IconButton(
-                              iconSize: 44,
+                              iconSize: 40,
                               icon: const Icon(Icons.replay_10_rounded, color: Colors.white),
                               onPressed: () {
                                 setState(() {
@@ -280,13 +250,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 _startHideTimer();
                               },
                             ),
-                            const SizedBox(width: 30),
-                            CircleAvatar(
-                              radius: 36,
-                              backgroundColor: SabuflixTheme.terracotta,
+                            const SizedBox(width: 28),
+                            Container(
+                              width: 68,
+                              height: 68,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                               child: IconButton(
-                                iconSize: 42,
-                                icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white),
+                                iconSize: 36,
+                                icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: SabuflixTheme.background),
                                 onPressed: () {
                                   setState(() {
                                     _isPlaying = !_isPlaying;
@@ -295,9 +267,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 },
                               ),
                             ),
-                            const SizedBox(width: 30),
+                            const SizedBox(width: 28),
                             IconButton(
-                              iconSize: 44,
+                              iconSize: 40,
                               icon: const Icon(Icons.forward_10_rounded, color: Colors.white),
                               onPressed: () {
                                 setState(() {
@@ -310,119 +282,61 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         ),
                       ),
 
-                      // Skip Intro Button
                       Positioned(
-                        right: 30,
-                        bottom: 90,
-                        child: ElevatedButton.icon(
+                        right: 24,
+                        bottom: 96,
+                        child: OutlinedButton.icon(
                           onPressed: () {
                             setState(() {
                               _currentPosition += 85;
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Abertura pulada (+85s)', style: SabuflixTheme.sansBody(color: Colors.white)),
-                                duration: const Duration(seconds: 1),
-                                backgroundColor: SabuflixTheme.terracotta,
-                              ),
+                              const SnackBar(content: Text('Abertura pulada')),
                             );
                             _startHideTimer();
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: SabuflixTheme.surface.withValues(alpha: 0.8),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.black.withValues(alpha: 0.4),
                             foregroundColor: Colors.white,
-                            side: const BorderSide(color: SabuflixTheme.border),
+                            side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusPill),
                           ),
-                          icon: const Icon(Icons.fast_forward_rounded, size: 20),
-                          label: Text('Pular Abertura', style: SabuflixTheme.sansBody(fontWeight: FontWeight.bold, color: Colors.white)),
+                          icon: const Icon(Icons.fast_forward_rounded, size: 18),
+                          label: const Text('Pular Abertura'),
                         ),
                       ),
 
-                      // Quality Selection Popup Menu
                       if (_showQualityMenu)
                         Positioned(
-                          right: 60,
-                          top: 70,
-                          child: Container(
+                          right: 56,
+                          top: 64,
+                          child: _PopupMenu(
                             width: 180,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: SabuflixTheme.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: SabuflixTheme.border),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: ['4K Ultra HD', 'Full HD 1080p', 'HD 720p', 'Automático']
-                                  .map(
-                                    (q) => ListTile(
-                                      dense: true,
-                                      title: Text(
-                                        q,
-                                        style: TextStyle(
-                                          color: _selectedQuality == q ? SabuflixTheme.terracotta : Colors.white,
-                                          fontWeight: _selectedQuality == q ? FontWeight.bold : FontWeight.normal,
-                                        ),
-                                      ),
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedQuality = q;
-                                          _showQualityMenu = false;
-                                        });
-                                      },
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
+                            options: const ['4K Ultra HD', 'Full HD 1080p', 'HD 720p', 'Automático'],
+                            selected: _selectedQuality,
+                            onSelect: (q) => setState(() {
+                              _selectedQuality = q;
+                              _showQualityMenu = false;
+                            }),
                           ),
                         ),
 
-                      // Subtitles Popup Menu
                       if (_showSubtitleMenu)
                         Positioned(
-                          right: 100,
-                          top: 70,
-                          child: Container(
+                          right: 96,
+                          top: 64,
+                          child: _PopupMenu(
                             width: 200,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: SabuflixTheme.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: SabuflixTheme.border),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: ['Português (Brasil)', 'English', 'Español', 'Desativado']
-                                  .map(
-                                    (s) => ListTile(
-                                      dense: true,
-                                      title: Text(
-                                        s,
-                                        style: TextStyle(
-                                          color: _selectedSubtitle == s ? SabuflixTheme.terracotta : Colors.white,
-                                          fontWeight: _selectedSubtitle == s ? FontWeight.bold : FontWeight.normal,
-                                        ),
-                                      ),
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedSubtitle = s;
-                                          _showSubtitleMenu = false;
-                                        });
-                                      },
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
+                            options: const ['Português (Brasil)', 'English', 'Español', 'Desativado'],
+                            selected: _selectedSubtitle,
+                            onSelect: (s) => setState(() {
+                              _selectedSubtitle = s;
+                              _showSubtitleMenu = false;
+                            }),
                           ),
                         ),
 
-                      // Bottom Timeline Bar & Controls
                       Positioned(
                         bottom: 20,
                         left: 20,
@@ -431,11 +345,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           children: [
                             SliderTheme(
                               data: SliderThemeData(
-                                trackHeight: 4,
+                                trackHeight: 3.5,
                                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                activeTrackColor: SabuflixTheme.terracotta,
-                                inactiveTrackColor: SabuflixTheme.border,
-                                thumbColor: SabuflixTheme.terracotta,
+                                activeTrackColor: Colors.white,
+                                inactiveTrackColor: Colors.white.withValues(alpha: 0.25),
+                                thumbColor: Colors.white,
                               ),
                               child: Slider(
                                 value: _currentPosition.clamp(0, _totalDuration),
@@ -452,14 +366,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    _formatDuration(_currentPosition),
-                                    style: SabuflixTheme.sansBody(color: SabuflixTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
-                                  ),
-                                  Text(
-                                    _formatDuration(_totalDuration),
-                                    style: SabuflixTheme.sansBody(color: SabuflixTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
-                                  ),
+                                  Text(_formatDuration(_currentPosition), style: SabuflixTheme.body(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                                  Text(_formatDuration(_totalDuration), style: SabuflixTheme.body(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),
@@ -472,6 +380,55 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PopupMenu extends StatelessWidget {
+  final double width;
+  final List<String> options;
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  const _PopupMenu({
+    required this.width,
+    required this.options,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: SabuflixTheme.elevated,
+        borderRadius: SabuflixTheme.radiusMd,
+        border: Border.all(color: SabuflixTheme.border),
+        boxShadow: SabuflixTheme.shadowMd,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: options.map((o) {
+          final isSelected = selected == o;
+          return ListTile(
+            dense: true,
+            shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
+            title: Text(
+              o,
+              style: SabuflixTheme.body(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? Colors.white : SabuflixTheme.textSecondary,
+              ),
+            ),
+            trailing: isSelected ? const Icon(Icons.check_rounded, color: SabuflixTheme.accent, size: 18) : null,
+            onTap: () => onSelect(o),
+          );
+        }).toList(),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/search_provider.dart';
 import '../services/tmdb_service.dart';
+import '../theme/sabuflix_theme.dart';
 import '../widgets/media_card.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -27,115 +28,128 @@ class _SearchScreenState extends State<SearchScreen> {
     final crossAxisCount = (screenWidth / 160).floor().clamp(2, 6);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF09090E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D14),
-        elevation: 0,
-        title: TextField(
-          controller: _searchController,
-          autofocus: false,
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-          onChanged: (val) => searchProvider.search(val),
-          decoration: InputDecoration(
-            hintText: 'Pesquisar filmes, séries, gêneros...',
-            hintStyle: const TextStyle(color: Colors.white38),
-            border: InputBorder.none,
-            prefixIcon: const Icon(Icons.search, color: Color(0xFFE50914)),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.white54),
-                    onPressed: () {
-                      _searchController.clear();
-                      searchProvider.clearSearch();
-                    },
-                  )
-                : null,
-          ),
-        ),
-      ),
-      body: Column(
-        children: [
-          // Genre Chips Bar
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: TMDBService.genreMap.entries.map((entry) {
-                final isSelected = searchProvider.selectedGenreId == entry.key;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(entry.value),
-                    selected: isSelected,
-                    selectedColor: const Color(0xFFE50914),
-                    backgroundColor: const Color(0xFF14141F),
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white70,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 13,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(
-                        color: isSelected ? const Color(0xFFE50914) : Colors.white10,
-                      ),
-                    ),
-                    onSelected: (_) {
-                      if (isSelected) {
-                        searchProvider.clearSearch();
-                      } else {
-                        searchProvider.filterByGenre(entry.key);
-                      }
-                    },
+      backgroundColor: SabuflixTheme.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: SabuflixTheme.surfaceLight,
+                  borderRadius: SabuflixTheme.radiusMd,
+                  border: Border.all(color: SabuflixTheme.border),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  style: SabuflixTheme.body(fontSize: 15, color: SabuflixTheme.textPrimary),
+                  onChanged: (val) => searchProvider.search(val),
+                  decoration: InputDecoration(
+                    hintText: 'Pesquisar filmes, séries e gêneros',
+                    hintStyle: SabuflixTheme.body(fontSize: 15, color: SabuflixTheme.textMuted),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    prefixIcon: const Icon(Icons.search_rounded, color: SabuflixTheme.textMuted, size: 22),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, color: SabuflixTheme.textMuted, size: 20),
+                            onPressed: () {
+                              _searchController.clear();
+                              searchProvider.clearSearch();
+                            },
+                          )
+                        : null,
                   ),
-                );
-              }).toList(),
+                ),
+              ),
             ),
-          ),
 
-          // Main Results Grid or Empty State
-          Expanded(
-            child: searchProvider.isSearching
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFE50914)),
-                  )
-                : searchProvider.searchResults.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.movie_filter_outlined,
-                              size: 64,
-                              color: Colors.white.withOpacity(0.2),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              searchProvider.query.isEmpty && searchProvider.selectedGenreId == null
-                                  ? 'Digite o nome de um filme ou escolha um gênero acima'
-                                  : 'Nenhum resultado encontrado para "${searchProvider.query}"',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white54, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      )
-                    : GridView.builder(
-                        padding: const EdgeInsets.all(16),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          childAspectRatio: 0.65,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                        itemCount: searchProvider.searchResults.length,
-                        itemBuilder: (context, index) {
-                          final item = searchProvider.searchResults[index];
-                          return MediaCard(media: item);
-                        },
+            SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                children: TMDBService.genreMap.entries.map((entry) {
+                  final isSelected = searchProvider.selectedGenreId == entry.key;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: FilterChip(
+                      label: Text(entry.value),
+                      selected: isSelected,
+                      showCheckmark: false,
+                      selectedColor: SabuflixTheme.accent,
+                      backgroundColor: SabuflixTheme.surfaceLight,
+                      labelStyle: SabuflixTheme.body(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? Colors.white : SabuflixTheme.textSecondary,
                       ),
-          ),
-        ],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: SabuflixTheme.radiusPill,
+                        side: BorderSide(
+                          color: isSelected ? SabuflixTheme.accent : SabuflixTheme.border,
+                        ),
+                      ),
+                      onSelected: (_) {
+                        if (isSelected) {
+                          searchProvider.clearSearch();
+                        } else {
+                          searchProvider.filterByGenre(entry.key);
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            Expanded(
+              child: searchProvider.isSearching
+                  ? const Center(
+                      child: SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: CircularProgressIndicator(color: SabuflixTheme.accent, strokeWidth: 2.5),
+                      ),
+                    )
+                  : searchProvider.searchResults.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.search_rounded, size: 48, color: SabuflixTheme.textMuted),
+                                const SizedBox(height: 16),
+                                Text(
+                                  searchProvider.query.isEmpty && searchProvider.selectedGenreId == null
+                                      ? 'Digite o nome de um título ou escolha um gênero'
+                                      : 'Nenhum resultado encontrado para "${searchProvider.query}"',
+                                  textAlign: TextAlign.center,
+                                  style: SabuflixTheme.body(fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            childAspectRatio: 0.65,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          itemCount: searchProvider.searchResults.length,
+                          itemBuilder: (context, index) {
+                            final item = searchProvider.searchResults[index];
+                            return MediaCard(media: item);
+                          },
+                        ),
+            ),
+          ],
+        ),
       ),
     );
   }

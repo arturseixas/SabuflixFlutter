@@ -1,97 +1,87 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/tmdb_service.dart';
 import '../providers/search_provider.dart';
+import '../theme/sabuflix_theme.dart';
 import 'search_screen.dart';
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({Key? key}) : super(key: key);
 
   static const List<Map<String, dynamic>> categoryCards = [
-    {'id': 28, 'name': 'Ação & Aventura', 'icon': Icons.flash_on_rounded, 'color': Color(0xFFE50914)},
-    {'id': 35, 'name': 'Comédia', 'icon': Icons.sentiment_very_satisfied_rounded, 'color': Color(0xFFFF9800)},
-    {'id': 27, 'name': 'Terror & Suspense', 'icon': Icons.dark_mode_rounded, 'color': Color(0xFF9C27B0)},
-    {'id': 878, 'name': 'Ficção Científica', 'icon': Icons.rocket_launch_rounded, 'color': Color(0xFF00BCD4)},
-    {'id': 16, 'name': 'Animação', 'icon': Icons.animation_rounded, 'color': Color(0xFF4CAF50)},
-    {'id': 18, 'name': 'Drama', 'icon': Icons.theater_comedy_rounded, 'color': Color(0xFF3F51B5)},
-    {'id': 99, 'name': 'Documentários', 'icon': Icons.camera_roll_rounded, 'color': Color(0xFF795548)},
-    {'id': 10749, 'name': 'Romance', 'icon': Icons.favorite_rounded, 'color': Color(0xFFE91E63)},
+    {'id': 28, 'name': 'Ação & Aventura', 'icon': Icons.flash_on_rounded, 'color': Color(0xFFD97757)},
+    {'id': 35, 'name': 'Comédia', 'icon': Icons.sentiment_satisfied_rounded, 'color': Color(0xFFE8B65A)},
+    {'id': 27, 'name': 'Terror & Suspense', 'icon': Icons.visibility_rounded, 'color': Color(0xFF9B8AA6)},
+    {'id': 878, 'name': 'Ficção Científica', 'icon': Icons.rocket_launch_rounded, 'color': Color(0xFF7C9AA3)},
+    {'id': 16, 'name': 'Animação', 'icon': Icons.animation_rounded, 'color': Color(0xFF8A9A6E)},
+    {'id': 18, 'name': 'Drama', 'icon': Icons.theater_comedy_rounded, 'color': Color(0xFFA3897A)},
+    {'id': 99, 'name': 'Documentários', 'icon': Icons.camera_roll_rounded, 'color': Color(0xFF9C8064)},
+    {'id': 10749, 'name': 'Romance', 'icon': Icons.favorite_rounded, 'color': Color(0xFFC17A6E)},
   ];
 
   @override
   Widget build(BuildContext context) {
     final searchProvider = Provider.of<SearchProvider>(context, listen: false);
     final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = (screenWidth / 180).floor().clamp(2, 4);
+    final crossAxisCount = (screenWidth / 200).floor().clamp(2, 4);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF09090E),
+      backgroundColor: SabuflixTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D14),
-        elevation: 0,
-        title: const Text(
-          'Categorias Sabuflix',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
-        ),
+        backgroundColor: SabuflixTheme.background,
+        title: Text('Categorias', style: SabuflixTheme.title(fontSize: 20, fontWeight: FontWeight.w700)),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            childAspectRatio: 1.4,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+            childAspectRatio: 1.7,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
           ),
           itemCount: categoryCards.length,
           itemBuilder: (context, index) {
             final cat = categoryCards[index];
             final Color catColor = cat['color'] as Color;
 
-            return InkWell(
-              onTap: () {
-                searchProvider.filterByGenre(cat['id'] as int);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SearchScreen()),
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      catColor.withOpacity(0.85),
-                      const Color(0xFF14141F),
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  searchProvider.filterByGenre(cat['id'] as int);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SearchScreen()),
+                  );
+                },
+                borderRadius: SabuflixTheme.radiusMd,
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: SabuflixTheme.surface,
+                    borderRadius: SabuflixTheme.radiusMd,
+                    border: Border.all(color: SabuflixTheme.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: catColor.withValues(alpha: 0.16),
+                          borderRadius: SabuflixTheme.radiusSm,
+                        ),
+                        child: Icon(cat['icon'] as IconData, size: 19, color: catColor),
+                      ),
+                      Text(
+                        cat['name'] as String,
+                        style: SabuflixTheme.body(fontSize: 14, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary),
+                      ),
                     ],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: catColor.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(cat['icon'] as IconData, size: 36, color: Colors.white),
-                    const SizedBox(height: 10),
-                    Text(
-                      cat['name'] as String,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             );

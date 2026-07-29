@@ -17,38 +17,39 @@ class HeroBanner extends StatelessWidget {
     final favoritesProvider = Provider.of<FavoritesProvider>(context);
     final isFav = favoritesProvider.isFavorite(media.id);
     final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
 
     return SizedBox(
-      height: 520,
+      height: 560,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Backdrop Image
           CachedNetworkImage(
             imageUrl: media.fullBackdropPath,
             fit: BoxFit.cover,
             alignment: Alignment.topCenter,
-            placeholder: (context, url) => Container(color: SabuflixTheme.background),
-            errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
+            placeholder: (context, url) => Container(color: SabuflixTheme.surface),
+            errorWidget: (context, url, err) => Container(color: SabuflixTheme.surface),
           ),
 
-          // Multi-stage Warm Dark Gradients (Anthropic Style)
+          // Vertical readability gradient.
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: const [0.0, 0.35, 0.75, 1.0],
+                stops: const [0.0, 0.4, 0.78, 1.0],
                 colors: [
-                  SabuflixTheme.background.withValues(alpha: 0.6),
-                  SabuflixTheme.background.withValues(alpha: 0.25),
-                  SabuflixTheme.background.withValues(alpha: 0.85),
+                  SabuflixTheme.background.withValues(alpha: 0.55),
+                  SabuflixTheme.background.withValues(alpha: 0.15),
+                  SabuflixTheme.background.withValues(alpha: 0.9),
                   SabuflixTheme.background,
                 ],
               ),
             ),
           ),
+          // Horizontal readability gradient for the text column.
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -56,228 +57,152 @@ class HeroBanner extends StatelessWidget {
                 end: Alignment.centerRight,
                 stops: const [0.0, 0.55, 1.0],
                 colors: [
-                  SabuflixTheme.background.withValues(alpha: 0.95),
-                  SabuflixTheme.background.withValues(alpha: 0.45),
+                  SabuflixTheme.background.withValues(alpha: 0.9),
+                  SabuflixTheme.background.withValues(alpha: 0.35),
                   Colors.transparent,
                 ],
               ),
             ),
           ),
 
-          // Content Info Overlay (Apple TV + Anthropic Style)
           Positioned(
-            bottom: 40,
-            left: screenWidth > 800 ? 50 : 24,
-            right: screenWidth > 800 ? screenWidth * 0.38 : 24,
+            bottom: 44,
+            left: isDesktop ? 56 : 24,
+            right: isDesktop ? screenWidth * 0.4 : 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Anthropic Star Tagline Badge
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: SabuflixTheme.terracotta,
-                        borderRadius: BorderRadius.circular(6),
+                        color: SabuflixTheme.accent,
+                        borderRadius: SabuflixTheme.radiusSm,
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('✳ ', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                          Text(
-                            'SABUFLIX ORIGINAL',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        'ORIGINAL SABUFLIX',
+                        style: SabuflixTheme.label(fontSize: 10, color: Colors.white, letterSpacing: 0.8),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: SabuflixTheme.textSecondary, width: 1),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: SabuflixTheme.tagDecoration(),
                       child: Text(
                         '4K ULTRA HD',
-                        style: SabuflixTheme.sansBody(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: SabuflixTheme.textSecondary,
-                        ),
+                        style: SabuflixTheme.label(fontSize: 10, color: SabuflixTheme.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  media.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: SabuflixTheme.headline(
+                    fontSize: isDesktop ? 46 : 32,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    const Icon(Icons.star_rounded, color: SabuflixTheme.gold, size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      media.formattedRating,
+                      style: SabuflixTheme.body(fontSize: 14, fontWeight: FontWeight.w700, color: SabuflixTheme.textPrimary),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(media.formattedYear, style: SabuflixTheme.body(fontSize: 14)),
+                    const SizedBox(width: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: SabuflixTheme.tagDecoration(),
+                      child: Text(
+                        '16+',
+                        style: SabuflixTheme.body(fontSize: 11, fontWeight: FontWeight.w700, color: SabuflixTheme.textPrimary),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
 
-                // Media Title (Serif Typography)
-                Text(
-                  media.title,
-                  style: SabuflixTheme.serifHeader(
-                    fontSize: screenWidth > 800 ? 44 : 34,
-                    fontWeight: FontWeight.bold,
-                    color: SabuflixTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Rating & Metadata row
-                Row(
-                  children: [
-                    const Icon(Icons.star_rounded, color: SabuflixTheme.amber, size: 20),
-                    const SizedBox(width: 4),
-                    Text(
-                      media.formattedRating,
-                      style: SabuflixTheme.sansBody(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: SabuflixTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Text(
-                      media.formattedYear,
-                      style: SabuflixTheme.sansBody(
-                        fontSize: 14,
-                        color: SabuflixTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: SabuflixTheme.surfaceLight,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: SabuflixTheme.border),
-                      ),
-                      child: Text(
-                        '16+',
-                        style: SabuflixTheme.sansBody(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: SabuflixTheme.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Overview text
                 if (media.overview != null && media.overview!.isNotEmpty)
                   Text(
                     media.overview!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: SabuflixTheme.sansBody(
-                      fontSize: 14,
-                      color: SabuflixTheme.textSecondary,
-                      height: 1.5,
-                    ),
+                    style: SabuflixTheme.body(fontSize: 14, height: 1.55),
                   ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 26),
 
-                // Apple TV Pill Action Buttons
                 Wrap(
-                  spacing: 14,
+                  spacing: 12,
                   runSpacing: 12,
                   children: [
-                    // Terracotta Play Button
                     ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => VideoPlayerScreen(media: media),
-                          ),
+                          MaterialPageRoute(builder: (context) => VideoPlayerScreen(media: media)),
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: SabuflixTheme.terracotta,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30), // Apple TV Pill
-                        ),
-                        elevation: 6,
+                        backgroundColor: SabuflixTheme.textPrimary,
+                        foregroundColor: SabuflixTheme.background,
+                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
                       ),
-                      icon: const Icon(Icons.play_arrow_rounded, size: 28, color: Colors.white),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 24, color: SabuflixTheme.background),
                       label: Text(
-                        'Assistir Agora',
-                        style: SabuflixTheme.sansBody(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        'Assistir',
+                        style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: SabuflixTheme.background),
                       ),
                     ),
-
-                    // Translucent Warm Glass My List Button
                     OutlinedButton.icon(
                       onPressed: () {
                         favoritesProvider.toggleFavorite(media);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              isFav ? 'Removido da Minha Lista' : 'Adicionado à Minha Lista!',
-                              style: SabuflixTheme.sansBody(color: Colors.white),
+                              isFav ? 'Removido da Minha Lista' : 'Adicionado à Minha Lista',
                             ),
-                            duration: const Duration(seconds: 2),
-                            backgroundColor: SabuflixTheme.terracotta,
                           ),
                         );
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: SabuflixTheme.textPrimary,
-                        backgroundColor: SabuflixTheme.surface.withValues(alpha: 0.7),
-                        side: const BorderSide(color: SabuflixTheme.border, width: 1.5),
-                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
+                        backgroundColor: SabuflixTheme.surface.withValues(alpha: 0.75),
+                        side: const BorderSide(color: SabuflixTheme.borderStrong),
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
                       ),
-                      icon: Icon(
-                        isFav ? Icons.check : Icons.add,
-                        size: 22,
-                        color: SabuflixTheme.textPrimary,
-                      ),
+                      icon: Icon(isFav ? Icons.check_rounded : Icons.add_rounded, size: 20),
                       label: Text(
                         isFav ? 'Na Lista' : 'Minha Lista',
-                        style: SabuflixTheme.sansBody(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: SabuflixTheme.textPrimary,
-                        ),
+                        style: SabuflixTheme.body(fontSize: 14, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary),
                       ),
                     ),
-
-                    // Info Button
                     IconButton(
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => MediaDetailsScreen(media: media),
-                          ),
+                          MaterialPageRoute(builder: (context) => MediaDetailsScreen(media: media)),
                         );
                       },
                       style: IconButton.styleFrom(
-                        backgroundColor: SabuflixTheme.surface.withValues(alpha: 0.7),
-                        padding: const EdgeInsets.all(14),
-                        shape: CircleBorder(
-                          side: BorderSide(color: SabuflixTheme.border),
-                        ),
+                        backgroundColor: SabuflixTheme.surface.withValues(alpha: 0.75),
+                        padding: const EdgeInsets.all(15),
+                        shape: CircleBorder(side: BorderSide(color: SabuflixTheme.border)),
                       ),
-                      icon: const Icon(Icons.info_outline_rounded, color: SabuflixTheme.textPrimary, size: 24),
-                      tooltip: 'Mais Informações',
+                      icon: const Icon(Icons.info_outline_rounded, color: SabuflixTheme.textPrimary, size: 22),
+                      tooltip: 'Mais informações',
                     ),
                   ],
                 ),

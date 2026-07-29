@@ -4,6 +4,7 @@ import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/media_row.dart';
+import '../widgets/wordmark.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -21,80 +22,54 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(
-                    color: SabuflixTheme.terracotta,
-                    strokeWidth: 3,
+                  const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                      color: SabuflixTheme.accent,
+                      strokeWidth: 2.5,
+                    ),
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Carregando catálogo Sabuflix...',
-                    style: SabuflixTheme.sansBody(
-                      color: SabuflixTheme.textSecondary,
-                      fontSize: 14,
-                    ),
+                    'Carregando catálogo...',
+                    style: SabuflixTheme.body(fontSize: 14),
                   ),
                 ],
               ),
             )
           : RefreshIndicator(
               onRefresh: () => catalog.loadCatalog(),
-              color: SabuflixTheme.terracotta,
+              color: SabuflixTheme.accent,
               backgroundColor: SabuflixTheme.surface,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  // App Bar for mobile view
                   if (!isDesktop)
                     SliverAppBar(
                       floating: true,
-                      backgroundColor: SabuflixTheme.background.withValues(alpha: 0.95),
+                      backgroundColor: SabuflixTheme.background.withValues(alpha: 0.96),
                       elevation: 0,
                       centerTitle: false,
-                      title: Row(
-                        children: [
-                          const Text(
-                            '✳',
-                            style: TextStyle(
-                              color: SabuflixTheme.terracotta,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'SABUFLIX',
-                            style: SabuflixTheme.serifHeader(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: SabuflixTheme.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      actions: [
+                      title: const SabuflixWordmark(fontSize: 19),
+                      actions: const [
                         Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: CircleAvatar(
-                            radius: 15,
-                            backgroundColor: SabuflixTheme.terracotta,
-                            child: const Text('S', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
+                          padding: EdgeInsets.only(right: 16),
+                          child: _AccountBadge(),
                         ),
                       ],
                     ),
 
-                  // Hero Banner Section
                   if (catalog.heroItem != null)
                     SliverToBoxAdapter(
                       child: HeroBanner(media: catalog.heroItem!),
                     ),
 
-                  // Media Catalog Rows
                   SliverToBoxAdapter(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         MediaRow(
                           title: 'Em Alta Hoje',
                           mediaItems: catalog.trending,
@@ -130,6 +105,28 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _AccountBadge extends StatelessWidget {
+  const _AccountBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 30,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: SabuflixTheme.elevated,
+        shape: BoxShape.circle,
+        border: Border.all(color: SabuflixTheme.borderStrong),
+      ),
+      child: Text(
+        'S',
+        style: SabuflixTheme.body(color: SabuflixTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 12),
+      ),
     );
   }
 }

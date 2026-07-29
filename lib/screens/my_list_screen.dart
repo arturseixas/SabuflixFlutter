@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/favorites_provider.dart';
+import '../theme/sabuflix_theme.dart';
 import '../widgets/media_card.dart';
 
 class MyListScreen extends StatelessWidget {
@@ -14,61 +15,63 @@ class MyListScreen extends StatelessWidget {
     final crossAxisCount = (screenWidth / 160).floor().clamp(2, 6);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF09090E),
+      backgroundColor: SabuflixTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D14),
-        elevation: 0,
+        backgroundColor: SabuflixTheme.background,
         title: Row(
           children: [
-            const Icon(Icons.bookmark_rounded, color: Color(0xFFE50914)),
-            const SizedBox(width: 8),
-            const Text(
-              'Minha Lista',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE50914).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
+            Text('Minha Lista', style: SabuflixTheme.title(fontSize: 20, fontWeight: FontWeight.w700)),
+            if (favorites.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: SabuflixTheme.surfaceLight,
+                  borderRadius: SabuflixTheme.radiusPill,
+                  border: Border.all(color: SabuflixTheme.border),
+                ),
+                child: Text(
+                  '${favorites.length}',
+                  style: SabuflixTheme.label(fontSize: 12, color: SabuflixTheme.textSecondary),
+                ),
               ),
-              child: Text(
-                '${favorites.length}',
-                style: const TextStyle(color: Color(0xFFE50914), fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
+            ],
           ],
         ),
       ),
       body: favoritesProvider.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFE50914)))
+          ? const Center(
+              child: SizedBox(
+                width: 26,
+                height: 26,
+                child: CircularProgressIndicator(color: SabuflixTheme.accent, strokeWidth: 2.5),
+              ),
+            )
           : favorites.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.bookmark_border_rounded,
-                        size: 72,
-                        color: Colors.white.withOpacity(0.2),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Sua lista está vazia',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Adicione seus filmes e séries favoritos para assistir depois.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white54, fontSize: 14),
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.bookmark_border_rounded, size: 52, color: SabuflixTheme.textMuted),
+                        const SizedBox(height: 18),
+                        Text(
+                          'Sua lista está vazia',
+                          style: SabuflixTheme.title(fontSize: 17),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Adicione filmes e séries para assistir mais tarde.',
+                          textAlign: TextAlign.center,
+                          style: SabuflixTheme.body(fontSize: 14),
+                        ),
+                      ],
+                    ),
                   ),
                 )
               : GridView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     childAspectRatio: 0.65,
