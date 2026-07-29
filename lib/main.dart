@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:media_kit/media_kit.dart';
 import 'theme/sabuflix_theme.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/favorites_provider.dart';
@@ -8,6 +9,7 @@ import 'screens/main_navigation_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   runApp(const SabuflixApp());
 }
 

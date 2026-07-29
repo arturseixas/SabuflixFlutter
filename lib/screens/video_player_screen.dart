@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../models/media_item.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
@@ -22,7 +23,9 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _showControls = true;
   Timer? _hideTimer;
-  VideoPlayerController? _videoController;
+  
+  Player? _player;
+  VideoController? _videoController;
   
   bool _isPlaying = false;
   bool _isBuffering = false;
@@ -45,23 +48,34 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Future<void> _initPlayer() async {
     if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl!));
+      _player = Player();
+      _videoController = VideoController(_player!);
       
-      _videoController!.addListener(() {
+      _player!.stream.position.listen((Duration position) {
         if (!mounted) return;
-        setState(() {
-          _currentPosition = _videoController!.value.position.inSeconds.toDouble();
-          _totalDuration = _videoController!.value.duration.inSeconds.toDouble();
-          _isPlaying = _videoController!.value.isPlaying;
-          _isBuffering = _videoController!.value.isBuffering;
-        });
+        setState(() => _currentPosition = position.inSeconds.toDouble());
+      });
+      
+      _player!.stream.duration.listen((Duration duration) {
+        if (!mounted) return;
+        setState(() => _totalDuration = duration.inSeconds.toDouble());
+      });
+      
+      _player!.stream.playing.listen((bool playing) {
+        if (!mounted) return;
+        setState(() => _isPlaying = playing);
+      });
+      
+      _player!.stream.buffering.listen((bool buffering) {
+        if (!mounted) return;
+        setState(() => _isBuffering = buffering);
       });
 
       try {
-        await _videoController!.initialize();
-        await _videoController!.play();
+        await _player!.open(Media(widget.videoUrl!));
+        await _player!.play();
       } catch (e) {
-        print('Error initializing video player: $e');
+        print('Error initializing media_kit player: $e');
       }
     } else {
       // Mock playback if no URL (e.g. trailer mode)
@@ -110,12 +124,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _playPause() {
-    if (_videoController != null) {
-      if (_videoController!.value.isPlaying) {
-        _videoController!.pause();
-      } else {
-        _videoController!.play();
-      }
+    if (_player != null) {
+      _player!.playOrPause();
     } else {
       setState(() => _isPlaying = !_isPlaying);
     }
@@ -123,9 +133,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _seek(double seconds) {
-    if (_videoController != null) {
+    if (_player != null) {
       final newPos = (_currentPosition + seconds).clamp(0.0, _totalDuration);
-      _videoController!.seekTo(Duration(seconds: newPos.toInt()));
+      _player!.seek(Duration(seconds: newPos.toInt()));
     } else {
       setState(() {
         _currentPosition = (_currentPosition + seconds).clamp(0.0, _totalDuration);
@@ -135,8 +145,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _seekTo(double value) {
-    if (_videoController != null) {
-      _videoController!.seekTo(Duration(seconds: value.toInt()));
+    if (_player != null) {
+      _player!.seek(Duration(seconds: value.toInt()));
     } else {
       setState(() => _currentPosition = value);
     }
@@ -167,7 +177,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void dispose() {
     _hideTimer?.cancel();
-    _videoController?.dispose();
+    _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
@@ -175,7 +185,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasVideo = _videoController != null && _videoController!.value.isInitialized;
+    final hasVideo = _videoController != null;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -187,9 +197,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           children: [
             if (hasVideo)
               Center(
-                child: AspectRatio(
-                  aspectRatio: _videoController!.value.aspectRatio,
-                  child: VideoPlayer(_videoController!),
+                child: Video(
+                  controller: _videoController!,
+                  controls: NoVideoControls, // we use custom controls below
+                  fill: Colors.black,
                 ),
               )
             else
