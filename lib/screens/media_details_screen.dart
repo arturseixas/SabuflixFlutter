@@ -56,6 +56,8 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     final media = _detailedMedia ?? widget.media;
     final favoritesProvider = Provider.of<FavoritesProvider>(context);
     final isFav = favoritesProvider.isFavorite(media.id);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 600;
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
@@ -171,35 +173,38 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  Container(
-                    width: double.infinity,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      borderRadius: SabuflixTheme.radiusPill,
-                      gradient: const LinearGradient(
-                        colors: [SabuflixTheme.accent, SabuflixTheme.accentHover],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: SabuflixTheme.accent.withValues(alpha: 0.35),
-                          blurRadius: 20,
-                          offset: const Offset(0, 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: isDesktop ? 220 : double.infinity,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: SabuflixTheme.radiusPill,
+                        gradient: const LinearGradient(
+                          colors: [SabuflixTheme.accent, SabuflixTheme.accentHover],
                         ),
-                      ],
-                    ),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(context, glassRoute(VideoPlayerScreen(media: media)));
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: const StadiumBorder(),
+                        boxShadow: [
+                          BoxShadow(
+                            color: SabuflixTheme.accent.withValues(alpha: 0.35),
+                            blurRadius: 20,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
-                      icon: const Icon(Icons.play_arrow_rounded, size: 28, color: Colors.white),
-                      label: Text(
-                        'Assistir Agora',
-                        style: SabuflixTheme.body(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(context, glassRoute(VideoPlayerScreen(media: media)));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: const StadiumBorder(),
+                        ),
+                        icon: const Icon(Icons.play_arrow_rounded, size: 26, color: Colors.white),
+                        label: Text(
+                          'Assistir Agora',
+                          style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
                       ),
                     ),
                   ),
