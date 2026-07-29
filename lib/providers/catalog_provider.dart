@@ -61,10 +61,12 @@ class CatalogProvider extends ChangeNotifier {
 
       if (_trending.isNotEmpty) {
         // Pick first item with backdropPath for Hero Banner
-        _heroItem = _trending.firstWhere(
+        final selectedHero = _trending.firstWhere(
           (item) => item.backdropPath != null && item.overview != null && item.overview!.isNotEmpty,
           orElse: () => _trending.first,
         );
+        final logo = await _tmdbService.fetchLogoPath(selectedHero.id, selectedHero.mediaType);
+        _heroItem = selectedHero.copyWith(logoPath: logo);
       }
     } catch (e) {
       print('Error loading catalog: $e');

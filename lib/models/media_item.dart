@@ -4,6 +4,7 @@ class MediaItem {
   final String? overview;
   final String? posterPath;
   final String? backdropPath;
+  final String? logoPath;
   final double voteAverage;
   final int voteCount;
   final String? releaseDate;
@@ -20,6 +21,7 @@ class MediaItem {
     this.overview,
     this.posterPath,
     this.backdropPath,
+    this.logoPath,
     required this.voteAverage,
     required this.voteCount,
     this.releaseDate,
@@ -43,6 +45,13 @@ class MediaItem {
       return 'https://image.tmdb.org/t/p/w1280$backdropPath';
     }
     return fullPosterPath;
+  }
+
+  String? get fullLogoPath {
+    if (logoPath != null && logoPath!.isNotEmpty) {
+      return 'https://image.tmdb.org/t/p/w500$logoPath';
+    }
+    return null;
   }
 
   String get formattedYear {
@@ -79,6 +88,7 @@ class MediaItem {
       overview: json['overview'],
       posterPath: json['poster_path'],
       backdropPath: json['backdrop_path'],
+      logoPath: json['logo_path'],
       voteAverage: (json['vote_average'] is num) ? (json['vote_average'] as num).toDouble() : 0.0,
       voteCount: json['vote_count'] ?? 0,
       releaseDate: rDate,
@@ -87,6 +97,7 @@ class MediaItem {
       genres: gNames,
       runtime: json['runtime'],
       numberOfSeasons: json['number_of_seasons'],
+      trailerKey: json['trailerKey'],
     );
   }
 
@@ -97,6 +108,7 @@ class MediaItem {
       'overview': overview,
       'poster_path': posterPath,
       'backdrop_path': backdropPath,
+      'logo_path': logoPath,
       'vote_average': voteAverage,
       'vote_count': voteCount,
       'release_date': releaseDate,
@@ -111,6 +123,7 @@ class MediaItem {
 
   MediaItem copyWith({
     String? trailerKey,
+    String? logoPath,
     List<String>? genres,
     int? runtime,
     int? numberOfSeasons,
@@ -121,6 +134,7 @@ class MediaItem {
       overview: overview,
       posterPath: posterPath,
       backdropPath: backdropPath,
+      logoPath: logoPath ?? this.logoPath,
       voteAverage: voteAverage,
       voteCount: voteCount,
       releaseDate: releaseDate,

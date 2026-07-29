@@ -119,10 +119,29 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(
-                          media.title,
-                          style: SabuflixTheme.headline(fontSize: 28),
-                        ),
+                        child: media.fullLogoPath != null
+                            ? Align(
+                                alignment: Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 75,
+                                    maxWidth: 320,
+                                  ),
+                                  child: CachedNetworkImage(
+                                    imageUrl: media.fullLogoPath!,
+                                    fit: BoxFit.contain,
+                                    alignment: Alignment.centerLeft,
+                                    errorWidget: (context, url, err) => Text(
+                                      media.title,
+                                      style: SabuflixTheme.headline(fontSize: 28),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                media.title,
+                                style: SabuflixTheme.headline(fontSize: 28),
+                              ),
                       ),
                       IconButton(
                         onPressed: () => favoritesProvider.toggleFavorite(media),

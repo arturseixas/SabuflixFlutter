@@ -73,16 +73,39 @@ class HeroBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  media.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: SabuflixTheme.headline(
-                    fontSize: isDesktop ? 44 : 30,
-                    fontWeight: FontWeight.w700,
+                if (media.fullLogoPath != null) ...[
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: isDesktop ? 120 : 80,
+                      maxWidth: isDesktop ? 440 : 290,
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: media.fullLogoPath!,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
+                      errorWidget: (context, url, err) => Text(
+                        media.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: SabuflixTheme.headline(
+                          fontSize: isDesktop ? 44 : 30,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
+                ] else ...[
+                  Text(
+                    media.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: SabuflixTheme.headline(
+                      fontSize: isDesktop ? 44 : 30,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
 
                 Row(
                   children: [

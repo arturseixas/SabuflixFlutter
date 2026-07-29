@@ -127,12 +127,44 @@ class TMDBService {
         final data = json.decode(response.body);
         final media = MediaItem.fromJson(data, defaultMediaType: mediaType);
         
-        // Fetch trailer key in parallel
-        final trailerKey = await fetchTrailerKey(id, mediaType);
-        return media.copyWith(trailerKey: trailerKey);
+        // Fetch trailer key & logo path in parallel
+        final results = await Future.wait<String?>([
+          fetchTrailerKey(id, mediaType),
+          fetchLogoPath(id, mediaType),
+        ]);
+
+        return media.copyWith(
+          trailerKey: results[0],
+          logoPath: results[1],
+        );
       }
     } catch (e) {
       print('Error fetching media details: $e');
+    }
+    return null;
+  }
+
+  Future<String?> fetchLogoPath(int id, String mediaType) async {
+    final endpoint = mediaType == 'tv' ? 'tv' : 'movie';
+    final url = Uri.parse('$baseUrl/$endpoint/$id/images?api_key=$apiKey&include_image_language=pt,en,null');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List logos = data['logos'] ?? [];
+        if (logos.isNotEmpty) {
+          final ptLogo = logos.firstWhere((l) => l['iso_639_1'] == 'pt', orElse: () => null);
+          if (ptLogo != null && ptLogo['file_path'] != null) return ptLogo['file_path'];
+
+          final enLogo = logos.firstWhere((l) => l['iso_639_1'] == 'en', orElse: () => null);
+          if (enLogo != null && enLogo['file_path'] != null) return enLogo['file_path'];
+
+          final anyLogo = logos.firstWhere((l) => l['file_path'] != null, orElse: () => null);
+          if (anyLogo != null) return anyLogo['file_path'];
+        }
+      }
+    } catch (e) {
+      print('Error fetching logo path: $e');
     }
     return null;
   }
