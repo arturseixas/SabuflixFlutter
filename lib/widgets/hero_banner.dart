@@ -6,7 +6,6 @@ import '../theme/sabuflix_theme.dart';
 import '../providers/favorites_provider.dart';
 import '../utils/app_route.dart';
 import '../screens/media_details_screen.dart';
-import '../screens/video_player_screen.dart';
 import 'glass_container.dart';
 
 class HeroBanner extends StatelessWidget {
@@ -153,7 +152,7 @@ class HeroBanner extends StatelessWidget {
                       ),
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          Navigator.push(context, glassRoute(VideoPlayerScreen(media: media)));
+                          Navigator.push(context, glassRoute(MediaDetailsScreen(media: media)));
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,

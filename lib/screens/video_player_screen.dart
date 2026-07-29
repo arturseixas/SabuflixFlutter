@@ -32,10 +32,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   double _currentPosition = 0;
   double _totalDuration = 0;
   
-  String _selectedQuality = 'Automático';
-  String _selectedSubtitle = 'Desativado';
-  bool _showQualityMenu = false;
+  bool _showAudioMenu = false;
   bool _showSubtitleMenu = false;
+
+  List<AudioTrack> _audioTracks = [];
+  AudioTrack? _selectedAudioTrack;
+  
+  List<SubtitleTrack> _subtitleTracks = [];
+  SubtitleTrack? _selectedSubtitleTrack;
 
   @override
   void initState() {
@@ -69,6 +73,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _player!.stream.buffering.listen((bool buffering) {
         if (!mounted) return;
         setState(() => _isBuffering = buffering);
+      });
+
+      _player!.stream.tracks.listen((tracks) {
+        if (!mounted) return;
+        setState(() {
+          _audioTracks = tracks.audio;
+          _subtitleTracks = tracks.subtitle;
+        });
+      });
+
+      _player!.stream.track.listen((track) {
+        if (!mounted) return;
+        setState(() {
+          _selectedAudioTrack = track.audio;
+          _selectedSubtitleTrack = track.subtitle;
+        });
       });
 
       try {
@@ -107,7 +127,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       if (mounted && _isPlaying) {
         setState(() {
           _showControls = false;
-          _showQualityMenu = false;
+          _showAudioMenu = false;
           _showSubtitleMenu = false;
         });
       }
@@ -199,7 +219,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               Center(
                 child: Video(
                   controller: _videoController!,
-                  controls: NoVideoControls, // we use custom controls below
+                  controls: NoVideoControls, 
                   fill: Colors.black,
                 ),
               )
@@ -281,24 +301,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                               ),
                               const SizedBox(width: 4),
-                              IconButton(
-                                icon: const Icon(Icons.subtitles_outlined, color: Colors.white),
-                                onPressed: () {
-                                  setState(() {
-                                    _showSubtitleMenu = !_showSubtitleMenu;
-                                    _showQualityMenu = false;
-                                  });
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.settings_outlined, color: Colors.white),
-                                onPressed: () {
-                                  setState(() {
-                                    _showQualityMenu = !_showQualityMenu;
-                                    _showSubtitleMenu = false;
-                                  });
-                                },
-                              ),
+                              if (_subtitleTracks.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(Icons.subtitles_outlined, color: Colors.white),
+                                  onPressed: () {
+                                    setState(() {
+                                      _showSubtitleMenu = !_showSubtitleMenu;
+                                      _showAudioMenu = false;
+                                    });
+                                  },
+                                ),
+                              if (_audioTracks.length > 1)
+                                IconButton(
+                                  icon: const Icon(Icons.audiotrack_rounded, color: Colors.white),
+                                  onPressed: () {
+                                    setState(() {
+                                      _showAudioMenu = !_showAudioMenu;
+                                      _showSubtitleMenu = false;
+                                    });
+                                  },
+                                ),
                             ],
                           ),
                         ),
@@ -344,55 +366,64 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           ),
                         ),
 
-                        Positioned(
-                          right: 24,
-                          bottom: 96,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              _seek(85);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Abertura pulada')),
-                              );
-                            },
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: Colors.black.withValues(alpha: 0.5),
-                              foregroundColor: Colors.white,
-                              side: BorderSide(color: SabuflixTheme.accent.withValues(alpha: 0.5)),
-                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                              shape: const StadiumBorder(),
+                        if (widget.media.mediaType == 'tv')
+                          Positioned(
+                            right: 24,
+                            bottom: 96,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                _seek(85);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Abertura pulada')),
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: Colors.black.withValues(alpha: 0.5),
+                                foregroundColor: Colors.white,
+                                side: BorderSide(color: SabuflixTheme.accent.withValues(alpha: 0.5)),
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                                shape: const StadiumBorder(),
+                              ),
+                              icon: const Icon(Icons.fast_forward_rounded, size: 18, color: SabuflixTheme.accent),
+                              label: const Text('Pular Abertura'),
                             ),
-                            icon: const Icon(Icons.fast_forward_rounded, size: 18, color: SabuflixTheme.accent),
-                            label: const Text('Pular Abertura'),
                           ),
-                        ),
 
-                        if (_showQualityMenu)
+                        if (_showAudioMenu)
                           Positioned(
                             right: 56,
                             top: 64,
-                            child: _PopupMenu(
-                              width: 180,
-                              options: const ['4K Ultra HD', 'Full HD 1080p', 'HD 720p', 'Automático'],
-                              selected: _selectedQuality,
-                              onSelect: (q) => setState(() {
-                                _selectedQuality = q;
-                                _showQualityMenu = false;
-                              }),
+                            child: _TrackMenu<AudioTrack>(
+                              width: 220,
+                              tracks: _audioTracks,
+                              selectedTrack: _selectedAudioTrack,
+                              titleBuilder: (t) => t.title ?? t.language ?? 'Áudio ${t.id}',
+                              onSelect: (track) {
+                                _player?.setAudioTrack(track);
+                                setState(() {
+                                  _selectedAudioTrack = track;
+                                  _showAudioMenu = false;
+                                });
+                              },
                             ),
                           ),
 
                         if (_showSubtitleMenu)
                           Positioned(
-                            right: 96,
+                            right: _audioTracks.length > 1 ? 96 : 56,
                             top: 64,
-                            child: _PopupMenu(
-                              width: 200,
-                              options: const ['Português (Brasil)', 'English', 'Español', 'Desativado'],
-                              selected: _selectedSubtitle,
-                              onSelect: (s) => setState(() {
-                                _selectedSubtitle = s;
-                                _showSubtitleMenu = false;
-                              }),
+                            child: _TrackMenu<SubtitleTrack>(
+                              width: 220,
+                              tracks: _subtitleTracks,
+                              selectedTrack: _selectedSubtitleTrack,
+                              titleBuilder: (t) => t.title ?? t.language ?? 'Legenda ${t.id}',
+                              onSelect: (track) {
+                                _player?.setSubtitleTrack(track);
+                                setState(() {
+                                  _selectedSubtitleTrack = track;
+                                  _showSubtitleMenu = false;
+                                });
+                              },
                             ),
                           ),
 
@@ -445,16 +476,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 }
 
-class _PopupMenu extends StatelessWidget {
+class _TrackMenu<T> extends StatelessWidget {
   final double width;
-  final List<String> options;
-  final String selected;
-  final ValueChanged<String> onSelect;
+  final List<T> tracks;
+  final T? selectedTrack;
+  final String Function(T) titleBuilder;
+  final ValueChanged<T> onSelect;
 
-  const _PopupMenu({
+  const _TrackMenu({
     required this.width,
-    required this.options,
-    required this.selected,
+    required this.tracks,
+    required this.selectedTrack,
+    required this.titleBuilder,
     required this.onSelect,
   });
 
@@ -467,26 +500,31 @@ class _PopupMenu extends StatelessWidget {
       padding: const EdgeInsets.all(6),
       child: SizedBox(
         width: width,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: options.map((o) {
-            final isSelected = selected == o;
+        height: tracks.length > 5 ? 250 : null,
+        child: ListView.builder(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          itemCount: tracks.length,
+          itemBuilder: (context, index) {
+            final track = tracks[index];
+            final isSelected = selectedTrack == track;
             return ListTile(
               dense: true,
               shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
               title: Text(
-                o,
+                titleBuilder(track),
                 style: SabuflixTheme.body(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected ? Colors.white : SabuflixTheme.textSecondary,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               trailing: isSelected ? const Icon(Icons.check_rounded, color: SabuflixTheme.accent, size: 18) : null,
-              onTap: () => onSelect(o),
+              onTap: () => onSelect(track),
             );
-          }).toList(),
+          },
         ),
       ),
     );
