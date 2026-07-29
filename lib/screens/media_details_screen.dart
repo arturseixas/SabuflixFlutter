@@ -82,7 +82,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           padding: const EdgeInsets.all(24),
           blur: 40,
-          fillOpacity: 0.8,
+          fillOpacity: 0.4,
           child: FutureBuilder<List<Map<String, dynamic>>>(
             future: FrostStreamService.fetchStreams(
               imdbId: imdbId,
@@ -112,11 +112,18 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                       itemBuilder: (ctx, i) {
                         final s = streams[i];
                         return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
-                          tileColor: Colors.white.withValues(alpha: 0.05),
-                          title: Text(s['name'] ?? 'Stream', style: SabuflixTheme.body(fontWeight: FontWeight.w600, color: Colors.white)),
-                          subtitle: Text(s['title'] ?? 'Qualidade desconhecida', style: SabuflixTheme.body(fontSize: 12, color: SabuflixTheme.textSecondary)),
-                          trailing: const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 32),
+                          tileColor: Colors.white.withValues(alpha: 0.08),
+                          title: Text(s['name'] ?? 'Stream', style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 6.0),
+                            child: Text(
+                              s['title'] ?? 'Qualidade desconhecida', 
+                              style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
+                            ),
+                          ),
+                          trailing: const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
                           onTap: () {
                             Navigator.pop(ctx);
                             Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s['url'])));
