@@ -131,11 +131,11 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
-                crossAxisAlignment: CrossAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Title & Favorite button
                   Row(
-                    crossAxisAlignment: CrossAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
@@ -250,7 +250,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                               ),
                               child: Text(
                                 g,
-                                style: const TextStyle(color: Colors.white87, fontSize: 12),
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
                               ),
                             ),
                           )

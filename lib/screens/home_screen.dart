@@ -84,7 +84,7 @@ class HomeScreen extends StatelessWidget {
                   // Media Catalog Rows
                   SliverToBoxAdapter(
                     child: Column(
-                      crossAxisAlignment: CrossAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 10),
                         MediaRow(

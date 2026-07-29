@@ -69,7 +69,7 @@ class HeroBanner extends StatelessWidget {
             left: screenWidth > 800 ? 40 : 20,
             right: screenWidth > 800 ? screenWidth * 0.4 : 20,
             child: Column(
-              crossAxisAlignment: CrossAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Sabuflix Original Badge

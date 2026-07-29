@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media_item.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -14,12 +15,12 @@ class VideoPlayerScreen extends StatefulWidget {
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
-  YoutubePlayerController? _youtubeController;
   bool _showControls = true;
   Timer? _hideTimer;
+  Timer? _playbackTimer;
   bool _isPlaying = true;
-  double _currentPosition = 120; // in seconds
-  final double _totalDuration = 7200; // 2 hours sample
+  double _currentPosition = 145; // in seconds
+  final double _totalDuration = 6840; // 1h 54m
   String _selectedQuality = '4K Ultra HD';
   String _selectedSubtitle = 'Português (Brasil)';
   bool _showQualityMenu = false;
@@ -29,23 +30,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void initState() {
     super.initState();
     _startHideTimer();
+    _startPlaybackTimer();
 
     // Enable landscape immersive mode
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
 
-    if (widget.media.trailerKey != null && widget.media.trailerKey!.isNotEmpty) {
-      _youtubeController = YoutubePlayerController(
-        initialVideoId: widget.media.trailerKey!,
-        flags: const YoutubePlayerFlags(
-          autoPlay: true,
-          mute: false,
-          disableDragSeek: false,
-          loop: false,
-          isLive: false,
-          forceHD: true,
-        ),
-      );
-    }
+  void _startPlaybackTimer() {
+    _playbackTimer?.cancel();
+    _playbackTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isPlaying && mounted) {
+        setState(() {
+          if (_currentPosition < _totalDuration) {
+            _currentPosition += 1;
+          } else {
+            _isPlaying = false;
+          }
+        });
+      }
+    });
   }
 
   void _startHideTimer() {
@@ -81,18 +84,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
+  Future<void> _openOfficialTrailer() async {
+    if (widget.media.trailerKey != null && widget.media.trailerKey!.isNotEmpty) {
+      final Uri url = Uri.parse('https://www.youtube.com/watch?v=${widget.media.trailerKey}');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } else {
+      final Uri searchUrl = Uri.parse('https://www.youtube.com/results?search_query=${Uri.encodeComponent('${widget.media.title} trailer oficial')}');
+      if (await canLaunchUrl(searchUrl)) {
+        await launchUrl(searchUrl, mode: LaunchMode.externalApplication);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _hideTimer?.cancel();
-    _youtubeController?.dispose();
+    _playbackTimer?.cancel();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasYoutube = _youtubeController != null;
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
@@ -101,50 +116,57 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Video Engine (YouTube or Custom Preview)
-            if (hasYoutube)
-              Center(
-                child: YoutubePlayer(
-                  controller: _youtubeController!,
-                  showVideoProgressIndicator: true,
-                  progressIndicatorColor: const Color(0xFFE50914),
-                  progressColors: const ProgressBarColors(
-                    playedColor: Color(0xFFE50914),
-                    handleColor: Color(0xFFE50914),
-                  ),
+            // Video Backdrop stream preview
+            CachedNetworkImage(
+              imageUrl: widget.media.fullBackdropPath,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              placeholder: (context, url) => Container(color: const Color(0xFF09090E)),
+              errorWidget: (context, url, err) => Container(color: const Color(0xFF09090E)),
+            ),
+
+            // Vignette darken overlay
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              color: Colors.black.withOpacity(_isPlaying ? 0.45 : 0.75),
+            ),
+
+            // Live status badge overlay
+            Positioned(
+              top: 25,
+              right: 25,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE50914), width: 1.5),
                 ),
-              )
-            else
-              Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(
-                    widget.media.fullBackdropPath,
-                    fit: BoxFit.cover,
-                  ),
-                  Container(
-                    color: Colors.black.withOpacity(0.55),
-                  ),
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.movie_creation_outlined, color: Color(0xFFE50914), size: 64),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Reproduzindo: ${widget.media.title}',
-                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Transmissão Sabuflix High Quality [$_selectedQuality]',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
-                      ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE50914),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      'SABUFLIX STREAM [$_selectedQuality]',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
 
             // Controls Overlay
             if (_showControls)
@@ -159,7 +181,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       Positioned(
                         top: 20,
                         left: 20,
-                        right: 20,
+                        right: 200,
                         child: Row(
                           children: [
                             IconButton(
@@ -169,7 +191,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
@@ -183,14 +205,42 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     ),
                                   ),
                                   Text(
-                                    '${widget.media.formattedYear} • Sabuflix Stream',
+                                    '${widget.media.formattedYear} • Reprodução Sabuflix HD',
                                     style: const TextStyle(color: Colors.white70, fontSize: 12),
                                   ),
                                 ],
                               ),
                             ),
+                          ],
+                        ),
+                      ),
 
-                            // Subtitles button
+                      // Header action icons
+                      Positioned(
+                        top: 20,
+                        right: 80,
+                        child: Row(
+                          children: [
+                            // Watch official trailer action
+                            TextButton.icon(
+                              onPressed: _openOfficialTrailer,
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                backgroundColor: const Color(0xFFE50914).withOpacity(0.85),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                              icon: const Icon(Icons.movie_rounded, size: 18, color: Colors.white),
+                              label: const Text(
+                                'Trailer Oficial',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Subtitles menu toggle
                             IconButton(
                               icon: const Icon(Icons.subtitles, color: Colors.white),
                               onPressed: () {
@@ -201,7 +251,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               },
                             ),
 
-                            // Quality Settings Button
+                            // Quality menu toggle
                             IconButton(
                               icon: const Icon(Icons.settings, color: Colors.white),
                               onPressed: () {
@@ -221,7 +271,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             IconButton(
-                              iconSize: 42,
+                              iconSize: 44,
                               icon: const Icon(Icons.replay_10_rounded, color: Colors.white),
                               onPressed: () {
                                 setState(() {
@@ -240,13 +290,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 onPressed: () {
                                   setState(() {
                                     _isPlaying = !_isPlaying;
-                                    if (hasYoutube) {
-                                      if (_isPlaying) {
-                                        _youtubeController!.play();
-                                      } else {
-                                        _youtubeController!.pause();
-                                      }
-                                    }
                                   });
                                   _startHideTimer();
                                 },
@@ -254,7 +297,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             ),
                             const SizedBox(width: 30),
                             IconButton(
-                              iconSize: 42,
+                              iconSize: 44,
                               icon: const Icon(Icons.forward_10_rounded, color: Colors.white),
                               onPressed: () {
                                 setState(() {
@@ -278,7 +321,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Abertura pulada!'),
+                                content: Text('Abertura pulada (+85s)'),
                                 duration: Duration(seconds: 1),
                                 backgroundColor: Color(0xFFE50914),
                               ),
@@ -314,7 +357,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
-                              crossAlignment: CrossAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: ['4K Ultra HD', 'Full HD 1080p', 'HD 720p', 'Automático']
                                   .map(
                                     (q) => ListTile(
@@ -354,7 +397,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
-                              crossAlignment: CrossAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: ['Português (Brasil)', 'English', 'Español', 'Desativado']
                                   .map(
                                     (s) => ListTile(

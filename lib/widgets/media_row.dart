@@ -17,7 +17,7 @@ class MediaRow extends StatelessWidget {
     if (mediaItems.isEmpty) return const SizedBox.shrink();
 
     return Column(
-      crossAxisAlignment: CrossAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
