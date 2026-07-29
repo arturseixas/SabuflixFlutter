@@ -85,9 +85,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           },
                           child: Row(
                             children: [
-                              CircleAvatar(
-                                radius: 15,
-                                backgroundImage: NetworkImage(profile.avatarUrl.isNotEmpty ? profile.avatarUrl : 'https://i.pravatar.cc/150'),
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: Color(profile.colorValue),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.person, size: 20, color: Colors.white),
                               ),
                               const SizedBox(width: 10),
                               Expanded(

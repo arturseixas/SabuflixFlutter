@@ -6,7 +6,6 @@ import '../providers/favorites_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
-import '../utils/app_route.dart';
 import 'main_navigation_screen.dart';
 
 class ProfileSelectionScreen extends StatelessWidget {
@@ -17,12 +16,19 @@ class ProfileSelectionScreen extends StatelessWidget {
     final favProvider = Provider.of<FavoritesProvider>(context, listen: false);
     final playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
 
-    await profileProvider.selectProfile(profile.id);
-    await favProvider.loadFavorites(profile.id);
-    await playlistProvider.loadForProfile(profile.id);
+    try {
+      await profileProvider.selectProfile(profile.id);
+      await favProvider.loadFavorites(profile.id);
+      await playlistProvider.loadForProfile(profile.id);
+    } catch (e) {
+      // ignore
+    }
 
     if (context.mounted) {
-      Navigator.pushReplacement(context, glassRoute(const MainNavigationScreen()));
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+      );
     }
   }
 
@@ -97,11 +103,8 @@ class _ProfileAvatar extends StatelessWidget {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
+                  color: Color(profile.colorValue),
                   borderRadius: SabuflixTheme.radiusLg,
-                  image: DecorationImage(
-                    image: NetworkImage(profile.avatarUrl.isNotEmpty ? profile.avatarUrl : 'https://i.pravatar.cc/150?u=${profile.id}'),
-                    fit: BoxFit.cover,
-                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
@@ -110,6 +113,7 @@ class _ProfileAvatar extends StatelessWidget {
                     ),
                   ],
                 ),
+                child: const Icon(Icons.person, size: 64, color: Colors.white),
               ),
               Positioned(
                 top: 4,
@@ -199,14 +203,24 @@ class _ProfileDialog extends StatefulWidget {
 class _ProfileDialogState extends State<_ProfileDialog> {
   late TextEditingController _nameController;
   late String _maxAgeRating;
+  late int _colorValue;
 
   final List<String> _ageOptions = ['Livre', '10', '12', '14', '16', '18'];
+  final List<int> _colorOptions = [
+    0xFF4285F4, // Blue
+    0xFFEA4335, // Red
+    0xFFFBBC05, // Yellow
+    0xFF34A853, // Green
+    0xFF9C27B0, // Purple
+    0xFFFF9800, // Orange
+  ];
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.profileToEdit?.name ?? '');
     _maxAgeRating = widget.profileToEdit?.maxAgeRating ?? '18';
+    _colorValue = widget.profileToEdit?.colorValue ?? _colorOptions[0];
   }
 
   @override
@@ -226,11 +240,13 @@ class _ProfileDialogState extends State<_ProfileDialog> {
         name: _nameController.text.trim(),
         avatarUrl: 'https://i.pravatar.cc/150?u=${DateTime.now().millisecondsSinceEpoch}',
         maxAgeRating: _maxAgeRating,
+        colorValue: _colorValue,
       ));
     } else {
       provider.updateProfile(widget.profileToEdit!.copyWith(
         name: _nameController.text.trim(),
         maxAgeRating: _maxAgeRating,
+        colorValue: _colorValue,
       ));
     }
     
@@ -289,6 +305,28 @@ class _ProfileDialogState extends State<_ProfileDialog> {
                   onSelected: (selected) {
                     if (selected) setState(() => _maxAgeRating = age);
                   },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+            Text('Cor do Ícone:', style: SabuflixTheme.body(color: SabuflixTheme.textSecondary)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: _colorOptions.map((c) {
+                final isSelected = _colorValue == c;
+                return GestureDetector(
+                  onTap: () => setState(() => _colorValue = c),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Color(c),
+                      shape: BoxShape.circle,
+                      border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
+                    ),
+                  ),
                 );
               }).toList(),
             ),

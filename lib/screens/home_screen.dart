@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/profile_provider.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/media_row.dart';
 import '../widgets/wordmark.dart';
+import 'profile_selection_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -121,19 +123,28 @@ class _AccountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 30,
-      height: 30,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: SabuflixTheme.elevated,
-        shape: BoxShape.circle,
-        border: Border.all(color: SabuflixTheme.borderStrong),
-      ),
-      child: Text(
-        'S',
-        style: SabuflixTheme.body(color: SabuflixTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 12),
-      ),
+    return Consumer<ProfileProvider>(
+      builder: (context, provider, child) {
+        final profile = provider.currentProfile;
+        if (profile == null) return const SizedBox.shrink();
+        
+        return GestureDetector(
+          onTap: () {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileSelectionScreen()));
+          },
+          child: Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Color(profile.colorValue),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.person, size: 20, color: Colors.white),
+          ),
+        );
+      },
     );
   }
 }
+
