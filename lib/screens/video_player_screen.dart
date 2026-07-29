@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media_item.dart';
+import '../theme/sabuflix_theme.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final MediaItem media;
@@ -121,14 +122,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               imageUrl: widget.media.fullBackdropPath,
               fit: BoxFit.cover,
               alignment: Alignment.center,
-              placeholder: (context, url) => Container(color: const Color(0xFF09090E)),
-              errorWidget: (context, url, err) => Container(color: const Color(0xFF09090E)),
+              placeholder: (context, url) => Container(color: SabuflixTheme.background),
+              errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
             ),
 
             // Vignette darken overlay
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              color: Colors.black.withOpacity(_isPlaying ? 0.45 : 0.75),
+              color: Colors.black.withValues(alpha: _isPlaying ? 0.5 : 0.8),
             ),
 
             // Live status badge overlay
@@ -136,11 +137,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               top: 25,
               right: 25,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: SabuflixTheme.surface.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE50914), width: 1.5),
+                  border: Border.all(color: SabuflixTheme.terracotta, width: 1.5),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -149,18 +150,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       width: 8,
                       height: 8,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFE50914),
+                        color: SabuflixTheme.terracotta,
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Text(
                       'SABUFLIX STREAM [$_selectedQuality]',
-                      style: const TextStyle(
+                      style: SabuflixTheme.sansBody(
                         color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
@@ -174,14 +174,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 duration: const Duration(milliseconds: 200),
                 opacity: _showControls ? 1.0 : 0.0,
                 child: Container(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.55),
                   child: Stack(
                     children: [
                       // Header bar
                       Positioned(
                         top: 20,
                         left: 20,
-                        right: 200,
+                        right: 220,
                         child: Row(
                           children: [
                             IconButton(
@@ -198,15 +198,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     widget.media.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: SabuflixTheme.serifHeader(
                                       color: Colors.white,
-                                      fontSize: 18,
+                                      fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   Text(
                                     '${widget.media.formattedYear} • Reprodução Sabuflix HD',
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    style: SabuflixTheme.sansBody(color: SabuflixTheme.textSecondary, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -226,16 +226,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               onPressed: _openOfficialTrailer,
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.white,
-                                backgroundColor: const Color(0xFFE50914).withOpacity(0.85),
+                                backgroundColor: SabuflixTheme.terracotta,
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                               ),
                               icon: const Icon(Icons.movie_rounded, size: 18, color: Colors.white),
-                              label: const Text(
+                              label: Text(
                                 'Trailer Oficial',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                style: SabuflixTheme.sansBody(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -283,7 +283,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             const SizedBox(width: 30),
                             CircleAvatar(
                               radius: 36,
-                              backgroundColor: const Color(0xFFE50914),
+                              backgroundColor: SabuflixTheme.terracotta,
                               child: IconButton(
                                 iconSize: 42,
                                 icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white),
@@ -320,25 +320,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               _currentPosition += 85;
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Abertura pulada (+85s)'),
-                                duration: Duration(seconds: 1),
-                                backgroundColor: Color(0xFFE50914),
+                              SnackBar(
+                                content: Text('Abertura pulada (+85s)', style: SabuflixTheme.sansBody(color: Colors.white)),
+                                duration: const Duration(seconds: 1),
+                                backgroundColor: SabuflixTheme.terracotta,
                               ),
                             );
                             _startHideTimer();
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundColor: SabuflixTheme.surface.withValues(alpha: 0.8),
                             foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white54),
+                            side: const BorderSide(color: SabuflixTheme.border),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
                           icon: const Icon(Icons.fast_forward_rounded, size: 20),
-                          label: const Text('Pular Abertura', style: TextStyle(fontWeight: FontWeight.bold)),
+                          label: Text('Pular Abertura', style: SabuflixTheme.sansBody(fontWeight: FontWeight.bold, color: Colors.white)),
                         ),
                       ),
 
@@ -351,9 +351,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             width: 180,
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF14141F),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white24),
+                              color: SabuflixTheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: SabuflixTheme.border),
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -365,7 +365,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                       title: Text(
                                         q,
                                         style: TextStyle(
-                                          color: _selectedQuality == q ? const Color(0xFFE50914) : Colors.white,
+                                          color: _selectedQuality == q ? SabuflixTheme.terracotta : Colors.white,
                                           fontWeight: _selectedQuality == q ? FontWeight.bold : FontWeight.normal,
                                         ),
                                       ),
@@ -391,9 +391,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             width: 200,
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF14141F),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white24),
+                              color: SabuflixTheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: SabuflixTheme.border),
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -405,7 +405,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                       title: Text(
                                         s,
                                         style: TextStyle(
-                                          color: _selectedSubtitle == s ? const Color(0xFFE50914) : Colors.white,
+                                          color: _selectedSubtitle == s ? SabuflixTheme.terracotta : Colors.white,
                                           fontWeight: _selectedSubtitle == s ? FontWeight.bold : FontWeight.normal,
                                         ),
                                       ),
@@ -433,9 +433,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               data: SliderThemeData(
                                 trackHeight: 4,
                                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                activeTrackColor: const Color(0xFFE50914),
-                                inactiveTrackColor: Colors.white24,
-                                thumbColor: const Color(0xFFE50914),
+                                activeTrackColor: SabuflixTheme.terracotta,
+                                inactiveTrackColor: SabuflixTheme.border,
+                                thumbColor: SabuflixTheme.terracotta,
                               ),
                               child: Slider(
                                 value: _currentPosition.clamp(0, _totalDuration),
@@ -454,11 +454,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 children: [
                                   Text(
                                     _formatDuration(_currentPosition),
-                                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                                    style: SabuflixTheme.sansBody(color: SabuflixTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
                                   ),
                                   Text(
                                     _formatDuration(_totalDuration),
-                                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                                    style: SabuflixTheme.sansBody(color: SabuflixTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
                                   ),
                                 ],
                               ),

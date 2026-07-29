@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'theme/sabuflix_theme.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/search_provider.dart';
@@ -25,21 +25,7 @@ class SabuflixApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Sabuflix - Streaming Platform',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark().copyWith(
-          scaffoldBackgroundColor: const Color(0xFF09090E),
-          primaryColor: const Color(0xFFE50914),
-          colorScheme: const ColorScheme.dark(
-            primary: Color(0xFFE50914),
-            secondary: Color(0xFFE50914),
-            surface: Color(0xFF0D0D14),
-            background: Color(0xFF09090E),
-          ),
-          textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF0D0D14),
-            elevation: 0,
-          ),
-        ),
+        theme: SabuflixTheme.themeData,
         home: const MainNavigationScreen(),
       ),
     );

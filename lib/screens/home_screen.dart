@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/media_row.dart';
@@ -14,28 +15,31 @@ class HomeScreen extends StatelessWidget {
     final isDesktop = screenWidth >= 800;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF09090E),
+      backgroundColor: SabuflixTheme.background,
       body: catalog.isLoading
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(
-                    color: Color(0xFFE50914),
+                  const CircularProgressIndicator(
+                    color: SabuflixTheme.terracotta,
                     strokeWidth: 3,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Text(
                     'Carregando catálogo Sabuflix...',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                    style: SabuflixTheme.sansBody(
+                      color: SabuflixTheme.textSecondary,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
             )
           : RefreshIndicator(
               onRefresh: () => catalog.loadCatalog(),
-              color: const Color(0xFFE50914),
-              backgroundColor: const Color(0xFF14141F),
+              color: SabuflixTheme.terracotta,
+              backgroundColor: SabuflixTheme.surface,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
@@ -43,34 +47,38 @@ class HomeScreen extends StatelessWidget {
                   if (!isDesktop)
                     SliverAppBar(
                       floating: true,
-                      backgroundColor: const Color(0xFF09090E).withOpacity(0.9),
+                      backgroundColor: SabuflixTheme.background.withValues(alpha: 0.95),
                       elevation: 0,
                       centerTitle: false,
                       title: Row(
                         children: [
-                          const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFE50914), size: 26),
+                          const Text(
+                            '✳',
+                            style: TextStyle(
+                              color: SabuflixTheme.terracotta,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'SABUFLIX',
-                            style: TextStyle(
-                              color: const Color(0xFFE50914),
+                            style: SabuflixTheme.serifHeader(
                               fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
-                              shadows: [
-                                Shadow(
-                                  color: const Color(0xFFE50914).withOpacity(0.5),
-                                  blurRadius: 8,
-                                ),
-                              ],
+                              fontWeight: FontWeight.bold,
+                              color: SabuflixTheme.textPrimary,
                             ),
                           ),
                         ],
                       ),
                       actions: [
-                        IconButton(
-                          icon: const Icon(Icons.person, color: Colors.white),
-                          onPressed: () {},
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: CircleAvatar(
+                            radius: 15,
+                            backgroundColor: SabuflixTheme.terracotta,
+                            child: const Text('S', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
                         ),
                       ],
                     ),
@@ -86,36 +94,36 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         MediaRow(
-                          title: '🔥 Em Alta Hoje',
+                          title: 'Em Alta Hoje',
                           mediaItems: catalog.trending,
                         ),
                         MediaRow(
-                          title: '🎬 Filmes Populares',
+                          title: 'Filmes Populares',
                           mediaItems: catalog.popularMovies,
                         ),
                         MediaRow(
-                          title: '📺 Séries em Destaque',
+                          title: 'Séries em Destaque',
                           mediaItems: catalog.popularTV,
                         ),
                         MediaRow(
-                          title: '⭐ Mais Bem Avaliados',
+                          title: 'Mais Bem Avaliados',
                           mediaItems: catalog.topRated,
                         ),
                         MediaRow(
-                          title: '💥 Ação e Aventura',
+                          title: 'Ação e Aventura',
                           mediaItems: catalog.actionMovies,
                         ),
                         MediaRow(
-                          title: '🎭 Comédias',
+                          title: 'Comédias',
                           mediaItems: catalog.comedyMovies,
                         ),
                         MediaRow(
-                          title: '🚀 Ficção Científica',
+                          title: 'Ficção Científica',
                           mediaItems: catalog.sciFiMovies,
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 60),
                       ],
                     ),
                   ),

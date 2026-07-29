@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/media_item.dart';
+import '../theme/sabuflix_theme.dart';
 import 'media_card.dart';
 
 class MediaRow extends StatelessWidget {
@@ -20,28 +21,39 @@ class MediaRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          child: Row(
+            children: [
+              Text(
+                '✳ ',
+                style: TextStyle(
+                  color: SabuflixTheme.terracotta,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                title,
+                style: SabuflixTheme.serifHeader(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: SabuflixTheme.textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
         SizedBox(
-          height: 220,
+          height: 232,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: mediaItems.length,
             itemBuilder: (context, index) {
               final item = mediaItems[index];
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: MediaCard(media: item),
               );
             },

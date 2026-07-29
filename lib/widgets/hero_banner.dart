@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/media_item.dart';
+import '../theme/sabuflix_theme.dart';
 import '../providers/favorites_provider.dart';
 import '../screens/media_details_screen.dart';
 import '../screens/video_player_screen.dart';
@@ -17,8 +18,8 @@ class HeroBanner extends StatelessWidget {
     final isFav = favoritesProvider.isFavorite(media.id);
     final screenWidth = MediaQuery.of(context).size.width;
 
-    return Container(
-      height: 480,
+    return SizedBox(
+      height: 520,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,
@@ -28,22 +29,22 @@ class HeroBanner extends StatelessWidget {
             imageUrl: media.fullBackdropPath,
             fit: BoxFit.cover,
             alignment: Alignment.topCenter,
-            placeholder: (context, url) => Container(color: const Color(0xFF14141F)),
-            errorWidget: (context, url, err) => Container(color: const Color(0xFF14141F)),
+            placeholder: (context, url) => Container(color: SabuflixTheme.background),
+            errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
           ),
 
-          // Gradient overlays (Dark vignette)
+          // Multi-stage Warm Dark Gradients (Anthropic Style)
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: const [0.0, 0.4, 0.85, 1.0],
+                stops: const [0.0, 0.35, 0.75, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.5),
-                  Colors.black.withOpacity(0.2),
-                  const Color(0xFF09090E).withOpacity(0.9),
-                  const Color(0xFF09090E),
+                  SabuflixTheme.background.withValues(alpha: 0.6),
+                  SabuflixTheme.background.withValues(alpha: 0.25),
+                  SabuflixTheme.background.withValues(alpha: 0.85),
+                  SabuflixTheme.background,
                 ],
               ),
             ),
@@ -53,57 +54,116 @@ class HeroBanner extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                stops: const [0.0, 0.6, 1.0],
+                stops: const [0.0, 0.55, 1.0],
                 colors: [
-                  const Color(0xFF09090E).withOpacity(0.95),
-                  const Color(0xFF09090E).withOpacity(0.4),
+                  SabuflixTheme.background.withValues(alpha: 0.95),
+                  SabuflixTheme.background.withValues(alpha: 0.45),
                   Colors.transparent,
                 ],
               ),
             ),
           ),
 
-          // Content info overlay
+          // Content Info Overlay (Apple TV + Anthropic Style)
           Positioned(
-            bottom: 30,
-            left: screenWidth > 800 ? 40 : 20,
-            right: screenWidth > 800 ? screenWidth * 0.4 : 20,
+            bottom: 40,
+            left: screenWidth > 800 ? 50 : 24,
+            right: screenWidth > 800 ? screenWidth * 0.38 : 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Sabuflix Original Badge
+                // Anthropic Star Tagline Badge
                 Row(
                   children: [
                     Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: SabuflixTheme.terracotta,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('✳ ', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                          Text(
+                            'SABUFLIX ORIGINAL',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE50914),
-                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: SabuflixTheme.textSecondary, width: 1),
+                        borderRadius: BorderRadius.circular(5),
                       ),
-                      child: const Text(
-                        'SABUFLIX ORIGINAL',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
+                      child: Text(
+                        '4K ULTRA HD',
+                        style: SabuflixTheme.sansBody(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: SabuflixTheme.textSecondary,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white70, width: 1),
-                        borderRadius: BorderRadius.circular(3),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Media Title (Serif Typography)
+                Text(
+                  media.title,
+                  style: SabuflixTheme.serifHeader(
+                    fontSize: screenWidth > 800 ? 44 : 34,
+                    fontWeight: FontWeight.bold,
+                    color: SabuflixTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Rating & Metadata row
+                Row(
+                  children: [
+                    const Icon(Icons.star_rounded, color: SabuflixTheme.amber, size: 20),
+                    const SizedBox(width: 4),
+                    Text(
+                      media.formattedRating,
+                      style: SabuflixTheme.sansBody(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: SabuflixTheme.textPrimary,
                       ),
-                      child: const Text(
-                        '4K ULTRA HD',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 9,
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      media.formattedYear,
+                      style: SabuflixTheme.sansBody(
+                        fontSize: 14,
+                        color: SabuflixTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: SabuflixTheme.surfaceLight,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: SabuflixTheme.border),
+                      ),
+                      child: Text(
+                        '16+',
+                        style: SabuflixTheme.sansBody(
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
+                          color: SabuflixTheme.textPrimary,
                         ),
                       ),
                     ),
@@ -111,73 +171,26 @@ class HeroBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Media Title
-                Text(
-                  media.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Rating & Metadata row
-                Row(
-                  children: [
-                    const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 18),
-                    const SizedBox(width: 4),
-                    Text(
-                      media.formattedRating,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      media.formattedYear,
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: const Text(
-                        '16+',
-                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
                 // Overview text
                 if (media.overview != null && media.overview!.isNotEmpty)
                   Text(
                     media.overview!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
+                    style: SabuflixTheme.sansBody(
                       fontSize: 14,
-                      height: 1.4,
+                      color: SabuflixTheme.textSecondary,
+                      height: 1.5,
                     ),
                   ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // Action Buttons
+                // Apple TV Pill Action Buttons
                 Wrap(
-                  spacing: 12,
-                  runSpacing: 10,
+                  spacing: 14,
+                  runSpacing: 12,
                   children: [
-                    // Assistir Button
+                    // Terracotta Play Button
                     ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
@@ -188,25 +201,26 @@ class HeroBanner extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                        backgroundColor: SabuflixTheme.terracotta,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(30), // Apple TV Pill
                         ),
-                        elevation: 4,
+                        elevation: 6,
                       ),
-                      icon: const Icon(Icons.play_arrow_rounded, size: 28, color: Colors.black),
-                      label: const Text(
+                      icon: const Icon(Icons.play_arrow_rounded, size: 28, color: Colors.white),
+                      label: Text(
                         'Assistir Agora',
-                        style: TextStyle(
+                        style: SabuflixTheme.sansBody(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
 
-                    // Add to My List Button
+                    // Translucent Warm Glass My List Button
                     OutlinedButton.icon(
                       onPressed: () {
                         favoritesProvider.toggleFavorite(media);
@@ -214,35 +228,38 @@ class HeroBanner extends StatelessWidget {
                           SnackBar(
                             content: Text(
                               isFav ? 'Removido da Minha Lista' : 'Adicionado à Minha Lista!',
+                              style: SabuflixTheme.sansBody(color: Colors.white),
                             ),
                             duration: const Duration(seconds: 2),
-                            backgroundColor: const Color(0xFFE50914),
+                            backgroundColor: SabuflixTheme.terracotta,
                           ),
                         );
                       },
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white60, width: 1.5),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        foregroundColor: SabuflixTheme.textPrimary,
+                        backgroundColor: SabuflixTheme.surface.withValues(alpha: 0.7),
+                        side: const BorderSide(color: SabuflixTheme.border, width: 1.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(30),
                         ),
                       ),
                       icon: Icon(
                         isFav ? Icons.check : Icons.add,
                         size: 22,
-                        color: Colors.white,
+                        color: SabuflixTheme.textPrimary,
                       ),
                       label: Text(
                         isFav ? 'Na Lista' : 'Minha Lista',
-                        style: const TextStyle(
+                        style: SabuflixTheme.sansBody(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
+                          color: SabuflixTheme.textPrimary,
                         ),
                       ),
                     ),
 
-                    // Mais Info Button
+                    // Info Button
                     IconButton(
                       onPressed: () {
                         Navigator.push(
@@ -253,10 +270,13 @@ class HeroBanner extends StatelessWidget {
                         );
                       },
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        padding: const EdgeInsets.all(12),
+                        backgroundColor: SabuflixTheme.surface.withValues(alpha: 0.7),
+                        padding: const EdgeInsets.all(14),
+                        shape: CircleBorder(
+                          side: BorderSide(color: SabuflixTheme.border),
+                        ),
                       ),
-                      icon: const Icon(Icons.info_outline_rounded, color: Colors.white, size: 24),
+                      icon: const Icon(Icons.info_outline_rounded, color: SabuflixTheme.textPrimary, size: 24),
                       tooltip: 'Mais Informações',
                     ),
                   ],
