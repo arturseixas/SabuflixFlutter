@@ -143,7 +143,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 for (int i = 0; i < _destinations.length; i++)
-                  _buildMobileDockItem(i, _destinations[i]),
+                  Expanded(child: _buildMobileDockItem(i, _destinations[i])),
               ],
             ),
           ),
@@ -202,7 +202,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         borderRadius: SabuflixTheme.radiusPill,
         child: AnimatedContainer(
           duration: SabuflixTheme.durationFast,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
           decoration: BoxDecoration(
             color: isSelected ? SabuflixTheme.accent.withValues(alpha: 0.22) : Colors.transparent,
             borderRadius: SabuflixTheme.radiusPill,
@@ -214,13 +214,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               Icon(
                 isSelected ? destination.filledIcon : destination.outlineIcon,
                 color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
-                size: 21,
+                size: 20,
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 destination.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: SabuflixTheme.caption(
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
                 ),
