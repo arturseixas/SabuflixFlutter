@@ -2,7 +2,7 @@
 AppName=Sabuflix
 AppVersion=1.0.0
 WizardStyle=modern
-DefaultDirName={userlocalappdata}\Sabuflix
+DefaultDirName={localappdata}\Sabuflix
 DefaultGroupName=Sabuflix
 OutputDir=..\dist
 OutputBaseFilename=sabuflix-installer
