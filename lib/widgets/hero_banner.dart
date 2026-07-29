@@ -208,24 +208,7 @@ class HeroBanner extends StatelessWidget {
                         ),
                       ),
                     ),
-                    GlassContainer(
-                      borderRadius: SabuflixTheme.radiusPill,
-                      blur: 28,
-                      fillOpacity: 0.3,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: SabuflixTheme.radiusPill,
-                          onTap: () {
-                            Navigator.push(context, glassRoute(MediaDetailsScreen(media: media)));
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.all(14),
-                            child: Icon(Icons.info_outline_rounded, color: SabuflixTheme.textPrimary, size: 22),
-                          ),
-                        ),
-                      ),
-                    ),
+
                   ],
                 ),
               ],

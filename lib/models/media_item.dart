@@ -16,6 +16,7 @@ class MediaItem {
   final String? trailerKey;
   final String? imdbId;
   final List<dynamic>? seasons; // To store season details for TV shows
+  final String? ageRating;
 
   MediaItem({
     required this.id,
@@ -35,6 +36,7 @@ class MediaItem {
     this.trailerKey,
     this.imdbId,
     this.seasons,
+    this.ageRating,
   });
 
   String get fullPosterPath {
@@ -109,6 +111,7 @@ class MediaItem {
       trailerKey: json['trailerKey'],
       imdbId: parsedImdbId ?? json['imdbId'],
       seasons: json['seasons'],
+      ageRating: json['ageRating'],
     );
   }
 
@@ -131,6 +134,7 @@ class MediaItem {
       'trailerKey': trailerKey,
       'imdbId': imdbId,
       'seasons': seasons,
+      'ageRating': ageRating,
     };
   }
 
@@ -142,6 +146,7 @@ class MediaItem {
     int? numberOfSeasons,
     String? imdbId,
     List<dynamic>? seasons,
+    String? ageRating,
   }) {
     return MediaItem(
       id: id,
@@ -161,6 +166,7 @@ class MediaItem {
       trailerKey: trailerKey ?? this.trailerKey,
       imdbId: imdbId ?? this.imdbId,
       seasons: seasons ?? this.seasons,
+      ageRating: ageRating ?? this.ageRating,
     );
   }
 }

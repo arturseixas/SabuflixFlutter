@@ -5,7 +5,9 @@ import 'theme/sabuflix_theme.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/search_provider.dart';
-import 'screens/main_navigation_screen.dart';
+import 'providers/profile_provider.dart';
+import 'providers/playlist_provider.dart';
+import 'screens/profile_selection_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +22,8 @@ class SabuflixApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProvider(create: (_) => PlaylistProvider()),
         ChangeNotifierProvider(create: (_) => CatalogProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),
@@ -28,7 +32,7 @@ class SabuflixApp extends StatelessWidget {
         title: 'Sabuflix - Streaming Platform',
         debugShowCheckedModeBanner: false,
         theme: SabuflixTheme.themeData,
-        home: const MainNavigationScreen(),
+        home: const ProfileSelectionScreen(),
       ),
     );
   }

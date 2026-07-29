@@ -7,6 +7,10 @@ import 'home_screen.dart';
 import 'search_screen.dart';
 import 'categories_screen.dart';
 import 'my_list_screen.dart';
+import 'playlists_screen.dart';
+import 'profile_selection_screen.dart';
+import '../providers/profile_provider.dart';
+import 'package:provider/provider.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({Key? key}) : super(key: key);
@@ -23,6 +27,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _NavDestination(Icons.search, Icons.search, 'Pesquisar'),
     _NavDestination(Icons.category, Icons.category_outlined, 'Categorias'),
     _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista'),
+    _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined, 'Playlists'),
   ];
 
   final List<Widget> _screens = const [
@@ -30,6 +35,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     SearchScreen(),
     CategoriesScreen(),
     MyListScreen(),
+    PlaylistsScreen(),
   ];
 
   @override
@@ -69,21 +75,35 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   const Spacer(),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        const _ProfileAvatar(),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
+                    child: Consumer<ProfileProvider>(
+                      builder: (context, profileProvider, child) {
+                        final profile = profileProvider.currentProfile;
+                        if (profile == null) return const SizedBox.shrink();
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileSelectionScreen()));
+                          },
+                          child: Row(
                             children: [
-                              Text('Minha Conta', style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary)),
-                              Text('Premium', style: SabuflixTheme.caption(fontSize: 12, color: SabuflixTheme.textMuted)),
+                              CircleAvatar(
+                                radius: 15,
+                                backgroundImage: NetworkImage(profile.avatarUrl.isNotEmpty ? profile.avatarUrl : 'https://i.pravatar.cc/150'),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(profile.name, style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary)),
+                                    Text('Trocar Perfil', style: SabuflixTheme.caption(fontSize: 12, color: SabuflixTheme.accent)),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                      ],
+                        );
+                      }
                     ),
                   ),
                 ],
@@ -220,27 +240,4 @@ class _NavDestination {
   const _NavDestination(this.filledIcon, this.outlineIcon, this.label);
 }
 
-class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar();
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 30,
-      height: 30,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: SabuflixTheme.elevated,
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        'S',
-        style: SabuflixTheme.body(
-          color: SabuflixTheme.textPrimary,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-}

@@ -119,12 +119,44 @@ class TMDBService {
   }
 
   Future<MediaItem?> fetchMediaDetails(int id, String mediaType) async {
-    final endpoint = mediaType == 'tv' ? 'tv/$id?append_to_response=external_ids&' : 'movie/$id?';
+    final append = mediaType == 'tv' ? 'external_ids,content_ratings' : 'release_dates';
+    final endpoint = mediaType == 'tv' ? 'tv/$id?append_to_response=$append&' : 'movie/$id?append_to_response=$append&';
     final url = Uri.parse('$baseUrl/${endpoint}api_key=$apiKey&language=$defaultLang');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        
+        // Extract age rating for Brazil (BR)
+        String? ageRating;
+        if (mediaType == 'movie') {
+          final releaseDates = data['release_dates']?['results'] as List?;
+          if (releaseDates != null) {
+            final brRelease = releaseDates.firstWhere((r) => r['iso_3166_1'] == 'BR', orElse: () => null);
+            if (brRelease != null) {
+              final dates = brRelease['release_dates'] as List?;
+              if (dates != null && dates.isNotEmpty) {
+                ageRating = dates.first['certification'];
+                if (ageRating != null && ageRating.isEmpty) ageRating = null;
+              }
+            }
+          }
+        } else {
+          final contentRatings = data['content_ratings']?['results'] as List?;
+          if (contentRatings != null) {
+            final brRating = contentRatings.firstWhere((r) => r['iso_3166_1'] == 'BR', orElse: () => null);
+            if (brRating != null) {
+              ageRating = brRating['rating'];
+              if (ageRating != null && ageRating.isEmpty) ageRating = null;
+            }
+          }
+        }
+        
+        // Normalize L to Livre or 10, 12, etc.
+        if (ageRating == 'L') ageRating = 'Livre';
+        
+        data['ageRating'] = ageRating;
+
         final media = MediaItem.fromJson(data, defaultMediaType: mediaType);
         
         // Fetch trailer key & logo path in parallel

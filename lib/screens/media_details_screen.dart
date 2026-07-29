@@ -11,6 +11,8 @@ import '../utils/app_route.dart';
 import '../widgets/media_row.dart';
 import '../widgets/glass_container.dart';
 import '../services/froststream_service.dart';
+import '../providers/profile_provider.dart';
+import '../providers/playlist_provider.dart';
 import 'video_player_screen.dart';
 
 class MediaDetailsScreen extends StatefulWidget {
@@ -141,13 +143,84 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     );
   }
 
+  void _showPlaylistsSelector(MediaItem media) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return GlassContainer(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          padding: const EdgeInsets.all(24),
+          blur: 40,
+          fillOpacity: 0.4,
+          child: Consumer<PlaylistProvider>(
+            builder: (context, provider, child) {
+              if (provider.playlists.isEmpty) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Nenhuma Playlist', style: SabuflixTheme.title(fontSize: 20)),
+                    const SizedBox(height: 16),
+                    Text('Você ainda não tem playlists criadas.', style: SabuflixTheme.body(color: SabuflixTheme.textSecondary)),
+                  ],
+                );
+              }
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Adicionar a qual Playlist?', style: SabuflixTheme.title(fontSize: 20)),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: provider.playlists.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (ctx, i) {
+                        final p = provider.playlists[i];
+                        final isInPlaylist = p.items.any((item) => item.id == media.id);
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
+                          tileColor: Colors.white.withValues(alpha: 0.08),
+                          title: Text(p.name, style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
+                          trailing: Icon(isInPlaylist ? Icons.check_circle : Icons.add_circle_outline, color: SabuflixTheme.accent),
+                          onTap: () {
+                            if (!isInPlaylist) {
+                              provider.addMediaToPlaylist(p.id, media);
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Adicionado à ${p.name}')));
+                            }
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      }
+    );
+  }
+
+  int _getAgeValue(String? rating) {
+    if (rating == null || rating.isEmpty || rating == 'Livre' || rating == 'L') return 0;
+    return int.tryParse(rating.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final media = _detailedMedia ?? widget.media;
     final favoritesProvider = Provider.of<FavoritesProvider>(context);
+    final profileProvider = Provider.of<ProfileProvider>(context);
     final isFav = favoritesProvider.isFavorite(media.id);
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 600;
+
+    final mediaAge = _getAgeValue(media.ageRating);
+    final profileAge = _getAgeValue(profileProvider.currentProfile?.maxAgeRating);
+    final isBlocked = mediaAge > profileAge;
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
@@ -259,49 +332,107 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                       Text('·', style: SabuflixTheme.body(fontSize: 14, color: SabuflixTheme.textMuted)),
                       const SizedBox(width: 10),
                       Text(media.formattedYear, style: SabuflixTheme.body(fontSize: 14)),
+                      if (media.ageRating != null) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.3),
+                            borderRadius: SabuflixTheme.radiusSm,
+                            border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+                          ),
+                          child: Text(
+                            media.ageRating!,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 24),
 
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      width: isDesktop ? 220 : double.infinity,
-                      height: 52,
+                  if (isBlocked)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        borderRadius: SabuflixTheme.radiusPill,
-                        gradient: const LinearGradient(
-                          colors: [SabuflixTheme.accent, SabuflixTheme.accentHover],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: SabuflixTheme.accent.withValues(alpha: 0.35),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
+                        color: Colors.redAccent.withValues(alpha: 0.15),
+                        borderRadius: SabuflixTheme.radiusMd,
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Este conteúdo possui classificação superior à permitida pelo seu perfil.',
+                              style: SabuflixTheme.body(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ],
                       ),
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          if (media.mediaType == 'tv') {
-                            _showStreamSelector(season: _seasonNumber, episode: 1);
-                          } else {
-                            _showStreamSelector();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: const StadiumBorder(),
+                    )
+                  else
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          width: isDesktop ? 220 : 180,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            borderRadius: SabuflixTheme.radiusPill,
+                            gradient: const LinearGradient(
+                              colors: [SabuflixTheme.accent, SabuflixTheme.accentHover],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: SabuflixTheme.accent.withValues(alpha: 0.35),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              if (media.mediaType == 'tv') {
+                                _showStreamSelector(season: _seasonNumber, episode: 1);
+                              } else {
+                                _showStreamSelector();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: const StadiumBorder(),
+                            ),
+                            icon: const Icon(Icons.play_arrow_rounded, size: 26, color: Colors.white),
+                            label: Text(
+                              media.mediaType == 'tv' ? 'Assistir S$_seasonNumber:E1' : 'Assistir Agora',
+                              style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
+                          ),
                         ),
-                        icon: const Icon(Icons.play_arrow_rounded, size: 26, color: Colors.white),
-                        label: Text(
-                          media.mediaType == 'tv' ? 'Assistir S$_seasonNumber:E1' : 'Assistir Agora',
-                          style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                        GlassContainer(
+                          borderRadius: SabuflixTheme.radiusPill,
+                          blur: 28,
+                          fillOpacity: 0.3,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: SabuflixTheme.radiusPill,
+                              onTap: () => _showPlaylistsSelector(media),
+                              child: const Padding(
+                                padding: EdgeInsets.all(14),
+                                child: Icon(Icons.featured_play_list_outlined, color: SabuflixTheme.textPrimary, size: 22),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
                   const SizedBox(height: 24),
 
                   if (media.genres != null && media.genres!.isNotEmpty) ...[
@@ -323,7 +454,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  if (_episodes.isNotEmpty) ...[
+                  if (!isBlocked && _episodes.isNotEmpty) ...[
                     Text('Episódios', style: SabuflixTheme.title(fontSize: 19)),
                     const SizedBox(height: 14),
                     SizedBox(
