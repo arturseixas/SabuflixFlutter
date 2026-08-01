@@ -7,6 +7,7 @@ import 'providers/favorites_provider.dart';
 import 'providers/search_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/playlist_provider.dart';
+import 'providers/download_provider.dart';
 import 'screens/profile_selection_screen.dart';
 
 void main() {
@@ -27,6 +28,9 @@ class SabuflixApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CatalogProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),
+        // Created eagerly so unfinished downloads resume as soon as the
+        // app opens, not only when the Downloads tab is visited.
+        ChangeNotifierProvider(create: (_) => DownloadProvider(), lazy: false),
       ],
       child: MaterialApp(
         title: 'Sabuflix - Streaming Platform',

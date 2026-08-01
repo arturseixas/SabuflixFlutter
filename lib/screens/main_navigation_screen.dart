@@ -8,6 +8,8 @@ import 'search_screen.dart';
 import 'categories_screen.dart';
 import 'my_list_screen.dart';
 import 'playlists_screen.dart';
+import 'downloads_screen.dart';
+import '../providers/download_provider.dart';
 import 'profile_selection_screen.dart';
 import '../providers/profile_provider.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +30,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _NavDestination(Icons.category, Icons.category_outlined, 'Categorias'),
     _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista'),
     _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined, 'Playlists'),
+    _NavDestination(Icons.download, Icons.download_outlined, 'Downloads'),
   ];
 
   final List<Widget> _screens = const [
@@ -36,7 +39,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     CategoriesScreen(),
     MyListScreen(),
     PlaylistsScreen(),
+    DownloadsScreen(),
   ];
+
+  static const int _downloadsIndex = 5;
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +163,41 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
+  /// The Downloads entry carries a live counter of unfinished transfers.
+  Widget _buildNavIcon(int index, IconData iconData, Color color, double size) {
+    final icon = Icon(iconData, color: color, size: size);
+    if (index != _downloadsIndex) return icon;
+
+    return Consumer<DownloadProvider>(
+      builder: (context, downloads, child) {
+        final active = downloads.activeCount;
+        if (active == 0) return child!;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            child!,
+            Positioned(
+              right: -5,
+              top: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: SabuflixTheme.accent,
+                  borderRadius: SabuflixTheme.radiusPill,
+                ),
+                child: Text(
+                  '$active',
+                  style: SabuflixTheme.label(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      child: icon,
+    );
+  }
+
   Widget _buildNavItem(int index, _NavDestination destination) {
     final isSelected = _currentIndex == index;
     return Padding(
@@ -176,10 +217,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
             child: Row(
               children: [
-                Icon(
+                _buildNavIcon(
+                  index,
                   isSelected ? destination.filledIcon : destination.outlineIcon,
-                  color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
-                  size: 19,
+                  isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
+                  19,
                 ),
                 const SizedBox(width: 14),
                 Text(
@@ -216,10 +258,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              _buildNavIcon(
+                index,
                 isSelected ? destination.filledIcon : destination.outlineIcon,
-                color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
-                size: 20,
+                isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
+                20,
               ),
               const SizedBox(height: 2),
               Text(
