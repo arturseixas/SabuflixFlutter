@@ -25,11 +25,30 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // Committed on purpose — this is a non-secret debug identity, not a
+        // production signing key. Pinning it here (instead of the ambient
+        // ~/.android/debug.keystore, which CI regenerates on every fresh
+        // runner) keeps every build's certificate identical, so a new APK
+        // installs as an upgrade over the previous one instead of forcing
+        // an uninstall first — which would silently wipe all app data,
+        // including anything downloaded for offline playback.
+        create("sabuflixDebug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("sabuflixDebug")
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("sabuflixDebug")
         }
     }
 }
