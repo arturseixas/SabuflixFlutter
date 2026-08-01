@@ -1,22 +1,21 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/download_item.dart';
 import '../models/media_item.dart';
 import '../services/download_service.dart';
+import '../services/download_store.dart';
 
 /// Owns the download library and its queue.
 ///
-/// The list is persisted on every state change, and the `.part` file on
-/// disk is the source of truth for how many bytes we already have — so
-/// closing the app mid-download loses nothing: on the next launch the
-/// unfinished items are re-queued and resume where they stopped.
+/// The list is persisted (via [DownloadStore], a plain JSON file — not
+/// SharedPreferences, see its doc comment for why) on every state change,
+/// and the `.part` file on disk is the source of truth for how many bytes
+/// we already have — so closing the app mid-download loses nothing: on
+/// the next launch the unfinished items are re-queued and resume where
+/// they stopped.
 class DownloadProvider extends ChangeNotifier {
-  static const String _prefsKey = 'sabuflix_downloads_v1';
-
   /// One transfer at a time: sequential downloads finish sooner and make
   /// resume behaviour predictable.
   static const int maxConcurrent = 1;
@@ -81,18 +80,14 @@ class DownloadProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_prefsKey);
+      final entries = await DownloadStore.read();
       _items.clear();
 
-      if (raw != null && raw.isNotEmpty) {
-        final decoded = json.decode(raw) as List<dynamic>;
-        for (final entry in decoded) {
-          try {
-            _items.add(DownloadItem.fromJson(Map<String, dynamic>.from(entry as Map)));
-          } catch (_) {
-            // A single corrupt entry must not take the whole library down.
-          }
+      for (final entry in entries) {
+        try {
+          _items.add(DownloadItem.fromJson(entry));
+        } catch (_) {
+          // A single corrupt entry must not take the whole library down.
         }
       }
 
@@ -133,8 +128,7 @@ class DownloadProvider extends ChangeNotifier {
 
   Future<void> _save() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefsKey, json.encode(_items.map((i) => i.toJson()).toList()));
+      await DownloadStore.write(_items.map((i) => i.toJson()).toList());
     } catch (e) {
       debugPrint('Erro ao salvar downloads: $e');
     }

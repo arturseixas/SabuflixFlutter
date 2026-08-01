@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -22,6 +23,12 @@ class DownloadService {
   };
 
   static Directory? _cachedDir;
+
+  /// Tests exercise multiple mocked "app support directories" in the same
+  /// process — this drops the cache so `directory()` re-resolves instead
+  /// of reusing whatever the previous test's mock returned.
+  @visibleForTesting
+  static void resetCacheForTesting() => _cachedDir = null;
 
   static Future<Directory> directory() async {
     final cached = _cachedDir;
