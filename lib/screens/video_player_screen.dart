@@ -7,14 +7,25 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../models/media_item.dart';
+import '../models/playback_source.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/source_tag.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final MediaItem media;
   final String? videoUrl;
 
-  const VideoPlayerScreen({Key? key, required this.media, this.videoUrl}) : super(key: key);
+  /// Where the bytes come from. When omitted it is inferred from
+  /// [videoUrl] — a local path means the copy on disk is being played.
+  final PlaybackSource? source;
+
+  const VideoPlayerScreen({
+    Key? key,
+    required this.media,
+    this.videoUrl,
+    this.source,
+  }) : super(key: key);
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -23,7 +34,13 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _showControls = true;
   Timer? _hideTimer;
-  
+
+  /// Shown on its own for a few seconds after playback starts, so the
+  /// origin is clear even before the controls are summoned.
+  bool _showSourceHint = true;
+  Timer? _sourceHintTimer;
+  late final PlaybackSource _source;
+
   Player? _player;
   VideoController? _videoController;
   
@@ -44,10 +61,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    _source = widget.source ?? PlaybackSourceInfo.fromUrl(widget.videoUrl);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     _initPlayer();
     _startHideTimer();
+    _sourceHintTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted) setState(() => _showSourceHint = false);
+    });
   }
 
   Future<void> _initPlayer() async {
@@ -197,6 +218,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _sourceHintTimer?.cancel();
     _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -273,9 +295,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                       overflow: TextOverflow.ellipsis,
                                       style: SabuflixTheme.title(fontSize: 18, color: Colors.white),
                                     ),
-                                    Text(
-                                      widget.media.formattedYear,
-                                      style: SabuflixTheme.body(color: SabuflixTheme.textSecondary, fontSize: 12),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SourceTag(source: _source, compact: true),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            '${widget.media.formattedYear} · ${_source.description}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: SabuflixTheme.body(color: SabuflixTheme.textSecondary, fontSize: 12),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -446,6 +480,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       ],
                     ),
                   ),
+                ),
+              ),
+
+            // When the chrome is hidden the tag still lingers briefly, so
+            // the origin of the stream is never a mystery.
+            if (!_showControls)
+              Positioned(
+                top: 22,
+                left: 22,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: _showSourceHint ? 1.0 : 0.0,
+                  child: IgnorePointer(child: SourceTag(source: _source)),
                 ),
               ),
           ],
