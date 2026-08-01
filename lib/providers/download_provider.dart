@@ -86,12 +86,19 @@ class DownloadProvider extends ChangeNotifier {
       final entries = await DownloadStore.read();
       DownloadService.log('load() leu ${entries.length} entrada(s) do disco');
       _items.clear();
+      bool hadParseErrors = false;
 
       for (final entry in entries) {
         try {
           _items.add(DownloadItem.fromJson(entry));
         } catch (e) {
-          // A single corrupt entry must not take the whole library down.
+          // A parsing bug must never look like the entry itself was ever
+          // gone — surviving on disk is the whole point of this store, so
+          // an item we failed to read this session must not get silently
+          // overwritten with nothing by the auto-save below. It stays
+          // out of the in-memory list for now (so a broken entry can't
+          // crash the UI) but the file it came from is left untouched.
+          hadParseErrors = true;
           DownloadService.log('load() descartou uma entrada corrompida: $e');
         }
       }
@@ -122,10 +129,15 @@ class DownloadProvider extends ChangeNotifier {
 
       _sort();
       DownloadService.log(
-        'load() finalizado com ${_items.length} item(ns): '
+        'load() finalizado com ${_items.length} item(ns) '
+        '(erros de parse: $hadParseErrors): '
         '${_items.map((i) => '${i.id}:${i.status.name}').join(', ')}',
       );
-      await _save();
+      if (hadParseErrors) {
+        DownloadService.log('load() NÃO salvou de volta — havia entrada(s) que falharam ao ler');
+      } else {
+        await _save();
+      }
     } catch (e) {
       debugPrint('Erro ao carregar downloads: $e');
       DownloadService.log('load() falhou: $e');

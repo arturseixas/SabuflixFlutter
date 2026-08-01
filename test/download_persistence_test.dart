@@ -156,6 +156,77 @@ void main() {
     expect(result.first['id'], isNotNull);
   });
 
+  test(
+    'download de um item com "genres" preenchido sobrevive a reabrir o app '
+    '(reprodução do bug relatado)',
+    () async {
+      // Esta é a diferença crucial em relação ao primeiro teste: um
+      // MediaItem vindo da tela de detalhes tem `genres` preenchido (uma
+      // lista de nomes, o formato que o próprio toJson() grava) — e era
+      // exatamente isso que travava o parser ao recarregar, descartando
+      // silenciosamente a entrada e sobrescrevendo o downloads.json com [].
+      final supportDir = await Directory.systemTemp.createTemp('sabuflix_support_genres_');
+      _mockPathProvider(supportDir.path);
+      addTearDown(() => supportDir.delete(recursive: true));
+
+      final mediaWithGenres = MediaItem(
+        id: 40075,
+        title: 'Gravity Falls: Um Verão de Mistérios',
+        voteAverage: 8.62,
+        voteCount: 3537,
+        mediaType: 'tv',
+        genreIds: const [10759, 16, 35],
+        genres: const ['Action & Adventure', 'Animação', 'Comédia'],
+        imdbId: 'tt1865718',
+      );
+
+      final bytes = List<int>.generate(1024 * 1024, (i) => i % 256);
+      final server = await _startFakeVideoServer(bytes);
+      final url = 'http://127.0.0.1:${server.port}/movie.mp4';
+
+      final provider1 = DownloadProvider();
+      await _waitUntil(() => !provider1.isLoading);
+
+      await provider1.addDownload(
+        media: mediaWithGenres,
+        url: url,
+        sourceName: 'FrostStream 1080p',
+        quality: '1080p',
+        season: 1,
+        episode: 1,
+      );
+
+      final id = DownloadItem.buildId(mediaWithGenres.id, season: 1, episode: 1);
+      await _waitUntil(
+        () => provider1.byId(id)?.status == DownloadStatus.completed,
+        timeout: const Duration(seconds: 20),
+      );
+
+      provider1.dispose();
+      await server.close(force: true);
+
+      // "Reabre o app".
+      final provider2 = DownloadProvider();
+      await _waitUntil(() => !provider2.isLoading);
+
+      expect(
+        provider2.byId(id),
+        isNotNull,
+        reason: 'o item não pode sumir só porque o MediaItem tinha genres preenchido',
+      );
+      expect(provider2.byId(id)!.status, DownloadStatus.completed);
+
+      final stillOnDisk = await DownloadStore.read();
+      expect(
+        stillOnDisk,
+        isNotEmpty,
+        reason: 'load() nunca deve apagar o downloads.json por causa de um erro de parse',
+      );
+
+      provider2.dispose();
+    },
+  );
+
   test('diagnostics() reporta a pasta, os arquivos nela e o log de eventos', () async {
     final supportDir = await Directory.systemTemp.createTemp('sabuflix_support_diag_');
     _mockPathProvider(supportDir.path);

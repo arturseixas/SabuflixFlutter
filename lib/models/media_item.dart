@@ -76,16 +76,23 @@ class MediaItem {
     final mType = json['media_type'] ?? (json['first_air_date'] != null ? 'tv' : defaultMediaType);
     final rDate = json['release_date'] ?? json['first_air_date'];
 
+    // `genres` comes in two incompatible shapes depending on the source:
+    // TMDB's raw API responses use `[{id, name}, ...]`, but our own
+    // toJson() flattens it to `[name, ...]` for storage. Every persisted
+    // MediaItem (favorites, playlists, downloads) round-trips through
+    // exactly this parser, so it must accept both.
     List<int> gIds = [];
     if (json['genre_ids'] != null) {
       gIds = List<int>.from(json['genre_ids']);
     } else if (json['genres'] != null) {
-      gIds = (json['genres'] as List).map((g) => g['id'] as int).toList();
+      gIds = (json['genres'] as List).whereType<Map>().map((g) => g['id'] as int).toList();
     }
 
     List<String>? gNames;
     if (json['genres'] != null) {
-      gNames = (json['genres'] as List).map((g) => g['name'].toString()).toList();
+      gNames = (json['genres'] as List)
+          .map((g) => g is Map ? g['name'].toString() : g.toString())
+          .toList();
     }
 
     String? parsedImdbId = json['imdb_id'];
