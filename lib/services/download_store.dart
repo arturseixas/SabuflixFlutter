@@ -62,4 +62,51 @@ class DownloadStore {
     if (await target.exists()) await target.delete();
     await tmp.rename(target.path);
   }
+
+  // --- Per-download sidecars --------------------------------------------
+  //
+  // downloads.json is a single index for the whole library, which makes it
+  // a single point of failure: one unreadable entry, one bad write, and
+  // everything is gone at once. So each download also gets its own tiny
+  // `<id>.meta.json` next to its video. Losing or corrupting the index no
+  // longer loses the library — it can be rebuilt file by file.
+
+  static const String sidecarSuffix = '.meta.json';
+
+  static String _sidecarName(String id) =>
+      '${id.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_')}$sidecarSuffix';
+
+  static Future<void> writeSidecar(String id, Map<String, dynamic> item) async {
+    try {
+      final dir = await DownloadService.directory();
+      final target = File('${dir.path}${Platform.pathSeparator}${_sidecarName(id)}');
+      final tmp = File('${target.path}.tmp');
+      await tmp.writeAsString(json.encode(item), flush: true);
+      if (await target.exists()) await target.delete();
+      await tmp.rename(target.path);
+    } catch (_) {
+      // The index is still the primary store; a sidecar is a bonus copy.
+    }
+  }
+
+  static Future<Map<String, dynamic>?> readSidecar(String id) async {
+    try {
+      final dir = await DownloadService.directory();
+      final file = File('${dir.path}${Platform.pathSeparator}${_sidecarName(id)}');
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      if (raw.isEmpty) return null;
+      return Map<String, dynamic>.from(json.decode(raw) as Map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> deleteSidecar(String id) async {
+    try {
+      final dir = await DownloadService.directory();
+      final file = File('${dir.path}${Platform.pathSeparator}${_sidecarName(id)}');
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
 }

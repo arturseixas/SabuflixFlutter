@@ -227,6 +227,112 @@ void main() {
     },
   );
 
+  test(
+    'recupera o download quando o índice foi apagado mas o vídeo está no disco '
+    '(estado exato relatado pelo usuário)',
+    () async {
+      final supportDir = await Directory.systemTemp.createTemp('sabuflix_support_recover_');
+      _mockPathProvider(supportDir.path);
+      addTearDown(() => supportDir.delete(recursive: true));
+
+      // Reproduz literalmente o que estava no aparelho: o .mp4 de 279 MB
+      // presente, o downloads.json zerado para [].
+      final downloadsDir = await DownloadService.directory();
+      final video = File('${downloadsDir.path}${Platform.pathSeparator}40075_s1e1.mp4');
+      await video.writeAsBytes(List<int>.filled(4096, 7));
+      await DownloadStore.write([]);
+
+      final provider = DownloadProvider();
+      await _waitUntil(() => !provider.isLoading);
+
+      final recoveredItem = provider.byId('40075_s1e1');
+      expect(
+        recoveredItem,
+        isNotNull,
+        reason: 'o vídeo está em disco, então o app tem que voltar a mostrá-lo',
+      );
+      expect(recoveredItem!.status, DownloadStatus.completed);
+      expect(recoveredItem.season, 1);
+      expect(recoveredItem.episode, 1);
+      expect(recoveredItem.media.id, 40075);
+      expect(recoveredItem.media.mediaType, 'tv');
+      expect(recoveredItem.receivedBytes, 4096);
+
+      // E tem que ser jogável, que é o que de fato importa.
+      final localPath = await provider.localPathFor(40075, season: 1, episode: 1);
+      expect(localPath, isNotNull);
+      expect(await File(localPath!).exists(), isTrue);
+
+      provider.dispose();
+    },
+  );
+
+  test('a recuperação usa o sidecar quando ele existe, preservando os metadados', () async {
+    final supportDir = await Directory.systemTemp.createTemp('sabuflix_support_sidecar_');
+    _mockPathProvider(supportDir.path);
+    addTearDown(() => supportDir.delete(recursive: true));
+
+    final downloadsDir = await DownloadService.directory();
+    final video = File('${downloadsDir.path}${Platform.pathSeparator}550.mp4');
+    await video.writeAsBytes(List<int>.filled(2048, 1));
+
+    await DownloadStore.writeSidecar('550', {
+      'id': '550',
+      'media': MediaItem(
+        id: 550,
+        title: 'Clube da Luta',
+        voteAverage: 8.4,
+        voteCount: 100,
+        mediaType: 'movie',
+        genreIds: const [18],
+        genres: const ['Drama'],
+      ).toJson(),
+      'url': 'https://exemplo.com/f.mp4',
+      'fileName': '550.mp4',
+      'sourceName': 'FrostStream',
+      'quality': '1080p',
+      'status': 'completed',
+      'receivedBytes': 2048,
+      'totalBytes': 2048,
+      'createdAt': 1700000000000,
+    });
+    await DownloadStore.write([]);
+
+    final provider = DownloadProvider();
+    await _waitUntil(() => !provider.isLoading);
+
+    final item = provider.byId('550');
+    expect(item, isNotNull);
+    expect(item!.media.title, 'Clube da Luta', reason: 'o título tem que vir do sidecar');
+    expect(item.quality, '1080p');
+    expect(item.status, DownloadStatus.completed);
+
+    provider.dispose();
+  });
+
+  test('uma entrada ilegível é preservada no arquivo, nunca descartada', () async {
+    final supportDir = await Directory.systemTemp.createTemp('sabuflix_support_preserve_');
+    _mockPathProvider(supportDir.path);
+    addTearDown(() => supportDir.delete(recursive: true));
+
+    // Uma entrada que o parser atual não entende, sem vídeo correspondente
+    // em disco (então a recuperação não tem como reconstruí-la).
+    await DownloadStore.write([
+      {'id': 'formato-do-futuro', 'algo': 'que ainda não sabemos ler'},
+    ]);
+
+    final provider = DownloadProvider();
+    await _waitUntil(() => !provider.isLoading);
+    provider.dispose();
+
+    final stillThere = await DownloadStore.read();
+    expect(
+      stillThere.any((e) => e['id'] == 'formato-do-futuro'),
+      isTrue,
+      reason: 'uma entrada que não conseguimos ler tem que continuar no arquivo, intacta',
+    );
+  });
+
   test('diagnostics() reporta a pasta, os arquivos nela e o log de eventos', () async {
     final supportDir = await Directory.systemTemp.createTemp('sabuflix_support_diag_');
     _mockPathProvider(supportDir.path);

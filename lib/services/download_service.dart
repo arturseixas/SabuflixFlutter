@@ -19,7 +19,7 @@ class DownloadService {
   /// diagnostics dump can be matched to a code version at a glance — the
   /// debug log is never cleared automatically, so old and new entries
   /// otherwise look identical in a bug report.
-  static const String buildTag = 'downloads-v3-genres-fix';
+  static const String buildTag = 'downloads-v4-self-healing';
 
   static const String folderName = 'sabuflix_downloads';
   static const String partSuffix = '.part';
@@ -51,6 +51,32 @@ class DownloadService {
   static Future<String> filePath(String fileName) async {
     final dir = await directory();
     return '${dir.path}${Platform.pathSeparator}$fileName';
+  }
+
+  /// Every finished video sitting in the downloads folder.
+  ///
+  /// These files — not any index we keep alongside them — are the real
+  /// evidence of what the user has downloaded. `.part` files are excluded
+  /// (their extension is `.part`, not a video one), so this only ever
+  /// returns completed downloads.
+  static Future<List<String>> videoFileNames() async {
+    try {
+      final dir = await directory();
+      if (!await dir.exists()) return [];
+      final names = <String>[];
+      for (final entity in await dir.list().toList()) {
+        if (entity is! File) continue;
+        final name = entity.path.split(Platform.pathSeparator).last;
+        final dot = name.lastIndexOf('.');
+        if (dot <= 0) continue;
+        if (_videoExtensions.contains(name.substring(dot).toLowerCase())) {
+          names.add(name);
+        }
+      }
+      return names;
+    } catch (_) {
+      return [];
+    }
   }
 
   static Future<int> fileSize(String fileName) async {

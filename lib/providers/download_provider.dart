@@ -6,6 +6,7 @@ import '../models/download_item.dart';
 import '../models/media_item.dart';
 import '../services/download_service.dart';
 import '../services/download_store.dart';
+import '../services/tmdb_service.dart';
 
 /// Owns the download library and its queue.
 ///
@@ -15,6 +16,14 @@ import '../services/download_store.dart';
 /// we already have — so closing the app mid-download loses nothing: on
 /// the next launch the unfinished items are re-queued and resume where
 /// they stopped.
+///
+/// The library is also self-healing: the downloaded video files are
+/// treated as the ultimate authority on what exists. If the index is
+/// lost, emptied or unreadable for any reason, [load] rebuilds the
+/// missing entries from the files still on disk (via their sidecars, or
+/// from the file name plus a TMDB lookup as a last resort). A bug in the
+/// bookkeeping can therefore cost a title's metadata, but never the
+/// download itself.
 class DownloadProvider extends ChangeNotifier {
   /// One transfer at a time: sequential downloads finish sooner and make
   /// resume behaviour predictable.
@@ -23,6 +32,14 @@ class DownloadProvider extends ChangeNotifier {
   final List<DownloadItem> _items = [];
   final Map<String, DownloadHandle> _handles = {};
   final Map<String, int> _lastNotifyMs = {};
+
+  /// Entries we failed to decode this session, kept exactly as they were
+  /// read. They are written back verbatim on every save, so a decoding
+  /// bug can never turn into permanent data loss: a future build that
+  /// understands them again will pick them right back up.
+  final List<Map<String, dynamic>> _unreadableEntries = [];
+
+  final TMDBService _tmdb = TMDBService();
 
   bool _isLoading = true;
   bool _disposed = false;
@@ -88,21 +105,24 @@ class DownloadProvider extends ChangeNotifier {
       final entries = await DownloadStore.read();
       DownloadService.log('load() leu ${entries.length} entrada(s) do disco');
       _items.clear();
-      bool hadParseErrors = false;
+      _unreadableEntries.clear();
 
       for (final entry in entries) {
         try {
           _items.add(DownloadItem.fromJson(entry));
         } catch (e) {
-          // A parsing bug must never look like the entry itself was ever
-          // gone — surviving on disk is the whole point of this store, so
-          // an item we failed to read this session must not get silently
-          // overwritten with nothing by the auto-save below. It stays
-          // out of the in-memory list for now (so a broken entry can't
-          // crash the UI) but the file it came from is left untouched.
-          hadParseErrors = true;
-          DownloadService.log('load() descartou uma entrada corrompida: $e');
+          // Keep the raw entry so the next save writes it back untouched
+          // instead of dropping it — a decoding bug costs us this
+          // session's view of the item, never the item itself.
+          _unreadableEntries.add(entry);
+          DownloadService.log('load() não conseguiu ler uma entrada (preservada intacta): $e');
         }
+      }
+
+      // Whatever the index says, the videos on disk are the truth.
+      final recovered = await _recoverOrphanedFiles();
+      if (recovered > 0) {
+        DownloadService.log('load() recuperou $recovered download(s) a partir dos arquivos em disco');
       }
 
       // Reconcile the saved state with what is actually on disk.
@@ -132,14 +152,10 @@ class DownloadProvider extends ChangeNotifier {
       _sort();
       DownloadService.log(
         'load() finalizado com ${_items.length} item(ns) '
-        '(erros de parse: $hadParseErrors): '
+        '(${_unreadableEntries.length} ilegível(is) preservada(s)): '
         '${_items.map((i) => '${i.id}:${i.status.name}').join(', ')}',
       );
-      if (hadParseErrors) {
-        DownloadService.log('load() NÃO salvou de volta — havia entrada(s) que falharam ao ler');
-      } else {
-        await _save();
-      }
+      await _save();
     } catch (e) {
       debugPrint('Erro ao carregar downloads: $e');
       DownloadService.log('load() falhou: $e');
@@ -152,14 +168,157 @@ class DownloadProvider extends ChangeNotifier {
 
   Future<void> _save() async {
     try {
+      final payload = _items.map((i) => i.toJson()).toList();
+
+      // Carry forward anything we couldn't decode, unless a healthy item
+      // with the same id has since taken its place.
+      final knownIds = _items.map((i) => i.id).toSet();
+      final preserved = _unreadableEntries.where((e) => !knownIds.contains(e['id'])).toList();
+      payload.addAll(preserved);
+
       DownloadService.log(
-        'salvando ${_items.length} item(ns): '
+        'salvando ${_items.length} item(ns)'
+        '${preserved.isEmpty ? '' : ' + ${preserved.length} preservada(s)'}: '
         '${_items.map((i) => '${i.id}:${i.status.name}:${i.receivedBytes}b').join(', ')}',
       );
-      await DownloadStore.write(_items.map((i) => i.toJson()).toList());
+      await DownloadStore.write(payload);
+
+      // Each finished download also keeps its own copy, so the library
+      // can be rebuilt even if this index is lost entirely.
+      for (final item in _items) {
+        if (item.isCompleted) {
+          await DownloadStore.writeSidecar(item.id, item.toJson());
+        }
+      }
     } catch (e) {
       debugPrint('Erro ao salvar downloads: $e');
       DownloadService.log('_save() falhou: $e');
+    }
+  }
+
+  static final RegExp _episodeIdPattern = RegExp(r'^(\d+)_s(\d+)e(\d+)$');
+  static final RegExp _movieIdPattern = RegExp(r'^(\d+)$');
+
+  /// Rebuilds entries for finished videos sitting in the downloads folder
+  /// that the index doesn't know about.
+  ///
+  /// This is what makes a lost or unreadable index a cosmetic problem
+  /// rather than a data-loss one: the file is what the user actually
+  /// cares about, and it is still right there. Metadata comes from the
+  /// download's own sidecar when present; otherwise the file name alone
+  /// identifies the title well enough to rebuild a playable entry, and
+  /// the real details are filled in from TMDB in the background.
+  Future<int> _recoverOrphanedFiles() async {
+    final videoFiles = await DownloadService.videoFileNames();
+    if (videoFiles.isEmpty) return 0;
+
+    final knownFiles = _items.map((i) => i.fileName).toSet();
+    final toEnrich = <DownloadItem>[];
+    int recovered = 0;
+
+    for (final fileName in videoFiles) {
+      if (knownFiles.contains(fileName)) continue;
+
+      final dot = fileName.lastIndexOf('.');
+      final id = dot > 0 ? fileName.substring(0, dot) : fileName;
+      final size = await DownloadService.fileSize(fileName);
+
+      final sidecar = await DownloadStore.readSidecar(id);
+      if (sidecar != null) {
+        try {
+          final item = DownloadItem.fromJson(sidecar);
+          _items.add(item.copyWith(
+            status: DownloadStatus.completed,
+            receivedBytes: size,
+            totalBytes: size,
+            clearError: true,
+          ));
+          recovered++;
+          continue;
+        } catch (e) {
+          DownloadService.log('sidecar de $id ilegível, caindo para o nome do arquivo: $e');
+        }
+      }
+
+      final placeholder = _placeholderFor(id: id, fileName: fileName, size: size);
+      if (placeholder == null) continue;
+      _items.add(placeholder);
+      toEnrich.add(placeholder);
+      recovered++;
+    }
+
+    if (toEnrich.isNotEmpty) {
+      // Deliberately not awaited: a recovered download must show up (and
+      // be playable) immediately, with or without a working connection.
+      unawaited(_enrichRecovered(toEnrich));
+    }
+
+    return recovered;
+  }
+
+  /// Builds a minimal, playable entry from a download's file name.
+  DownloadItem? _placeholderFor({
+    required String id,
+    required String fileName,
+    required int size,
+  }) {
+    int mediaId;
+    int? season;
+    int? episode;
+
+    final episodeMatch = _episodeIdPattern.firstMatch(id);
+    final movieMatch = _movieIdPattern.firstMatch(id);
+    if (episodeMatch != null) {
+      mediaId = int.parse(episodeMatch.group(1)!);
+      season = int.parse(episodeMatch.group(2)!);
+      episode = int.parse(episodeMatch.group(3)!);
+    } else if (movieMatch != null) {
+      mediaId = int.parse(movieMatch.group(1)!);
+    } else {
+      // Not a file this app produced — leave it alone.
+      return null;
+    }
+
+    return DownloadItem(
+      id: id,
+      media: MediaItem(
+        id: mediaId,
+        title: 'Download recuperado',
+        voteAverage: 0,
+        voteCount: 0,
+        mediaType: season != null ? 'tv' : 'movie',
+        genreIds: const [],
+      ),
+      url: '',
+      fileName: fileName,
+      season: season,
+      episode: episode,
+      status: DownloadStatus.completed,
+      receivedBytes: size,
+      totalBytes: size,
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  /// Restores real titles and artwork for recovered placeholders.
+  Future<void> _enrichRecovered(List<DownloadItem> placeholders) async {
+    for (final placeholder in placeholders) {
+      if (_disposed) return;
+      try {
+        final details = await _tmdb
+            .fetchMediaDetails(placeholder.media.id, placeholder.media.mediaType)
+            .timeout(const Duration(seconds: 15));
+        if (details == null || _disposed) continue;
+
+        final index = _indexOf(placeholder.id);
+        if (index == -1) continue;
+        _items[index] = _items[index].copyWithMedia(details);
+        DownloadService.log('recuperado ${placeholder.id} identificado como "${details.title}"');
+        await _save();
+        _safeNotify();
+      } catch (e) {
+        DownloadService.log('não foi possível identificar ${placeholder.id}: $e');
+      }
     }
   }
 
@@ -276,6 +435,10 @@ class DownloadProvider extends ChangeNotifier {
 
     final item = byId(id);
     if (item != null) await DownloadService.deleteFiles(item.fileName);
+    // Also drop the sidecar, otherwise recovery would resurrect the entry
+    // on the next launch.
+    await DownloadStore.deleteSidecar(id);
+    _unreadableEntries.removeWhere((e) => e['id'] == id);
 
     _items.removeWhere((i) => i.id == id);
     _lastNotifyMs.remove(id);
@@ -289,6 +452,8 @@ class DownloadProvider extends ChangeNotifier {
     for (final id in ids) {
       final item = byId(id);
       if (item != null) await DownloadService.deleteFiles(item.fileName);
+      await DownloadStore.deleteSidecar(id);
+      _unreadableEntries.removeWhere((e) => e['id'] == id);
       _items.removeWhere((i) => i.id == id);
       _lastNotifyMs.remove(id);
     }

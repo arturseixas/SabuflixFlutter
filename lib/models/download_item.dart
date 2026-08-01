@@ -121,6 +121,26 @@ class DownloadItem {
     );
   }
 
+  /// Swaps in richer metadata for the same download — used when a
+  /// recovered entry gets identified and its real title/artwork arrive.
+  DownloadItem copyWithMedia(MediaItem newMedia) {
+    return DownloadItem(
+      id: id,
+      media: newMedia,
+      url: url,
+      fileName: fileName,
+      sourceName: sourceName,
+      quality: quality,
+      season: season,
+      episode: episode,
+      status: status,
+      receivedBytes: receivedBytes,
+      totalBytes: totalBytes,
+      createdAt: createdAt,
+      errorMessage: errorMessage,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'media': media.toJson(),
