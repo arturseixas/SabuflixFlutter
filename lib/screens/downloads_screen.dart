@@ -171,6 +171,14 @@ class DownloadsScreen extends StatelessWidget {
             actions: [
               if (text != null)
                 TextButton(
+                  onPressed: () async {
+                    await DownloadService.clearLog();
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                  child: const Text('Limpar log'),
+                ),
+              if (text != null)
+                TextButton(
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: text));
                     ScaffoldMessenger.of(context).showSnackBar(

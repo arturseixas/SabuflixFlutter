@@ -81,7 +81,9 @@ class DownloadProvider extends ChangeNotifier {
 
     try {
       final dir = await DownloadService.directory();
-      DownloadService.log('load() iniciado, pasta=${dir.path}');
+      DownloadService.log(
+        'load() iniciado [${DownloadService.buildTag}], pasta=${dir.path}',
+      );
 
       final entries = await DownloadStore.read();
       DownloadService.log('load() leu ${entries.length} entrada(s) do disco');

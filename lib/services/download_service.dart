@@ -15,6 +15,12 @@ import 'package:path_provider/path_provider.dart';
 class DownloadService {
   DownloadService._();
 
+  /// Bumped by hand on every fix that touches persistence, purely so a
+  /// diagnostics dump can be matched to a code version at a glance — the
+  /// debug log is never cleared automatically, so old and new entries
+  /// otherwise look identical in a bug report.
+  static const String buildTag = 'downloads-v3-genres-fix';
+
   static const String folderName = 'sabuflix_downloads';
   static const String partSuffix = '.part';
 
@@ -105,12 +111,21 @@ class DownloadService {
     }
   }
 
+  static Future<void> clearLog() async {
+    try {
+      final dir = await directory();
+      final file = File('${dir.path}${Platform.pathSeparator}$_logFileName');
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
+
   /// Plain-text snapshot of the download storage — resolved directory,
   /// whether the persisted queue file is there, and what's actually on
   /// disk. Meant to be copy-pasted by a user reporting a bug, since we
   /// have no other window into their device's real filesystem state.
   static Future<String> diagnostics() async {
     final buffer = StringBuffer();
+    buffer.writeln('Versão do código: $buildTag');
     try {
       final dir = await directory();
       buffer.writeln('Pasta: ${dir.path}');
