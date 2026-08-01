@@ -80,14 +80,19 @@ class DownloadProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
+      final dir = await DownloadService.directory();
+      DownloadService.log('load() iniciado, pasta=${dir.path}');
+
       final entries = await DownloadStore.read();
+      DownloadService.log('load() leu ${entries.length} entrada(s) do disco');
       _items.clear();
 
       for (final entry in entries) {
         try {
           _items.add(DownloadItem.fromJson(entry));
-        } catch (_) {
+        } catch (e) {
           // A single corrupt entry must not take the whole library down.
+          DownloadService.log('load() descartou uma entrada corrompida: $e');
         }
       }
 
@@ -116,9 +121,14 @@ class DownloadProvider extends ChangeNotifier {
       }
 
       _sort();
+      DownloadService.log(
+        'load() finalizado com ${_items.length} item(ns): '
+        '${_items.map((i) => '${i.id}:${i.status.name}').join(', ')}',
+      );
       await _save();
     } catch (e) {
       debugPrint('Erro ao carregar downloads: $e');
+      DownloadService.log('load() falhou: $e');
     }
 
     _isLoading = false;
@@ -128,9 +138,14 @@ class DownloadProvider extends ChangeNotifier {
 
   Future<void> _save() async {
     try {
+      DownloadService.log(
+        'salvando ${_items.length} item(ns): '
+        '${_items.map((i) => '${i.id}:${i.status.name}:${i.receivedBytes}b').join(', ')}',
+      );
       await DownloadStore.write(_items.map((i) => i.toJson()).toList());
     } catch (e) {
       debugPrint('Erro ao salvar downloads: $e');
+      DownloadService.log('_save() falhou: $e');
     }
   }
 

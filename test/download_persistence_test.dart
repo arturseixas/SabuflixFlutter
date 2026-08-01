@@ -155,4 +155,21 @@ void main() {
     expect(result, hasLength(1));
     expect(result.first['id'], isNotNull);
   });
+
+  test('diagnostics() reporta a pasta, os arquivos nela e o log de eventos', () async {
+    final supportDir = await Directory.systemTemp.createTemp('sabuflix_support_diag_');
+    _mockPathProvider(supportDir.path);
+    addTearDown(() => supportDir.delete(recursive: true));
+
+    await DownloadStore.write([
+      {'id': '1', 'status': 'completed'},
+    ]);
+    await DownloadService.log('evento de teste');
+
+    final report = await DownloadService.diagnostics();
+    expect(report, contains('Pasta:'));
+    expect(report, contains('downloads.json existe: true'));
+    expect(report, contains('"status":"completed"'));
+    expect(report, contains('evento de teste'));
+  });
 }

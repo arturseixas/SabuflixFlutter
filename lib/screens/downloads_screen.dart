@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/download_item.dart';
@@ -47,6 +48,11 @@ class DownloadsScreen extends StatelessWidget {
               ],
             ),
             actions: [
+              IconButton(
+                tooltip: 'Diagnóstico de armazenamento',
+                icon: const Icon(Icons.bug_report_outlined, color: SabuflixTheme.textSecondary),
+                onPressed: () => _showDiagnostics(context),
+              ),
               if (completed.isNotEmpty)
                 IconButton(
                   tooltip: 'Apagar todos os baixados',
@@ -130,6 +136,53 @@ class DownloadsScreen extends StatelessWidget {
       child: Text(
         '${title.toUpperCase()} · $count',
         style: SabuflixTheme.label(fontSize: 11, color: SabuflixTheme.textMuted),
+      ),
+    );
+  }
+
+  /// Shows exactly what's on disk right now — the resolved storage
+  /// folder, its files, and the raw persisted queue file — so a bug
+  /// report can include hard facts instead of "it disappeared".
+  Future<void> _showDiagnostics(BuildContext context) async {
+    showDialog(
+      context: context,
+      builder: (ctx) => FutureBuilder<String>(
+        future: DownloadService.diagnostics(),
+        builder: (ctx, snapshot) {
+          final text = snapshot.data;
+          return AlertDialog(
+            backgroundColor: SabuflixTheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusLg),
+            title: Text('Diagnóstico', style: SabuflixTheme.title(fontSize: 18)),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: text == null
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: CircularProgressIndicator(color: SabuflixTheme.accent)),
+                      )
+                    : SelectableText(
+                        text,
+                        style: SabuflixTheme.body(fontSize: 12, color: SabuflixTheme.textSecondary),
+                      ),
+              ),
+            ),
+            actions: [
+              if (text != null)
+                TextButton(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Diagnóstico copiado')),
+                    );
+                  },
+                  child: const Text('Copiar'),
+                ),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fechar')),
+            ],
+          );
+        },
       ),
     );
   }

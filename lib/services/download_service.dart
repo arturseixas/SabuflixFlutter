@@ -65,6 +65,87 @@ class DownloadService {
 
   static Future<int> partialSize(String fileName) => fileSize('$fileName$partSuffix');
 
+  static const String _logFileName = 'debug.log';
+  static const int _maxLogLines = 300;
+  static Future<void> _logQueue = Future<void>.value();
+
+  /// Appends a timestamped line to a small on-disk trail of what the
+  /// download system did and when. There is no other window into a
+  /// user's real device once something goes wrong, so this is the only
+  /// way to tell, after the fact, whether e.g. a save actually ran or
+  /// the resolved storage path changed between launches.
+  static Future<void> log(String message) {
+    final line = '${DateTime.now().toIso8601String()} $message';
+    final task = _logQueue.then((_) async {
+      try {
+        final dir = await directory();
+        final file = File('${dir.path}${Platform.pathSeparator}$_logFileName');
+        final existing = await file.exists() ? await file.readAsLines() : <String>[];
+        existing.add(line);
+        final trimmed = existing.length > _maxLogLines
+            ? existing.sublist(existing.length - _maxLogLines)
+            : existing;
+        await file.writeAsString(trimmed.join('\n'));
+      } catch (_) {
+        // A logging failure must never take down the actual feature.
+      }
+    });
+    _logQueue = task;
+    return task;
+  }
+
+  static Future<String> readLog() async {
+    try {
+      final dir = await directory();
+      final file = File('${dir.path}${Platform.pathSeparator}$_logFileName');
+      if (!await file.exists()) return '(sem log ainda)';
+      return await file.readAsString();
+    } catch (e) {
+      return '(erro ao ler log: $e)';
+    }
+  }
+
+  /// Plain-text snapshot of the download storage — resolved directory,
+  /// whether the persisted queue file is there, and what's actually on
+  /// disk. Meant to be copy-pasted by a user reporting a bug, since we
+  /// have no other window into their device's real filesystem state.
+  static Future<String> diagnostics() async {
+    final buffer = StringBuffer();
+    try {
+      final dir = await directory();
+      buffer.writeln('Pasta: ${dir.path}');
+      buffer.writeln('Pasta existe: ${await dir.exists()}');
+
+      final entries = await dir.exists() ? await dir.list().toList() : <FileSystemEntity>[];
+      buffer.writeln('Arquivos na pasta (${entries.length}):');
+      for (final entry in entries) {
+        if (entry is File) {
+          final size = await entry.length();
+          buffer.writeln('  - ${entry.path.split(Platform.pathSeparator).last}  ($size bytes)');
+        } else {
+          buffer.writeln('  - ${entry.path.split(Platform.pathSeparator).last}/ (pasta)');
+        }
+      }
+
+      final storeFile = File('${dir.path}${Platform.pathSeparator}downloads.json');
+      buffer.writeln('downloads.json existe: ${await storeFile.exists()}');
+      if (await storeFile.exists()) {
+        final content = await storeFile.readAsString();
+        buffer.writeln('downloads.json tamanho: ${content.length} caracteres');
+        buffer.writeln('downloads.json conteúdo:');
+        buffer.writeln(content);
+      }
+
+      buffer.writeln();
+      buffer.writeln('--- log de eventos ---');
+      buffer.writeln(await readLog());
+    } catch (e, st) {
+      buffer.writeln('Erro ao coletar diagnóstico: $e');
+      buffer.writeln(st.toString());
+    }
+    return buffer.toString();
+  }
+
   /// Removes both the finished file and any leftover `.part`.
   static Future<void> deleteFiles(String fileName) async {
     for (final name in [fileName, '$fileName$partSuffix']) {
