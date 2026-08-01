@@ -1,0 +1,108 @@
+name: Sabuflix Multiplatform Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows Executable (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable Windows desktop build
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Install Packaging Tools (Inno Setup & 7-Zip)
+        run: |
+          choco install innosetup 7zip.install --no-progress -y
+
+      - name: Package Windows Executables
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+
+          # 1. Create Inno Setup Single File Installer (.exe)
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows/installer.iss
+
+          # 2. Create Zip Bundle
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath dist\sabuflix-windows-bundle.zip
+
+          # 3. Create Self-Extracting Single Executable (.exe)
+          $sfxConfig = ";!@Install@!UTF-8!`nTitle=`"Sabuflix`"`nRunProgram=`"sabuflix.exe`"`n;!@InstallEnd@!"
+          Set-Content -Path config.txt -Value $sfxConfig -Encoding UTF8
+          & "C:\Program Files\7-Zip\7z.exe" a release.7z .\build\windows\x64\runner\Release\*
+          cmd /c "copy /b `"C:\Program Files\7-Zip\7z.sfx`" + config.txt + release.7z dist\sabuflix.exe"
+
+      - name: Upload Single Windows Executable (.exe) Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabuflix-windows.exe
+          path: dist/sabuflix.exe
+
+      - name: Upload Windows Setup Installer (.exe) Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabuflix-installer.exe
+          path: dist/sabuflix-installer.exe
+
+      - name: Upload Windows Bundle Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabuflix-windows-bundle.zip
+          path: dist/sabuflix-windows-bundle.zip
+
+  build-android:
+    name: Build Android Package (.apk)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android Release APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Prepare Android APK Artifact
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/sabuflix.apk
+
+      - name: Upload Android APK (.apk) Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabuflix.apk
+          path: dist/sabuflix.apk
