@@ -26,16 +26,25 @@ class DownloadsProvider extends ChangeNotifier {
 
   DateTime _lastProgressNotify = DateTime.fromMillisecondsSinceEpoch(0);
 
+  // Bumped on every loadDownloads() call so a slower, stale call can detect
+  // it's been superseded and avoid clobbering a newer load's result.
+  int _loadRequestId = 0;
+
   DownloadsProvider() {
     loadDownloads(null);
   }
 
   Future<void> loadDownloads(String? profileId) async {
+    final requestId = ++_loadRequestId;
+
     _currentProfileId = profileId;
     _isLoading = true;
     notifyListeners();
 
-    _downloads = await _downloadService.getDownloads(_currentProfileId);
+    final loaded = await _downloadService.getDownloads(_currentProfileId);
+    if (requestId != _loadRequestId) return; // superseded by a newer load
+
+    _downloads = loaded;
 
     // Nothing is transferring right after a load, so anything the app died
     // mid-download on comes back as paused and resumable.
