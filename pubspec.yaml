@@ -43,6 +43,11 @@ dependencies:
   media_kit: ^1.2.6
   media_kit_video: ^2.0.1
   media_kit_libs_video: ^1.0.7
+  # Downloads: resolves the per-platform directory episodes are written to.
+  path_provider: ^2.1.4
+  # Casting: mDNS discovery of Google Cast receivers. DLNA/Roku use SSDP,
+  # which is implemented directly over dart:io sockets.
+  multicast_dns: ^0.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -65,10 +70,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    # Master app icon. The per-platform icons are generated from the same
+    # geometry by `python3 tool/generate_icons.py`.
+    - assets/icon/app_icon.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

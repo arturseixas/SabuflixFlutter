@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
+import '../utils/haptics.dart';
 import '../providers/playlist_provider.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/media_card.dart';
@@ -79,7 +80,10 @@ class PlaylistsScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: SabuflixTheme.textPrimary),
-            onPressed: () => _showCreatePlaylistDialog(context),
+            onPressed: () {
+              Haptics.selection();
+              _showCreatePlaylistDialog(context);
+            },
           ),
         ],
       ),
@@ -99,7 +103,10 @@ class PlaylistsScreen extends StatelessWidget {
                   Text('Nenhuma playlist criada', style: SabuflixTheme.headline(fontSize: 20, color: SabuflixTheme.textSecondary)),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: () => _showCreatePlaylistDialog(context),
+                    onPressed: () {
+              Haptics.selection();
+              _showCreatePlaylistDialog(context);
+            },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: SabuflixTheme.accent,
                       shape: const StadiumBorder(),

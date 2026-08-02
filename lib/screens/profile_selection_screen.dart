@@ -5,6 +5,7 @@ import '../providers/profile_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../theme/sabuflix_theme.dart';
+import '../utils/haptics.dart';
 import '../widgets/glass_container.dart';
 import 'main_navigation_screen.dart';
 
@@ -66,7 +67,10 @@ class ProfileSelectionScreen extends StatelessWidget {
                     children: [
                       ...provider.profiles.map((p) => _ProfileAvatar(
                         profile: p,
-                        onTap: () => _selectProfile(context, p),
+                        onTap: () {
+                          Haptics.medium();
+                          _selectProfile(context, p);
+                        },
                         onEdit: () => _showAddEditProfileDialog(context, profileToEdit: p),
                       )),
                       if (provider.profiles.length < 5)
@@ -317,7 +321,10 @@ class _ProfileDialogState extends State<_ProfileDialog> {
               children: _colorOptions.map((c) {
                 final isSelected = _colorValue == c;
                 return GestureDetector(
-                  onTap: () => setState(() => _colorValue = c),
+                  onTap: () {
+                    Haptics.light();
+                    setState(() => _colorValue = c);
+                  },
                   child: Container(
                     width: 40,
                     height: 40,

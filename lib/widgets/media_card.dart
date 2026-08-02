@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media_item.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/app_route.dart';
+import '../utils/haptics.dart';
 import '../screens/media_details_screen.dart';
 
 /// A poster card in the Apple Music / Apple TV idiom: artwork only, title
@@ -32,6 +33,7 @@ class _MediaCardState extends State<MediaCard> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () {
+          Haptics.selection();
           Navigator.push(context, glassRoute(MediaDetailsScreen(media: widget.media)));
         },
         child: SizedBox(

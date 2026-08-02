@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/media_item.dart';
 import '../theme/sabuflix_theme.dart';
+import '../utils/haptics.dart';
 import '../providers/favorites_provider.dart';
 import '../utils/app_route.dart';
 import '../screens/media_details_screen.dart';
@@ -152,6 +153,7 @@ class HeroBanner extends StatelessWidget {
                       ),
                       child: ElevatedButton.icon(
                         onPressed: () {
+                          Haptics.medium();
                           Navigator.push(context, glassRoute(MediaDetailsScreen(media: media)));
                         },
                         style: ElevatedButton.styleFrom(
@@ -178,6 +180,7 @@ class HeroBanner extends StatelessWidget {
                         child: InkWell(
                           borderRadius: SabuflixTheme.radiusPill,
                           onTap: () {
+                            Haptics.light();
                             favoritesProvider.toggleFavorite(media);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(isFav ? 'Removido da lista' : 'Adicionado à lista')),

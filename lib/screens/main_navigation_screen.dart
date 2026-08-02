@@ -8,12 +8,14 @@ import 'search_screen.dart';
 import 'categories_screen.dart';
 import 'my_list_screen.dart';
 import 'playlists_screen.dart';
+import 'downloads_screen.dart';
 import 'profile_selection_screen.dart';
+import '../utils/haptics.dart';
 import '../providers/profile_provider.dart';
 import 'package:provider/provider.dart';
 
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({Key? key}) : super(key: key);
+  const MainNavigationScreen({super.key});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
@@ -28,6 +30,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _NavDestination(Icons.category, Icons.category_outlined, 'Categorias'),
     _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista'),
     _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined, 'Playlists'),
+    _NavDestination(Icons.download, Icons.download_outlined, 'Downloads'),
   ];
 
   final List<Widget> _screens = const [
@@ -36,7 +39,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     CategoriesScreen(),
     MyListScreen(),
     PlaylistsScreen(),
+    DownloadsScreen(),
   ];
+
+  void _select(int index) {
+    if (index == _currentIndex) return;
+    Haptics.selection();
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +174,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => setState(() => _currentIndex = index),
+          onTap: () => _select(index),
           borderRadius: SabuflixTheme.radiusPill,
           child: AnimatedContainer(
             duration: SabuflixTheme.durationFast,
@@ -203,7 +213,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: () => _select(index),
         borderRadius: SabuflixTheme.radiusPill,
         child: AnimatedContainer(
           duration: SabuflixTheme.durationFast,
