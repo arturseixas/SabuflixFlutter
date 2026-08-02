@@ -2,7 +2,9 @@ name: Sabuflix Multiplatform Build
 
 on:
   push:
-    branches: [ main, master ]
+    # Feature branches build too, so an APK/EXE is available before the work
+    # is merged.
+    branches: [ main, master, 'claude/**' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
