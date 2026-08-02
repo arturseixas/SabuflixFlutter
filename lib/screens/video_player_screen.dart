@@ -9,6 +9,8 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../models/media_item.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
+import '../services/android_pip_service.dart';
+import '../services/desktop_pip_service.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final MediaItem media;
@@ -41,12 +43,59 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   List<SubtitleTrack> _subtitleTracks = [];
   SubtitleTrack? _selectedSubtitleTrack;
 
+  bool _isPip = false;
+  bool _pipButtonSupported = false;
+  StreamSubscription<bool>? _pipModeSub;
+
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     _initPlayer();
+    _startHideTimer();
+    _initPip();
+  }
+
+  Future<void> _initPip() async {
+    if (AndroidPipService.isPlatformAndroid) {
+      final supported = await AndroidPipService.instance.isSupported();
+      if (!mounted) return;
+      setState(() => _pipButtonSupported = supported);
+      _pipModeSub = AndroidPipService.instance.onModeChanged.listen((isPip) {
+        if (!mounted) return;
+        setState(() {
+          _isPip = isPip;
+          _showControls = !isPip;
+        });
+        if (!isPip) _startHideTimer();
+      });
+    } else if (DesktopPipService.isSupported) {
+      if (!mounted) return;
+      setState(() => _pipButtonSupported = true);
+    }
+  }
+
+  Future<void> _enterPip() async {
+    if (AndroidPipService.isPlatformAndroid) {
+      await AndroidPipService.instance.enter();
+    } else if (DesktopPipService.isSupported) {
+      await DesktopPipService.instance.enter();
+      if (!mounted) return;
+      setState(() {
+        _isPip = true;
+        _showControls = false;
+      });
+    }
+  }
+
+  Future<void> _exitDesktopPip() async {
+    await DesktopPipService.instance.exit();
+    if (!mounted) return;
+    setState(() {
+      _isPip = false;
+      _showControls = true;
+    });
     _startHideTimer();
   }
 
@@ -68,6 +117,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _player!.stream.playing.listen((bool playing) {
         if (!mounted) return;
         setState(() => _isPlaying = playing);
+        if (AndroidPipService.isPlatformAndroid) {
+          AndroidPipService.instance.setAutoEnterEnabled(playing);
+        }
       });
       
       _player!.stream.buffering.listen((bool buffering) {
@@ -197,10 +249,67 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _pipModeSub?.cancel();
+    if (AndroidPipService.isPlatformAndroid) {
+      AndroidPipService.instance.setAutoEnterEnabled(false);
+    }
+    if (DesktopPipService.instance.isActive) {
+      DesktopPipService.instance.exit();
+    }
     _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
+  }
+
+  Widget _pipMiniButton({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white, size: 18),
+      ),
+    );
+  }
+
+  Widget _buildPipView() {
+    final hasVideo = _videoController != null;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (hasVideo)
+          Video(controller: _videoController!, controls: NoVideoControls, fill: Colors.black)
+        else
+          Container(color: Colors.black),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _playPause,
+        ),
+        if (DesktopPipService.instance.isActive)
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _pipMiniButton(
+                  icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  onTap: _playPause,
+                ),
+                const SizedBox(width: 4),
+                _pipMiniButton(
+                  icon: Icons.fullscreen_rounded,
+                  onTap: _exitDesktopPip,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 
   @override
@@ -209,7 +318,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
+      body: _isPip
+          ? _buildPipView()
+          : GestureDetector(
         onTap: _toggleControls,
         behavior: HitTestBehavior.opaque,
         child: Stack(
@@ -301,6 +412,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                               ),
                               const SizedBox(width: 4),
+                              if (hasVideo && _pipButtonSupported)
+                                IconButton(
+                                  icon: const Icon(Icons.picture_in_picture_alt_rounded, color: Colors.white),
+                                  tooltip: 'Picture-in-Picture',
+                                  onPressed: _enterPip,
+                                ),
                               if (_subtitleTracks.isNotEmpty)
                                 IconButton(
                                   icon: const Icon(Icons.subtitles_outlined, color: Colors.white),

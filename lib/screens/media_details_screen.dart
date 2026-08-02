@@ -85,7 +85,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
           padding: const EdgeInsets.all(24),
           blur: 40,
           fillOpacity: 0.4,
-          child: FutureBuilder<List<Map<String, dynamic>>>(
+          child: FutureBuilder<List<StreamOption>>(
             future: FrostStreamService.fetchStreams(
               imdbId: imdbId,
               type: media.mediaType,
@@ -99,13 +99,18 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
               if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
                 return Center(child: Text('Nenhuma fonte encontrada', style: SabuflixTheme.body(color: Colors.white)));
               }
-              
+
               final streams = snapshot.data!;
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Selecione uma Fonte', style: SabuflixTheme.title(fontSize: 20)),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${streams.length} ${streams.length == 1 ? 'fonte encontrada' : 'fontes encontradas'} · ordenadas por qualidade',
+                    style: SabuflixTheme.body(fontSize: 12, color: SabuflixTheme.textSecondary),
+                  ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: ListView.separated(
@@ -113,23 +118,65 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (ctx, i) {
                         final s = streams[i];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
-                          tileColor: Colors.white.withValues(alpha: 0.08),
-                          title: Text(s['name'] ?? 'Stream', style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 6.0),
-                            child: Text(
-                              s['title'] ?? 'Qualidade desconhecida', 
-                              style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
+                        return Material(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: SabuflixTheme.radiusMd,
+                          child: InkWell(
+                            borderRadius: SabuflixTheme.radiusMd,
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s.url)));
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          s.name,
+                                          style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 6,
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          children: [
+                                            if (s.quality != null)
+                                              _SourceBadge(
+                                                icon: Icons.high_quality_rounded,
+                                                label: s.quality!,
+                                                color: SabuflixTheme.accent,
+                                              ),
+                                            if (s.formattedSize.isNotEmpty)
+                                              _SourceBadge(
+                                                icon: Icons.sd_storage_rounded,
+                                                label: s.formattedSize,
+                                                color: Colors.white24,
+                                              ),
+                                          ],
+                                        ),
+                                        if (s.title.isNotEmpty) ...[
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            s.title,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: SabuflixTheme.body(fontSize: 12, color: Colors.white60, height: 1.4),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
+                                ],
+                              ),
                             ),
                           ),
-                          trailing: const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s['url'])));
-                          },
                         );
                       },
                     ),
@@ -595,6 +642,37 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SourceBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _SourceBadge({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.18),
+        borderRadius: SabuflixTheme.radiusSm,
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
           ),
         ],
       ),
