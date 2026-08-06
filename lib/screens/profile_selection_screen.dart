@@ -4,6 +4,7 @@ import '../models/profile.dart';
 import '../providers/profile_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/playlist_provider.dart';
+import '../providers/watch_history_provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
 import 'main_navigation_screen.dart';
@@ -15,11 +16,13 @@ class ProfileSelectionScreen extends StatelessWidget {
     final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
     final favProvider = Provider.of<FavoritesProvider>(context, listen: false);
     final playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
+    final historyProvider = Provider.of<WatchHistoryProvider>(context, listen: false);
 
     try {
       await profileProvider.selectProfile(profile.id);
       await favProvider.loadFavorites(profile.id);
       await playlistProvider.loadForProfile(profile.id);
+      await historyProvider.loadHistory(profile.id);
     } catch (e) {
       // ignore
     }

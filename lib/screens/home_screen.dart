@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/profile_provider.dart';
+import '../providers/watch_history_provider.dart';
+import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/media_row.dart';
 import '../widgets/wordmark.dart';
@@ -15,6 +17,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final catalog = Provider.of<CatalogProvider>(context);
+    final continueWatching = Provider.of<WatchHistoryProvider>(context).continueWatching;
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 800;
 
@@ -79,6 +82,7 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 16),
+                        ContinueWatchingRow(entries: continueWatching),
                         MediaRow(
                           title: 'Em Alta Hoje',
                           mediaItems: catalog.trending,

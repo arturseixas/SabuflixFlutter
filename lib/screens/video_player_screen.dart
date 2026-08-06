@@ -1,20 +1,39 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:window_manager/window_manager.dart';
 import '../models/media_item.dart';
+import '../providers/watch_history_provider.dart';
+import '../services/android_pip_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
+
+bool get _isWindowsDesktop => !kIsWeb && Platform.isWindows;
+bool get _isAndroidPlatform => !kIsWeb && Platform.isAndroid;
 
 class VideoPlayerScreen extends StatefulWidget {
   final MediaItem media;
   final String? videoUrl;
+  final int? season;
+  final int? episode;
+  final double? initialPositionSeconds;
 
-  const VideoPlayerScreen({Key? key, required this.media, this.videoUrl}) : super(key: key);
+  const VideoPlayerScreen({
+    Key? key,
+    required this.media,
+    this.videoUrl,
+    this.season,
+    this.episode,
+    this.initialPositionSeconds,
+  }) : super(key: key);
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -41,6 +60,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   List<SubtitleTrack> _subtitleTracks = [];
   SubtitleTrack? _selectedSubtitleTrack;
 
+  Timer? _historySaveTimer;
+
+  // Windows: floating always-on-top mini window, styled after Firefox's PiP.
+  bool _isWindowsPip = false;
+  Rect? _preWindowsPipBounds;
+  static const Size _windowsPipSize = Size(360, 203);
+
+  // Android: native system Picture-in-Picture mode.
+  bool _isAndroidPip = false;
+  StreamSubscription<bool>? _androidPipSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +78,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     _initPlayer();
     _startHideTimer();
+
+    if (_isAndroidPlatform) {
+      _androidPipSubscription = AndroidPipService.onModeChanged.listen((isInPip) {
+        if (!mounted) return;
+        setState(() => _isAndroidPip = isInPip);
+      });
+    }
   }
 
   Future<void> _initPlayer() async {
@@ -68,6 +105,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _player!.stream.playing.listen((bool playing) {
         if (!mounted) return;
         setState(() => _isPlaying = playing);
+        if (_isAndroidPlatform) {
+          AndroidPipService.setAutoEnter(playing);
+        }
       });
       
       _player!.stream.buffering.listen((bool buffering) {
@@ -92,8 +132,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       });
 
       try {
-        await _player!.open(Media(widget.videoUrl!));
+        final startPosition = widget.initialPositionSeconds;
+        await _player!.open(Media(
+          widget.videoUrl!,
+          start: (startPosition != null && startPosition > 0) ? Duration(seconds: startPosition.toInt()) : null,
+        ));
         await _player!.play();
+        _startHistorySaveTimer();
       } catch (e) {
         print('Error initializing media_kit player: $e');
       }
@@ -194,9 +239,65 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
+  void _startHistorySaveTimer() {
+    _historySaveTimer?.cancel();
+    _historySaveTimer = Timer.periodic(const Duration(seconds: 5), (_) => _saveHistoryProgress());
+  }
+
+  void _saveHistoryProgress() {
+    if (_player == null || _totalDuration <= 0 || !mounted) return;
+    Provider.of<WatchHistoryProvider>(context, listen: false).saveProgress(
+      media: widget.media,
+      season: widget.season,
+      episode: widget.episode,
+      positionSeconds: _currentPosition,
+      durationSeconds: _totalDuration,
+    );
+  }
+
+  Future<void> _enterWindowsPip() async {
+    if (_isWindowsPip) return;
+    _preWindowsPipBounds = await windowManager.getBounds();
+    await windowManager.setResizable(true);
+    await windowManager.setAlwaysOnTop(true);
+    await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
+    await windowManager.setSize(_windowsPipSize);
+    await windowManager.setAlignment(Alignment.bottomRight);
+    if (!mounted) return;
+    setState(() {
+      _isWindowsPip = true;
+      _showControls = true;
+    });
+  }
+
+  Future<void> _exitWindowsPip() async {
+    if (!_isWindowsPip) return;
+    await windowManager.setAlwaysOnTop(false);
+    await windowManager.setTitleBarStyle(TitleBarStyle.normal, windowButtonVisibility: true);
+    if (_preWindowsPipBounds != null) {
+      await windowManager.setBounds(_preWindowsPipBounds);
+    }
+    await windowManager.focus();
+    if (!mounted) return;
+    setState(() => _isWindowsPip = false);
+  }
+
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _historySaveTimer?.cancel();
+    _saveHistoryProgress();
+    _androidPipSubscription?.cancel();
+    if (_isAndroidPlatform) {
+      AndroidPipService.setAutoEnter(false);
+    }
+    if (_isWindowsPip && _isWindowsDesktop) {
+      windowManager.setAlwaysOnTop(false);
+      windowManager.setTitleBarStyle(TitleBarStyle.normal, windowButtonVisibility: true);
+      if (_preWindowsPipBounds != null) {
+        windowManager.setBounds(_preWindowsPipBounds);
+      }
+    }
     _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -205,6 +306,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isAndroidPip) {
+      return _buildAndroidPipUi();
+    }
+    if (_isWindowsPip) {
+      return _buildWindowsPipUi();
+    }
+
     final hasVideo = _videoController != null;
 
     return Scaffold(
@@ -219,7 +327,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               Center(
                 child: Video(
                   controller: _videoController!,
-                  controls: NoVideoControls, 
+                  controls: NoVideoControls,
                   fill: Colors.black,
                 ),
               )
@@ -301,6 +409,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                               ),
                               const SizedBox(width: 4),
+                              if (_isWindowsDesktop || _isAndroidPlatform)
+                                IconButton(
+                                  tooltip: 'Picture-in-Picture',
+                                  icon: const Icon(Icons.picture_in_picture_alt_rounded, color: Colors.white),
+                                  onPressed: () {
+                                    if (_isWindowsDesktop) {
+                                      _enterWindowsPip();
+                                    } else if (_isAndroidPlatform) {
+                                      AndroidPipService.enterPipMode();
+                                    }
+                                  },
+                                ),
                               if (_subtitleTracks.isNotEmpty)
                                 IconButton(
                                   icon: const Icon(Icons.subtitles_outlined, color: Colors.white),
@@ -449,6 +569,138 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Minimal UI shown while Android's native system Picture-in-Picture is
+  /// active: just the video, since the OS draws its own floating chrome.
+  Widget _buildAndroidPipUi() {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _videoController != null
+          ? Video(controller: _videoController!, controls: NoVideoControls, fill: Colors.black)
+          : Container(color: Colors.black),
+    );
+  }
+
+  /// Compact, draggable, always-on-top mini player for the Windows PC PiP
+  /// window (styled after Firefox's floating video PiP).
+  Widget _buildWindowsPipUi() {
+    final hasVideo = _videoController != null;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onPanStart: (_) => windowManager.startDragging(),
+        onTap: _toggleControls,
+        behavior: HitTestBehavior.opaque,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasVideo)
+              Video(controller: _videoController!, controls: NoVideoControls, fill: Colors.black)
+            else
+              CachedNetworkImage(
+                imageUrl: widget.media.fullBackdropPath,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: SabuflixTheme.background),
+                errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
+              ),
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: _showControls ? 1.0 : 0.0,
+              child: IgnorePointer(
+                ignoring: !_showControls,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _PipMiniButton(
+                              icon: Icons.open_in_full_rounded,
+                              tooltip: 'Voltar para o app',
+                              onPressed: _exitWindowsPip,
+                            ),
+                            const SizedBox(width: 4),
+                            _PipMiniButton(
+                              icon: Icons.close_rounded,
+                              tooltip: 'Fechar',
+                              onPressed: () async {
+                                await _exitWindowsPip();
+                                if (mounted) Navigator.of(context).maybePop();
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      Center(
+                        child: _PipMiniButton(
+                          size: 42,
+                          iconSize: 26,
+                          icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          tooltip: _isPlaying ? 'Pausar' : 'Reproduzir',
+                          onPressed: _playPause,
+                        ),
+                      ),
+                      Positioned(
+                        left: 10,
+                        right: 10,
+                        bottom: 6,
+                        child: Text(
+                          widget.media.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: SabuflixTheme.body(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PipMiniButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final double size;
+  final double iconSize;
+
+  const _PipMiniButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.size = 28,
+    this.iconSize = 16,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.5),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Icon(icon, color: Colors.white, size: iconSize),
+          ),
         ),
       ),
     );

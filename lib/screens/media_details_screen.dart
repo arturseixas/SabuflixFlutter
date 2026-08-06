@@ -7,6 +7,7 @@ import '../models/cast_member.dart';
 import '../theme/sabuflix_theme.dart';
 import '../services/tmdb_service.dart';
 import '../providers/favorites_provider.dart';
+import '../providers/watch_history_provider.dart';
 import '../utils/app_route.dart';
 import '../widgets/media_row.dart';
 import '../widgets/glass_container.dart';
@@ -76,6 +77,15 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
       return;
     }
 
+    final historyEntry = Provider.of<WatchHistoryProvider>(context, listen: false).entryFor(media.id);
+    double? resumePosition;
+    if (historyEntry != null && !historyEntry.isFinished) {
+      final sameEpisode = media.mediaType != 'tv' || (historyEntry.season == season && historyEntry.episode == episode);
+      if (sameEpisode) {
+        resumePosition = historyEntry.positionSeconds;
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -128,7 +138,13 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           trailing: const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
                           onTap: () {
                             Navigator.pop(ctx);
-                            Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s['url'])));
+                            Navigator.push(context, glassRoute(VideoPlayerScreen(
+                              media: media,
+                              videoUrl: s['url'],
+                              season: season,
+                              episode: episode,
+                              initialPositionSeconds: resumePosition,
+                            )));
                           },
                         );
                       },
@@ -214,7 +230,13 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     final media = _detailedMedia ?? widget.media;
     final favoritesProvider = Provider.of<FavoritesProvider>(context);
     final profileProvider = Provider.of<ProfileProvider>(context);
+    final historyProvider = Provider.of<WatchHistoryProvider>(context);
     final isFav = favoritesProvider.isFavorite(media.id);
+
+    final historyEntry = historyProvider.entryFor(media.id);
+    final hasResumableHistory = historyEntry != null && !historyEntry.isFinished && historyEntry.positionSeconds > 15;
+    final resumeSeason = hasResumableHistory ? (historyEntry.season ?? _seasonNumber) : _seasonNumber;
+    final resumeEpisode = hasResumableHistory ? (historyEntry.episode ?? 1) : 1;
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 600;
 
@@ -398,7 +420,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           child: ElevatedButton.icon(
                             onPressed: () {
                               if (media.mediaType == 'tv') {
-                                _showStreamSelector(season: _seasonNumber, episode: 1);
+                                _showStreamSelector(season: resumeSeason, episode: resumeEpisode);
                               } else {
                                 _showStreamSelector();
                               }
@@ -408,9 +430,11 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                               shadowColor: Colors.transparent,
                               shape: const StadiumBorder(),
                             ),
-                            icon: const Icon(Icons.play_arrow_rounded, size: 26, color: Colors.white),
+                            icon: Icon(hasResumableHistory ? Icons.replay_rounded : Icons.play_arrow_rounded, size: 26, color: Colors.white),
                             label: Text(
-                              media.mediaType == 'tv' ? 'Assistir S$_seasonNumber:E1' : 'Assistir Agora',
+                              media.mediaType == 'tv'
+                                  ? (hasResumableHistory ? 'Continuar S$resumeSeason:E$resumeEpisode' : 'Assistir S$_seasonNumber:E1')
+                                  : (hasResumableHistory ? 'Continuar Assistindo' : 'Assistir Agora'),
                               style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
                           ),
