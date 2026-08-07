@@ -23,10 +23,17 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _showControls = true;
   Timer? _hideTimer;
-  
+  Timer? _mockTimer;
+
   Player? _player;
   VideoController? _videoController;
-  
+
+  final List<StreamSubscription> _subscriptions = [];
+
+  /// Set as soon as the screen starts going away, so playback that is still
+  /// being set up asynchronously never gets (re)started behind our back.
+  bool _isShuttingDown = false;
+
   bool _isPlaying = false;
   bool _isBuffering = false;
   double _currentPosition = 0;
@@ -51,62 +58,72 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _initPlayer() async {
-    if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
-      _player = Player();
-      _videoController = VideoController(_player!);
-      
-      _player!.stream.position.listen((Duration position) {
+    if (widget.videoUrl == null || widget.videoUrl!.isEmpty) {
+      // Mock playback if no URL (e.g. trailer mode)
+      _totalDuration = 6840;
+      _isPlaying = true;
+      _mockPlaybackTimer();
+      return;
+    }
+
+    final player = Player();
+    _player = player;
+    _videoController = VideoController(player);
+
+    _subscriptions.addAll([
+      player.stream.position.listen((Duration position) {
         if (!mounted) return;
         setState(() => _currentPosition = position.inSeconds.toDouble());
-      });
-      
-      _player!.stream.duration.listen((Duration duration) {
+      }),
+      player.stream.duration.listen((Duration duration) {
         if (!mounted) return;
         setState(() => _totalDuration = duration.inSeconds.toDouble());
-      });
-      
-      _player!.stream.playing.listen((bool playing) {
+      }),
+      player.stream.playing.listen((bool playing) {
         if (!mounted) return;
         setState(() => _isPlaying = playing);
-      });
-      
-      _player!.stream.buffering.listen((bool buffering) {
+      }),
+      player.stream.buffering.listen((bool buffering) {
         if (!mounted) return;
         setState(() => _isBuffering = buffering);
-      });
-
-      _player!.stream.tracks.listen((tracks) {
+      }),
+      player.stream.tracks.listen((tracks) {
         if (!mounted) return;
         setState(() {
           _audioTracks = tracks.audio;
           _subtitleTracks = tracks.subtitle;
         });
-      });
-
-      _player!.stream.track.listen((track) {
+      }),
+      player.stream.track.listen((track) {
         if (!mounted) return;
         setState(() {
           _selectedAudioTrack = track.audio;
           _selectedSubtitleTrack = track.subtitle;
         });
-      });
+      }),
+    ]);
 
-      try {
-        await _player!.open(Media(widget.videoUrl!));
-        await _player!.play();
-      } catch (e) {
-        print('Error initializing media_kit player: $e');
+    try {
+      await player.open(Media(widget.videoUrl!));
+      // The screen may have been popped while the media was still opening —
+      // `open()` starts playback on its own, so tear it down instead of playing.
+      if (_isShuttingDown) {
+        await _teardown(player, const []);
+        return;
       }
-    } else {
-      // Mock playback if no URL (e.g. trailer mode)
-      _totalDuration = 6840;
-      _isPlaying = true;
-      _mockPlaybackTimer();
+      await player.play();
+    } catch (e) {
+      debugPrint('Error initializing media_kit player: $e');
+    }
+
+    if (_isShuttingDown) {
+      await _teardown(player, const []);
     }
   }
 
   void _mockPlaybackTimer() {
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    _mockTimer?.cancel();
+    _mockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -194,10 +211,57 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
+  /// Silences playback the instant the route starts popping, instead of waiting
+  /// for the exit transition to finish and `dispose()` to run.
+  void _onPopped() {
+    if (_isShuttingDown) return;
+    _isShuttingDown = true;
+    final player = _player;
+    if (player != null) unawaited(_pauseQuietly(player));
+  }
+
+  static Future<void> _pauseQuietly(Player player) async {
+    try {
+      await player.pause();
+    } catch (_) {}
+  }
+
+  /// Fully unwinds the player. `stop()` before `dispose()` matters: disposing a
+  /// player that still has media loaded can leave the audio output running.
+  ///
+  /// Static so it can safely outlive the `State` it was started from.
+  static Future<void> _teardown(Player? player, List<StreamSubscription> subscriptions) async {
+    for (final subscription in subscriptions) {
+      try {
+        await subscription.cancel();
+      } catch (_) {}
+    }
+    if (player == null) return;
+    try {
+      await player.pause();
+    } catch (_) {}
+    try {
+      await player.stop();
+    } catch (_) {}
+    try {
+      await player.dispose();
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
+    _isShuttingDown = true;
     _hideTimer?.cancel();
-    _player?.dispose();
+    _mockTimer?.cancel();
+
+    // Hand the player and its listeners off to an async teardown: `dispose()`
+    // cannot await, and every one of these calls is asynchronous.
+    final player = _player;
+    final subscriptions = List<StreamSubscription>.of(_subscriptions);
+    _player = null;
+    _subscriptions.clear();
+    unawaited(_teardown(player, subscriptions));
+
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
@@ -207,6 +271,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Widget build(BuildContext context) {
     final hasVideo = _videoController != null;
 
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) _onPopped();
+      },
+      child: _buildPlayer(hasVideo),
+    );
+  }
+
+  Widget _buildPlayer(bool hasVideo) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
