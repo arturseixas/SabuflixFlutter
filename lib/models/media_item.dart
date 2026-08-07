@@ -18,6 +18,10 @@ class MediaItem {
   final List<dynamic>? seasons; // To store season details for TV shows
   final String? ageRating;
 
+  /// TMDB's own flag for pornographic titles. Nothing carrying it is allowed
+  /// into the catalog — see `TMDBService.withoutAdult`.
+  final bool isAdult;
+
   MediaItem({
     required this.id,
     required this.title,
@@ -37,6 +41,7 @@ class MediaItem {
     this.imdbId,
     this.seasons,
     this.ageRating,
+    this.isAdult = false,
   });
 
   String get fullPosterPath {
@@ -112,6 +117,7 @@ class MediaItem {
       imdbId: parsedImdbId ?? json['imdbId'],
       seasons: json['seasons'],
       ageRating: json['ageRating'],
+      isAdult: json['adult'] == true,
     );
   }
 
@@ -135,6 +141,7 @@ class MediaItem {
       'imdbId': imdbId,
       'seasons': seasons,
       'ageRating': ageRating,
+      'adult': isAdult,
     };
   }
 
@@ -167,6 +174,7 @@ class MediaItem {
       imdbId: imdbId ?? this.imdbId,
       seasons: seasons ?? this.seasons,
       ageRating: ageRating ?? this.ageRating,
+      isAdult: isAdult,
     );
   }
 }

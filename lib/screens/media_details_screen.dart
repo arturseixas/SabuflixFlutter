@@ -230,7 +230,12 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
 
     final mediaAge = _getAgeValue(media.ageRating);
     final profileAge = _getAgeValue(profileProvider.currentProfile?.maxAgeRating);
-    final isBlocked = mediaAge > profileAge;
+
+    // Pornographic titles never reach the catalog, but one saved to a list
+    // before the filter existed still can — the details fetch carries TMDB's
+    // flag, so it gets caught here.
+    final isPornographic = media.isAdult;
+    final isBlocked = isPornographic || mediaAge > profileAge;
 
     // Stored sources expire, so resuming from here re-picks a fresh one and
     // only carries the position across.
@@ -389,7 +394,9 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Este conteúdo possui classificação superior à permitida pelo seu perfil.',
+                              isPornographic
+                                  ? 'Este conteúdo não está disponível no Sabuflix.'
+                                  : 'Este conteúdo possui classificação superior à permitida pelo seu perfil.',
                               style: SabuflixTheme.body(color: Colors.redAccent, fontWeight: FontWeight.w600),
                             ),
                           ),
