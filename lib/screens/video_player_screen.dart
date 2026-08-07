@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../models/media_item.dart';
+import '../providers/watch_history_provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
 
@@ -14,7 +16,21 @@ class VideoPlayerScreen extends StatefulWidget {
   final MediaItem media;
   final String? videoUrl;
 
-  const VideoPlayerScreen({Key? key, required this.media, this.videoUrl}) : super(key: key);
+  /// Set for series, so progress is filed against the right episode.
+  final int? season;
+  final int? episode;
+
+  /// Where to pick playback back up, from "Continuar assistindo".
+  final Duration? resumeFrom;
+
+  const VideoPlayerScreen({
+    Key? key,
+    required this.media,
+    this.videoUrl,
+    this.season,
+    this.episode,
+    this.resumeFrom,
+  }) : super(key: key);
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -42,6 +58,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _showAudioMenu = false;
   bool _showSubtitleMenu = false;
 
+  String? _errorMessage;
+
+  /// A reported error only takes over the screen if nothing is actually
+  /// playing — media_kit also reports recoverable hiccups mid-stream.
+  bool get _hasFatalError => _errorMessage != null && !_isPlaying;
+
+  /// Captured in `initState` so progress can still be filed from `dispose()`,
+  /// where the context is already gone.
+  WatchHistoryProvider? _history;
+  int _lastRecordedSecond = 0;
+
   List<AudioTrack> _audioTracks = [];
   AudioTrack? _selectedAudioTrack;
   
@@ -53,8 +80,28 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+    _history = Provider.of<WatchHistoryProvider>(context, listen: false);
     _initPlayer();
     _startHideTimer();
+  }
+
+  /// Files the current stopping point with "Continuar assistindo". Safe to
+  /// call after the widget is gone — it touches no context.
+  void _recordProgress() {
+    final history = _history;
+    if (history == null) return;
+    if (widget.videoUrl == null || widget.videoUrl!.isEmpty) return;
+    if (_totalDuration <= 0) return;
+
+    _lastRecordedSecond = _currentPosition.toInt();
+    unawaited(history.record(
+      media: widget.media,
+      position: Duration(seconds: _currentPosition.toInt()),
+      duration: Duration(seconds: _totalDuration.toInt()),
+      season: widget.season,
+      episode: widget.episode,
+      videoUrl: widget.videoUrl,
+    ));
   }
 
   Future<void> _initPlayer() async {
@@ -74,6 +121,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       player.stream.position.listen((Duration position) {
         if (!mounted) return;
         setState(() => _currentPosition = position.inSeconds.toDouble());
+        // Checkpoint every 15s, so progress survives the app being killed
+        // rather than only being written on the way out.
+        if ((position.inSeconds - _lastRecordedSecond).abs() >= 15) {
+          _recordProgress();
+        }
       }),
       player.stream.duration.listen((Duration duration) {
         if (!mounted) return;
@@ -82,6 +134,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       player.stream.playing.listen((bool playing) {
         if (!mounted) return;
         setState(() => _isPlaying = playing);
+        if (!playing) _recordProgress();
       }),
       player.stream.buffering.listen((bool buffering) {
         if (!mounted) return;
@@ -101,6 +154,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           _selectedSubtitleTrack = track.subtitle;
         });
       }),
+      player.stream.error.listen((error) {
+        if (!mounted) return;
+        // Sources handed out by the provider expire, and a resumed one may no
+        // longer be good — say so instead of sitting on a black screen.
+        setState(() => _errorMessage = error);
+      }),
     ]);
 
     try {
@@ -111,13 +170,41 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         await _teardown(player, const []);
         return;
       }
+      await _resumeIfNeeded(player);
+      if (_isShuttingDown) {
+        await _teardown(player, const []);
+        return;
+      }
       await player.play();
     } catch (e) {
       debugPrint('Error initializing media_kit player: $e');
+      if (mounted) {
+        setState(() => _errorMessage = 'Não foi possível carregar esta fonte.');
+      }
     }
 
     if (_isShuttingDown) {
       await _teardown(player, const []);
+    }
+  }
+
+  /// Seeks to the stored position once the media reports a duration — seeking
+  /// before that lands nowhere.
+  Future<void> _resumeIfNeeded(Player player) async {
+    final resumeFrom = widget.resumeFrom;
+    if (resumeFrom == null || resumeFrom <= Duration.zero) return;
+
+    try {
+      if (player.state.duration <= Duration.zero) {
+        await player.stream.duration
+            .firstWhere((duration) => duration > Duration.zero)
+            .timeout(const Duration(seconds: 10));
+      }
+      if (_isShuttingDown) return;
+      _lastRecordedSecond = resumeFrom.inSeconds;
+      await player.seek(resumeFrom);
+    } catch (e) {
+      debugPrint('Could not resume playback at $resumeFrom: $e');
     }
   }
 
@@ -216,6 +303,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void _onPopped() {
     if (_isShuttingDown) return;
     _isShuttingDown = true;
+    _recordProgress();
     final player = _player;
     if (player != null) unawaited(_pauseQuietly(player));
   }
@@ -250,6 +338,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
+    _recordProgress();
     _isShuttingDown = true;
     _hideTimer?.cancel();
     _mockTimer?.cancel();
@@ -305,8 +394,44 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
               ),
 
-            if (_isBuffering && hasVideo)
+            if (_isBuffering && hasVideo && !_hasFatalError)
               const Center(child: CircularProgressIndicator(color: SabuflixTheme.accent)),
+
+            if (_hasFatalError)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: GlassContainer(
+                    borderRadius: SabuflixTheme.radiusLg,
+                    blur: 30,
+                    fillOpacity: 0.5,
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: Colors.white, size: 34),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Não foi possível reproduzir esta fonte.',
+                          textAlign: TextAlign.center,
+                          style: SabuflixTheme.title(fontSize: 16, color: Colors.white),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Ela pode ter expirado. Volte e escolha outra fonte.',
+                          textAlign: TextAlign.center,
+                          style: SabuflixTheme.body(fontSize: 13, color: SabuflixTheme.textSecondary),
+                        ),
+                        const SizedBox(height: 18),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Voltar'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             if (_showControls || !_isPlaying)
               AnimatedContainer(

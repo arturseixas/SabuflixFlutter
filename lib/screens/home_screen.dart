@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/profile_provider.dart';
+import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/media_row.dart';
 import '../widgets/wordmark.dart';
@@ -79,6 +80,7 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 16),
+                        const ContinueWatchingRow(),
                         MediaRow(
                           title: 'Em Alta Hoje',
                           mediaItems: catalog.trending,

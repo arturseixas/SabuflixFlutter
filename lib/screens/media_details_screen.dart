@@ -13,6 +13,7 @@ import '../widgets/glass_container.dart';
 import '../services/froststream_service.dart';
 import '../providers/profile_provider.dart';
 import '../providers/playlist_provider.dart';
+import '../providers/watch_history_provider.dart';
 import 'video_player_screen.dart';
 
 class MediaDetailsScreen extends StatefulWidget {
@@ -68,7 +69,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     }
   }
 
-  Future<void> _showStreamSelector({int? season, int? episode}) async {
+  Future<void> _showStreamSelector({int? season, int? episode, Duration? resumeFrom}) async {
     final media = _detailedMedia ?? widget.media;
     final imdbId = media.imdbId;
     if (imdbId == null || imdbId.isEmpty) {
@@ -128,7 +129,16 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           trailing: const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
                           onTap: () {
                             Navigator.pop(ctx);
-                            Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s['url'])));
+                            Navigator.push(
+                              context,
+                              glassRoute(VideoPlayerScreen(
+                                media: media,
+                                videoUrl: s['url'],
+                                season: season,
+                                episode: episode,
+                                resumeFrom: resumeFrom,
+                              )),
+                            );
                           },
                         );
                       },
@@ -221,6 +231,19 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     final mediaAge = _getAgeValue(media.ageRating);
     final profileAge = _getAgeValue(profileProvider.currentProfile?.maxAgeRating);
     final isBlocked = mediaAge > profileAge;
+
+    // Stored sources expire, so resuming from here re-picks a fresh one and
+    // only carries the position across.
+    final progress = Provider.of<WatchHistoryProvider>(context).progressFor(media.id);
+    final resume = (progress != null && progress.isWorthResuming) ? progress : null;
+    final String playLabel;
+    if (resume != null) {
+      // Kept short — the button is only 180pt wide on mobile, and the row on
+      // the home screen already carries how much is left.
+      playLabel = resume.episodeLabel != null ? 'Continuar ${resume.episodeLabel}' : 'Continuar';
+    } else {
+      playLabel = media.mediaType == 'tv' ? 'Assistir S$_seasonNumber:E1' : 'Assistir Agora';
+    }
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
@@ -397,7 +420,13 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           ),
                           child: ElevatedButton.icon(
                             onPressed: () {
-                              if (media.mediaType == 'tv') {
+                              if (resume != null) {
+                                _showStreamSelector(
+                                  season: resume.season ?? (media.mediaType == 'tv' ? _seasonNumber : null),
+                                  episode: resume.episode ?? (media.mediaType == 'tv' ? 1 : null),
+                                  resumeFrom: resume.position,
+                                );
+                              } else if (media.mediaType == 'tv') {
                                 _showStreamSelector(season: _seasonNumber, episode: 1);
                               } else {
                                 _showStreamSelector();
@@ -410,7 +439,9 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                             ),
                             icon: const Icon(Icons.play_arrow_rounded, size: 26, color: Colors.white),
                             label: Text(
-                              media.mediaType == 'tv' ? 'Assistir S$_seasonNumber:E1' : 'Assistir Agora',
+                              playLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
                           ),

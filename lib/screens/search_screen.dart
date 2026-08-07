@@ -38,7 +38,16 @@ class _SearchScreenState extends State<SearchScreen> {
               child: GlassContainer(
                 borderRadius: SabuflixTheme.radiusPill,
                 blur: 24,
-                fillOpacity: 0.35,
+                // An even fill instead of the default glass gradient, which runs
+                // bright at one end and near-black at the other — the placeholder
+                // was washed out on the light edge and lost on the dark one.
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.11),
+                    Colors.white.withValues(alpha: 0.07),
+                  ],
+                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.16), width: 0.8),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _searchController,
@@ -46,7 +55,11 @@ class _SearchScreenState extends State<SearchScreen> {
                   onChanged: (val) => searchProvider.search(val),
                   decoration: InputDecoration(
                     hintText: 'Pesquisar filmes, séries e gêneros',
-                    hintStyle: SabuflixTheme.body(fontSize: 15, color: SabuflixTheme.textMuted),
+                    hintStyle: SabuflixTheme.body(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: SabuflixTheme.textSecondary,
+                    ),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -55,7 +68,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     prefixIcon: const Icon(Icons.search_rounded, color: SabuflixTheme.accent, size: 22),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.close_rounded, color: SabuflixTheme.textMuted, size: 20),
+                            icon: const Icon(Icons.close_rounded, color: SabuflixTheme.textSecondary, size: 20),
                             onPressed: () {
                               _searchController.clear();
                               searchProvider.clearSearch();
