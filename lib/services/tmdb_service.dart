@@ -111,6 +111,27 @@ class TMDBService {
     return [];
   }
 
+  /// The ten most popular titles available in Brazil, for the ranked row.
+  Future<List<MediaItem>> fetchTopRankedInBrazil() async {
+    final url = Uri.parse(
+      '$baseUrl/discover/movie?api_key=$apiKey&language=$defaultLang'
+      '&region=BR&watch_region=BR&sort_by=popularity.desc&include_adult=false&page=1',
+    );
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List results = data['results'] ?? [];
+        return withoutAdult(results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie')))
+            .take(10)
+            .toList();
+      }
+    } catch (e) {
+      print('Error fetching top ranked: $e');
+    }
+    return [];
+  }
+
   Future<List<MediaItem>> fetchByGenre(int genreId, {String mediaType = 'movie'}) async {
     final endpoint = mediaType == 'movie' ? 'discover/movie' : 'discover/tv';
     final url = Uri.parse('$baseUrl/$endpoint?api_key=$apiKey&language=$defaultLang&with_genres=$genreId&sort_by=popularity.desc&include_adult=false');

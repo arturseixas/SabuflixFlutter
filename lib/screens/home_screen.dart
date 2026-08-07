@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/favorites_provider.dart';
 import '../providers/profile_provider.dart';
+import '../widgets/because_you_watched_row.dart';
 import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/media_row.dart';
+import '../widgets/ranked_row.dart';
 import '../widgets/wordmark.dart';
 import 'profile_selection_screen.dart';
 
@@ -81,9 +84,20 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         const SizedBox(height: 16),
                         const ContinueWatchingRow(),
+                        RankedRow(
+                          title: 'Top 10 no Brasil hoje',
+                          mediaItems: catalog.topRanked,
+                        ),
                         MediaRow(
                           title: 'Em Alta Hoje',
                           mediaItems: catalog.trending,
+                        ),
+                        const BecauseYouWatchedRow(),
+                        Consumer<FavoritesProvider>(
+                          builder: (context, favorites, child) => MediaRow(
+                            title: 'Minha Lista',
+                            mediaItems: favorites.favorites,
+                          ),
                         ),
                         MediaRow(
                           title: 'Filmes Populares',

@@ -32,6 +32,9 @@ class CatalogProvider extends ChangeNotifier {
   List<MediaItem> _sciFiMovies = [];
   List<MediaItem> get sciFiMovies => _sciFiMovies;
 
+  List<MediaItem> _topRanked = [];
+  List<MediaItem> get topRanked => _topRanked;
+
   CatalogProvider() {
     loadCatalog();
   }
@@ -49,6 +52,7 @@ class CatalogProvider extends ChangeNotifier {
         _tmdbService.fetchByGenre(28, mediaType: 'movie'), // Action
         _tmdbService.fetchByGenre(35, mediaType: 'movie'), // Comedy
         _tmdbService.fetchByGenre(878, mediaType: 'movie'), // Sci-Fi
+        _tmdbService.fetchTopRankedInBrazil(),
       ]);
 
       _trending = results[0];
@@ -58,6 +62,7 @@ class CatalogProvider extends ChangeNotifier {
       _actionMovies = results[4];
       _comedyMovies = results[5];
       _sciFiMovies = results[6];
+      _topRanked = results[7];
 
       if (_trending.isNotEmpty) {
         // Pick first item with backdropPath for Hero Banner
