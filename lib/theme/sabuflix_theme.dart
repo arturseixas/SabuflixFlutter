@@ -224,7 +224,9 @@ class SabuflixTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.08),
-        hintStyle: body(color: textMuted),
+        // textSecondary, not textMuted: muted gray on a translucent fill sits
+        // under 3:1 against the backdrop and reads as disabled, not as a hint.
+        hintStyle: body(color: textSecondary, fontWeight: FontWeight.w500),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: radiusMd,

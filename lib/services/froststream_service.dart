@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/stream_source.dart';
 
 class FrostStreamService {
   static const String _baseUrl = 'https://froststream.cloutteam.com/stream';
 
-  static Future<List<Map<String, dynamic>>> fetchStreams({
+  /// Returns sources already normalised into [StreamSource], so nothing the
+  /// provider names itself is ever handed to the UI.
+  static Future<List<StreamSource>> fetchStreams({
     required String imdbId,
     required String type, // 'movie' or 'tv'
     int? season,
@@ -25,7 +28,13 @@ class FrostStreamService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List streams = data['streams'] ?? [];
-        return streams.map((s) => s as Map<String, dynamic>).toList();
+        final sources = streams
+            .whereType<Map>()
+            .map((s) => StreamSource.tryParse(Map<String, dynamic>.from(s)))
+            .whereType<StreamSource>()
+            .toList();
+        sources.sort(StreamSource.compareByQuality);
+        return sources;
       }
     } catch (e) {
       print('Error fetching FrostStream: $e');

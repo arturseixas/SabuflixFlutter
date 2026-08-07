@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/favorites_provider.dart';
 import '../providers/profile_provider.dart';
+import '../widgets/because_you_watched_row.dart';
+import '../widgets/catalog_skeleton.dart';
+import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/media_row.dart';
+import '../widgets/ranked_row.dart';
 import '../widgets/wordmark.dart';
 import 'profile_selection_screen.dart';
 
@@ -21,28 +26,9 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
       body: catalog.isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: CircularProgressIndicator(
-                      color: SabuflixTheme.textPrimary,
-                      strokeWidth: 2.5,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Carregando catálogo...',
-                    style: SabuflixTheme.body(fontSize: 14),
-                  ),
-                ],
-              ),
-            )
+          ? const CatalogSkeleton()
           : RefreshIndicator(
-              onRefresh: () => catalog.loadCatalog(),
+              onRefresh: () => catalog.loadCatalog(forceRefresh: true),
               color: SabuflixTheme.textPrimary,
               backgroundColor: SabuflixTheme.surface,
               child: CustomScrollView(
@@ -79,9 +65,21 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 16),
+                        const ContinueWatchingRow(),
+                        RankedRow(
+                          title: 'Top 10 no Brasil hoje',
+                          mediaItems: catalog.topRanked,
+                        ),
                         MediaRow(
                           title: 'Em Alta Hoje',
                           mediaItems: catalog.trending,
+                        ),
+                        const BecauseYouWatchedRow(),
+                        Consumer<FavoritesProvider>(
+                          builder: (context, favorites, child) => MediaRow(
+                            title: 'Minha Lista',
+                            mediaItems: favorites.favorites,
+                          ),
                         ),
                         MediaRow(
                           title: 'Filmes Populares',

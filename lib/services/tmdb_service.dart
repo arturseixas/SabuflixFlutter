@@ -42,6 +42,15 @@ class TMDBService {
     return genreMap[id] ?? 'Entretenimento';
   }
 
+  /// Drops pornographic titles from a result set.
+  ///
+  /// `include_adult=false` only covers search and discover; trending, popular,
+  /// top rated and recommendations take no such parameter and can still hand
+  /// back a flagged title, so every list the app builds runs through here.
+  static List<MediaItem> withoutAdult(Iterable<MediaItem> items) {
+    return items.where((item) => !item.isAdult).toList();
+  }
+
   Future<List<MediaItem>> fetchTrending({String mediaType = 'all', String timeWindow = 'week'}) async {
     final url = Uri.parse('$baseUrl/trending/$mediaType/$timeWindow?api_key=$apiKey&language=$defaultLang');
     try {
@@ -49,7 +58,7 @@ class TMDBService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results.map((item) => MediaItem.fromJson(item)).toList();
+        return withoutAdult(results.map((item) => MediaItem.fromJson(item)));
       }
     } catch (e) {
       print('Error fetching trending: $e');
@@ -64,7 +73,7 @@ class TMDBService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie')).toList();
+        return withoutAdult(results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie')));
       }
     } catch (e) {
       print('Error fetching popular movies: $e');
@@ -79,7 +88,7 @@ class TMDBService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'tv')).toList();
+        return withoutAdult(results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'tv')));
       }
     } catch (e) {
       print('Error fetching popular tv: $e');
@@ -94,7 +103,7 @@ class TMDBService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie')).toList();
+        return withoutAdult(results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie')));
       }
     } catch (e) {
       print('Error fetching top rated: $e');
@@ -102,15 +111,36 @@ class TMDBService {
     return [];
   }
 
-  Future<List<MediaItem>> fetchByGenre(int genreId, {String mediaType = 'movie'}) async {
-    final endpoint = mediaType == 'movie' ? 'discover/movie' : 'discover/tv';
-    final url = Uri.parse('$baseUrl/$endpoint?api_key=$apiKey&language=$defaultLang&with_genres=$genreId&sort_by=popularity.desc');
+  /// The ten most popular titles available in Brazil, for the ranked row.
+  Future<List<MediaItem>> fetchTopRankedInBrazil() async {
+    final url = Uri.parse(
+      '$baseUrl/discover/movie?api_key=$apiKey&language=$defaultLang'
+      '&region=BR&watch_region=BR&sort_by=popularity.desc&include_adult=false&page=1',
+    );
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: mediaType)).toList();
+        return withoutAdult(results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie')))
+            .take(10)
+            .toList();
+      }
+    } catch (e) {
+      print('Error fetching top ranked: $e');
+    }
+    return [];
+  }
+
+  Future<List<MediaItem>> fetchByGenre(int genreId, {String mediaType = 'movie', int page = 1}) async {
+    final endpoint = mediaType == 'movie' ? 'discover/movie' : 'discover/tv';
+    final url = Uri.parse('$baseUrl/$endpoint?api_key=$apiKey&language=$defaultLang&with_genres=$genreId&sort_by=popularity.desc&include_adult=false&page=$page');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List results = data['results'] ?? [];
+        return withoutAdult(results.map((item) => MediaItem.fromJson(item, defaultMediaType: mediaType)));
       }
     } catch (e) {
       print('Error fetching by genre $genreId: $e');
@@ -273,7 +303,7 @@ class TMDBService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: mediaType)).take(10).toList();
+        return withoutAdult(results.map((item) => MediaItem.fromJson(item, defaultMediaType: mediaType))).take(10).toList();
       }
     } catch (e) {
       print('Error fetching recommendations: $e');
@@ -281,18 +311,17 @@ class TMDBService {
     return [];
   }
 
-  Future<List<MediaItem>> searchMedia(String query) async {
+  Future<List<MediaItem>> searchMedia(String query, {int page = 1}) async {
     if (query.trim().isEmpty) return [];
-    final url = Uri.parse('$baseUrl/search/multi?api_key=$apiKey&language=$defaultLang&query=${Uri.encodeComponent(query)}&page=1');
+    final url = Uri.parse('$baseUrl/search/multi?api_key=$apiKey&language=$defaultLang&query=${Uri.encodeComponent(query)}&page=$page&include_adult=false');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results
+        return withoutAdult(results
             .where((item) => item['media_type'] == 'movie' || item['media_type'] == 'tv')
-            .map((item) => MediaItem.fromJson(item))
-            .toList();
+            .map((item) => MediaItem.fromJson(item)));
       }
     } catch (e) {
       print('Error searching media: $e');

@@ -2,15 +2,73 @@ name: Sabuflix Multiplatform Build
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'claude/**' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
+  verify:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # --no-fatal-infos: the repo carries pre-existing info-level lints
+      # (avoid_print, use_super_parameters). Errors and warnings still fail.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        run: flutter test
+
+  build-web:
+    name: Build Web Bundle
+    runs-on: ubuntu-latest
+    needs: verify
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Web Release
+        run: flutter build web --release
+
+      - name: Package Web Bundle
+        run: |
+          mkdir -p dist
+          tar -czf dist/sabuflix-web.tar.gz -C build/web .
+
+      - name: Upload Web Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabuflix-web
+          path: dist/sabuflix-web.tar.gz
+
   build-windows:
     name: Build Windows Executable (.exe)
     runs-on: windows-latest
+    needs: verify
 
     steps:
       - name: Checkout repository
@@ -73,6 +131,7 @@ jobs:
   build-android:
     name: Build Android Package (.apk)
     runs-on: ubuntu-latest
+    needs: verify
 
     steps:
       - name: Checkout repository

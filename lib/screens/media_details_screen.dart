@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/media_item.dart';
 import '../models/cast_member.dart';
+import '../models/stream_source.dart';
 import '../theme/sabuflix_theme.dart';
 import '../services/tmdb_service.dart';
 import '../providers/favorites_provider.dart';
@@ -13,6 +14,7 @@ import '../widgets/glass_container.dart';
 import '../services/froststream_service.dart';
 import '../providers/profile_provider.dart';
 import '../providers/playlist_provider.dart';
+import '../providers/watch_history_provider.dart';
 import 'video_player_screen.dart';
 
 class MediaDetailsScreen extends StatefulWidget {
@@ -32,10 +34,31 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
   List<dynamic> _episodes = [];
   int _seasonNumber = 1;
 
+  /// Season numbers with real episodes — specials (season 0) are left out.
+  List<int> _seasonNumbers = [];
+  bool _isLoadingEpisodes = false;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  Future<void> _selectSeason(int seasonNumber) async {
+    if (seasonNumber == _seasonNumber && _episodes.isNotEmpty) return;
+
+    setState(() {
+      _seasonNumber = seasonNumber;
+      _isLoadingEpisodes = true;
+      _episodes = [];
+    });
+
+    final episodes = await _tmdbService.fetchSeasonEpisodes(widget.media.id, seasonNumber);
+    if (!mounted) return;
+    setState(() {
+      _episodes = episodes;
+      _isLoadingEpisodes = false;
+    });
   }
 
   Future<void> _loadData() async {
@@ -45,11 +68,16 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
       final similarList = await _tmdbService.fetchSimilar(widget.media.id, widget.media.mediaType);
 
       List<dynamic> episodes = [];
+      List<int> seasonNumbers = [];
       int sNum = 1;
       if (widget.media.mediaType == 'tv' && details != null) {
          if (details.seasons != null && details.seasons!.isNotEmpty) {
-           final validSeasons = details.seasons!.where((s) => s['season_number'] > 0).toList();
-           if (validSeasons.isNotEmpty) sNum = validSeasons.first['season_number'];
+           seasonNumbers = details.seasons!
+               .where((s) => (s['season_number'] ?? 0) > 0)
+               .map<int>((s) => s['season_number'] as int)
+               .toList()
+             ..sort();
+           if (seasonNumbers.isNotEmpty) sNum = seasonNumbers.first;
          }
          episodes = await _tmdbService.fetchSeasonEpisodes(widget.media.id, sNum);
       }
@@ -60,6 +88,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
         _cast = castList;
         _similar = similarList;
         _episodes = episodes;
+        _seasonNumbers = seasonNumbers;
         _seasonNumber = sNum;
       });
     } catch (e) {
@@ -68,7 +97,20 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     }
   }
 
-  Future<void> _showStreamSelector({int? season, int? episode}) async {
+  /// The next episode in the loaded season, or null at the end of it — the
+  /// player uses this to offer "Próximo episódio" when playback finishes.
+  int? _nextEpisodeAfter(int? season, int? episode) {
+    if (season == null || episode == null || season != _seasonNumber) return null;
+
+    final later = _episodes
+        .map<int>((e) => (e['episode_number'] as int?) ?? 0)
+        .where((number) => number > episode)
+        .toList()
+      ..sort();
+    return later.isEmpty ? null : later.first;
+  }
+
+  Future<void> _showStreamSelector({int? season, int? episode, Duration? resumeFrom}) async {
     final media = _detailedMedia ?? widget.media;
     final imdbId = media.imdbId;
     if (imdbId == null || imdbId.isEmpty) {
@@ -85,7 +127,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
           padding: const EdgeInsets.all(24),
           blur: 40,
           fillOpacity: 0.4,
-          child: FutureBuilder<List<Map<String, dynamic>>>(
+          child: FutureBuilder<List<StreamSource>>(
             future: FrostStreamService.fetchStreams(
               imdbId: imdbId,
               type: media.mediaType,
@@ -112,23 +154,37 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                       itemCount: streams.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (ctx, i) {
-                        final s = streams[i];
+                        final source = streams[i];
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
                           tileColor: Colors.white.withValues(alpha: 0.08),
-                          title: Text(s['name'] ?? 'Stream', style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
+                          title: Text(source.label, style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 6.0),
                             child: Text(
-                              s['title'] ?? 'Qualidade desconhecida', 
+                              source.subtitle,
                               style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
                             ),
                           ),
                           trailing: const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
-                          onTap: () {
+                          onTap: () async {
                             Navigator.pop(ctx);
-                            Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s['url'])));
+                            final nextEpisode = _nextEpisodeAfter(season, episode);
+                            final playNext = await Navigator.push<bool>(
+                              context,
+                              glassRoute(VideoPlayerScreen(
+                                media: media,
+                                videoUrl: source.url,
+                                season: season,
+                                episode: episode,
+                                resumeFrom: resumeFrom,
+                                nextEpisode: nextEpisode,
+                              )),
+                            );
+                            if (playNext == true && nextEpisode != null && mounted) {
+                              _showStreamSelector(season: season, episode: nextEpisode);
+                            }
                           },
                         );
                       },
@@ -220,7 +276,26 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
 
     final mediaAge = _getAgeValue(media.ageRating);
     final profileAge = _getAgeValue(profileProvider.currentProfile?.maxAgeRating);
-    final isBlocked = mediaAge > profileAge;
+
+    // Pornographic titles never reach the catalog, but one saved to a list
+    // before the filter existed still can — the details fetch carries TMDB's
+    // flag, so it gets caught here.
+    final isPornographic = media.isAdult;
+    final isBlocked = isPornographic || mediaAge > profileAge;
+
+    // Stored sources expire, so resuming from here re-picks a fresh one and
+    // only carries the position across.
+    final history = Provider.of<WatchHistoryProvider>(context);
+    final progress = history.progressFor(media.id);
+    final resume = (progress != null && progress.isWorthResuming) ? progress : null;
+    final String playLabel;
+    if (resume != null) {
+      // Kept short — the button is only 180pt wide on mobile, and the row on
+      // the home screen already carries how much is left.
+      playLabel = resume.episodeLabel != null ? 'Continuar ${resume.episodeLabel}' : 'Continuar';
+    } else {
+      playLabel = media.mediaType == 'tv' ? 'Assistir S$_seasonNumber:E1' : 'Assistir Agora';
+    }
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
@@ -366,7 +441,9 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Este conteúdo possui classificação superior à permitida pelo seu perfil.',
+                              isPornographic
+                                  ? 'Este conteúdo não está disponível no Sabuflix.'
+                                  : 'Este conteúdo possui classificação superior à permitida pelo seu perfil.',
                               style: SabuflixTheme.body(color: Colors.redAccent, fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -397,7 +474,13 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           ),
                           child: ElevatedButton.icon(
                             onPressed: () {
-                              if (media.mediaType == 'tv') {
+                              if (resume != null) {
+                                _showStreamSelector(
+                                  season: resume.season ?? (media.mediaType == 'tv' ? _seasonNumber : null),
+                                  episode: resume.episode ?? (media.mediaType == 'tv' ? 1 : null),
+                                  resumeFrom: resume.position,
+                                );
+                              } else if (media.mediaType == 'tv') {
                                 _showStreamSelector(season: _seasonNumber, episode: 1);
                               } else {
                                 _showStreamSelector();
@@ -410,7 +493,9 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                             ),
                             icon: const Icon(Icons.play_arrow_rounded, size: 26, color: Colors.white),
                             label: Text(
-                              media.mediaType == 'tv' ? 'Assistir S$_seasonNumber:E1' : 'Assistir Agora',
+                              playLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
                           ),
@@ -454,75 +539,162 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  if (!isBlocked && _episodes.isNotEmpty) ...[
+                  if (!isBlocked && media.mediaType == 'tv' && _seasonNumbers.isNotEmpty) ...[
                     Text('Episódios', style: SabuflixTheme.title(fontSize: 19)),
+                    if (_seasonNumbers.length > 1) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 36,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _seasonNumbers.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final number = _seasonNumbers[index];
+                            final isSelected = number == _seasonNumber;
+                            return ChoiceChip(
+                              label: Text('Temporada $number'),
+                              selected: isSelected,
+                              showCheckmark: false,
+                              selectedColor: SabuflixTheme.accent,
+                              backgroundColor: Colors.white.withValues(alpha: 0.08),
+                              labelStyle: SabuflixTheme.body(
+                                fontSize: 13,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? Colors.white : SabuflixTheme.textSecondary,
+                              ),
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(999)),
+                                side: BorderSide.none,
+                              ),
+                              onSelected: (_) => _selectSeason(number),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     SizedBox(
-                      height: 150,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _episodes.length,
-                        physics: const BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          final ep = _episodes[index];
-                          final stillPath = ep['still_path'];
-                          final epNum = ep['episode_number'] ?? (index + 1);
-                          final epName = ep['name'] ?? 'Episódio $epNum';
-                          final fullStillPath = stillPath != null ? 'https://image.tmdb.org/t/p/w300$stillPath' : media.fullBackdropPath;
+                      height: 158,
+                      child: _isLoadingEpisodes
+                          ? const Center(child: CircularProgressIndicator(color: SabuflixTheme.accent, strokeWidth: 2.5))
+                          : _episodes.isEmpty
+                              ? Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Text(
+                                    'Nenhum episódio listado para esta temporada.',
+                                    style: SabuflixTheme.body(fontSize: 13),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _episodes.length,
+                                  physics: const BouncingScrollPhysics(),
+                                  itemBuilder: (context, index) {
+                                    final ep = _episodes[index];
+                                    final stillPath = ep['still_path'];
+                                    final epNum = ep['episode_number'] ?? (index + 1);
+                                    final epName = ep['name'] ?? 'Episódio $epNum';
+                                    final fullStillPath = stillPath != null ? 'https://image.tmdb.org/t/p/w300$stillPath' : media.fullBackdropPath;
 
-                          return GestureDetector(
-                            onTap: () => _showStreamSelector(season: _seasonNumber, episode: epNum),
-                            child: Container(
-                              width: 200,
-                              margin: const EdgeInsets.only(right: 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: SabuflixTheme.radiusMd,
-                                    child: AspectRatio(
-                                      aspectRatio: 16 / 9,
-                                      child: Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          CachedNetworkImage(
-                                            imageUrl: fullStillPath,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) => Container(color: SabuflixTheme.surface),
-                                            errorWidget: (context, url, err) => Container(color: SabuflixTheme.surface),
-                                          ),
-                                          Center(
-                                            child: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.black.withValues(alpha: 0.5),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
-                                            ),
-                                          ),
-                                        ],
+                                    final isWatched = history.isEpisodeWatched(media.id, _seasonNumber, epNum);
+                                    // The resume point only belongs to the episode it was left on.
+                                    final resumeHere = resume != null &&
+                                        resume.season == _seasonNumber &&
+                                        resume.episode == epNum;
+
+                                    return GestureDetector(
+                                      onTap: () => _showStreamSelector(
+                                        season: _seasonNumber,
+                                        episode: epNum,
+                                        resumeFrom: resumeHere ? resume.position : null,
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '$epNum. $epName',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: SabuflixTheme.body(color: SabuflixTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                                  ),
-                                  if (ep['runtime'] != null)
-                                    Text(
-                                      '${ep['runtime']} min',
-                                      style: SabuflixTheme.body(color: SabuflixTheme.textMuted, fontSize: 11),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                                      child: Container(
+                                        width: 200,
+                                        margin: const EdgeInsets.only(right: 16),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: SabuflixTheme.radiusMd,
+                                              child: AspectRatio(
+                                                aspectRatio: 16 / 9,
+                                                child: Stack(
+                                                  fit: StackFit.expand,
+                                                  children: [
+                                                    CachedNetworkImage(
+                                                      imageUrl: fullStillPath,
+                                                      fit: BoxFit.cover,
+                                                      placeholder: (context, url) => Container(color: SabuflixTheme.surface),
+                                                      errorWidget: (context, url, err) => Container(color: SabuflixTheme.surface),
+                                                    ),
+                                                    if (isWatched)
+                                                      Container(color: Colors.black.withValues(alpha: 0.45)),
+                                                    Center(
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(8),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.black.withValues(alpha: 0.5),
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                                                      ),
+                                                    ),
+                                                    if (isWatched)
+                                                      Positioned(
+                                                        top: 6,
+                                                        right: 6,
+                                                        child: Container(
+                                                          padding: const EdgeInsets.all(3),
+                                                          decoration: const BoxDecoration(
+                                                            color: SabuflixTheme.accent,
+                                                            shape: BoxShape.circle,
+                                                          ),
+                                                          child: const Icon(Icons.check_rounded, color: Colors.white, size: 13),
+                                                        ),
+                                                      ),
+                                                    if (resumeHere)
+                                                      Positioned(
+                                                        left: 8,
+                                                        right: 8,
+                                                        bottom: 6,
+                                                        child: ClipRRect(
+                                                          borderRadius: const BorderRadius.all(Radius.circular(999)),
+                                                          child: LinearProgressIndicator(
+                                                            value: resume.fraction,
+                                                            minHeight: 3,
+                                                            backgroundColor: Colors.white.withValues(alpha: 0.3),
+                                                            valueColor: const AlwaysStoppedAnimation<Color>(SabuflixTheme.accent),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              '$epNum. $epName',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: SabuflixTheme.body(
+                                                color: isWatched ? SabuflixTheme.textSecondary : SabuflixTheme.textPrimary,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            if (ep['runtime'] != null)
+                                              Text(
+                                                '${ep['runtime']} min',
+                                                style: SabuflixTheme.body(color: SabuflixTheme.textMuted, fontSize: 11),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                     ),
                     const SizedBox(height: 32),
                   ],

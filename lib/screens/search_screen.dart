@@ -5,6 +5,7 @@ import '../services/tmdb_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/media_card.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/catalog_skeleton.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -15,9 +16,28 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  /// Pulls the next page while the last screenful is still ahead, so the grid
+  /// never actually runs out under the finger.
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels < position.maxScrollExtent - 600) return;
+
+    Provider.of<SearchProvider>(context, listen: false).loadMore();
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -38,7 +58,16 @@ class _SearchScreenState extends State<SearchScreen> {
               child: GlassContainer(
                 borderRadius: SabuflixTheme.radiusPill,
                 blur: 24,
-                fillOpacity: 0.35,
+                // An even fill instead of the default glass gradient, which runs
+                // bright at one end and near-black at the other — the placeholder
+                // was washed out on the light edge and lost on the dark one.
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.11),
+                    Colors.white.withValues(alpha: 0.07),
+                  ],
+                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.16), width: 0.8),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _searchController,
@@ -46,7 +75,11 @@ class _SearchScreenState extends State<SearchScreen> {
                   onChanged: (val) => searchProvider.search(val),
                   decoration: InputDecoration(
                     hintText: 'Pesquisar filmes, séries e gêneros',
-                    hintStyle: SabuflixTheme.body(fontSize: 15, color: SabuflixTheme.textMuted),
+                    hintStyle: SabuflixTheme.body(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: SabuflixTheme.textSecondary,
+                    ),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -55,7 +88,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     prefixIcon: const Icon(Icons.search_rounded, color: SabuflixTheme.accent, size: 22),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.close_rounded, color: SabuflixTheme.textMuted, size: 20),
+                            icon: const Icon(Icons.close_rounded, color: SabuflixTheme.textSecondary, size: 20),
                             onPressed: () {
                               _searchController.clear();
                               searchProvider.clearSearch();
@@ -107,13 +140,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
             Expanded(
               child: searchProvider.isSearching
-                  ? const Center(
-                      child: SizedBox(
-                        width: 26,
-                        height: 26,
-                        child: CircularProgressIndicator(color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
-                      ),
-                    )
+                  ? GridSkeleton(crossAxisCount: crossAxisCount)
                   : searchProvider.searchResults.isEmpty
                       ? Center(
                           child: Padding(
@@ -135,6 +162,8 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                         )
                       : GridView.builder(
+                          controller: _scrollController,
+                          physics: const BouncingScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: crossAxisCount,
@@ -142,8 +171,18 @@ class _SearchScreenState extends State<SearchScreen> {
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),
-                          itemCount: searchProvider.searchResults.length,
+                          // One trailing cell carries the "loading more" state.
+                          itemCount: searchProvider.searchResults.length +
+                              (searchProvider.isLoadingMore ? crossAxisCount : 0),
                           itemBuilder: (context, index) {
+                            if (index >= searchProvider.searchResults.length) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: SabuflixTheme.surface,
+                                  borderRadius: SabuflixTheme.radiusLg,
+                                ),
+                              );
+                            }
                             final item = searchProvider.searchResults[index];
                             return MediaCard(media: item);
                           },
