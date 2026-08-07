@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/media_item.dart';
 import '../models/cast_member.dart';
+import '../models/stream_source.dart';
 import '../theme/sabuflix_theme.dart';
 import '../services/tmdb_service.dart';
 import '../providers/favorites_provider.dart';
@@ -86,7 +87,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
           padding: const EdgeInsets.all(24),
           blur: 40,
           fillOpacity: 0.4,
-          child: FutureBuilder<List<Map<String, dynamic>>>(
+          child: FutureBuilder<List<StreamSource>>(
             future: FrostStreamService.fetchStreams(
               imdbId: imdbId,
               type: media.mediaType,
@@ -113,16 +114,16 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                       itemCount: streams.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (ctx, i) {
-                        final s = streams[i];
+                        final source = streams[i];
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
                           tileColor: Colors.white.withValues(alpha: 0.08),
-                          title: Text(s['name'] ?? 'Stream', style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
+                          title: Text(source.label, style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 6.0),
                             child: Text(
-                              s['title'] ?? 'Qualidade desconhecida', 
+                              source.subtitle,
                               style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
                             ),
                           ),
@@ -133,7 +134,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                               context,
                               glassRoute(VideoPlayerScreen(
                                 media: media,
-                                videoUrl: s['url'],
+                                videoUrl: source.url,
                                 season: season,
                                 episode: episode,
                                 resumeFrom: resumeFrom,
