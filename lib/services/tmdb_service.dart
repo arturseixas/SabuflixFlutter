@@ -132,9 +132,9 @@ class TMDBService {
     return [];
   }
 
-  Future<List<MediaItem>> fetchByGenre(int genreId, {String mediaType = 'movie'}) async {
+  Future<List<MediaItem>> fetchByGenre(int genreId, {String mediaType = 'movie', int page = 1}) async {
     final endpoint = mediaType == 'movie' ? 'discover/movie' : 'discover/tv';
-    final url = Uri.parse('$baseUrl/$endpoint?api_key=$apiKey&language=$defaultLang&with_genres=$genreId&sort_by=popularity.desc&include_adult=false');
+    final url = Uri.parse('$baseUrl/$endpoint?api_key=$apiKey&language=$defaultLang&with_genres=$genreId&sort_by=popularity.desc&include_adult=false&page=$page');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -311,9 +311,9 @@ class TMDBService {
     return [];
   }
 
-  Future<List<MediaItem>> searchMedia(String query) async {
+  Future<List<MediaItem>> searchMedia(String query, {int page = 1}) async {
     if (query.trim().isEmpty) return [];
-    final url = Uri.parse('$baseUrl/search/multi?api_key=$apiKey&language=$defaultLang&query=${Uri.encodeComponent(query)}&page=1&include_adult=false');
+    final url = Uri.parse('$baseUrl/search/multi?api_key=$apiKey&language=$defaultLang&query=${Uri.encodeComponent(query)}&page=$page&include_adult=false');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {

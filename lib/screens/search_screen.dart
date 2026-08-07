@@ -5,6 +5,7 @@ import '../services/tmdb_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/media_card.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/catalog_skeleton.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -15,9 +16,28 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  /// Pulls the next page while the last screenful is still ahead, so the grid
+  /// never actually runs out under the finger.
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels < position.maxScrollExtent - 600) return;
+
+    Provider.of<SearchProvider>(context, listen: false).loadMore();
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -120,13 +140,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
             Expanded(
               child: searchProvider.isSearching
-                  ? const Center(
-                      child: SizedBox(
-                        width: 26,
-                        height: 26,
-                        child: CircularProgressIndicator(color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
-                      ),
-                    )
+                  ? GridSkeleton(crossAxisCount: crossAxisCount)
                   : searchProvider.searchResults.isEmpty
                       ? Center(
                           child: Padding(
@@ -148,6 +162,8 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                         )
                       : GridView.builder(
+                          controller: _scrollController,
+                          physics: const BouncingScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: crossAxisCount,
@@ -155,8 +171,18 @@ class _SearchScreenState extends State<SearchScreen> {
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),
-                          itemCount: searchProvider.searchResults.length,
+                          // One trailing cell carries the "loading more" state.
+                          itemCount: searchProvider.searchResults.length +
+                              (searchProvider.isLoadingMore ? crossAxisCount : 0),
                           itemBuilder: (context, index) {
+                            if (index >= searchProvider.searchResults.length) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: SabuflixTheme.surface,
+                                  borderRadius: SabuflixTheme.radiusLg,
+                                ),
+                              );
+                            }
                             final item = searchProvider.searchResults[index];
                             return MediaCard(media: item);
                           },
