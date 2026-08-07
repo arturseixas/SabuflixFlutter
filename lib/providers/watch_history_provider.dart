@@ -14,6 +14,8 @@ class WatchHistoryProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
+  Set<String> _watchedEpisodes = {};
+
   String? _currentProfileId;
 
   WatchHistoryProvider() {
@@ -27,8 +29,20 @@ class WatchHistoryProvider extends ChangeNotifier {
 
     _entries = await _service.load(profileId);
     _entries.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    _watchedEpisodes = await _service.loadWatchedEpisodes(profileId);
 
     _isLoading = false;
+    notifyListeners();
+  }
+
+  static String episodeKey(int mediaId, int season, int episode) => '$mediaId:s${season}e$episode';
+
+  bool isEpisodeWatched(int mediaId, int season, int episode) =>
+      _watchedEpisodes.contains(episodeKey(mediaId, season, episode));
+
+  Future<void> markEpisodeWatched(int mediaId, int season, int episode) async {
+    if (!_watchedEpisodes.add(episodeKey(mediaId, season, episode))) return;
+    await _service.saveWatchedEpisodes(_watchedEpisodes, _currentProfileId);
     notifyListeners();
   }
 
@@ -59,6 +73,13 @@ class WatchHistoryProvider extends ChangeNotifier {
       videoUrl: videoUrl,
       updatedAt: DateTime.now(),
     );
+
+    // A finished episode stays marked long after it leaves the resume row.
+    if (entry.isFinished && season != null && episode != null) {
+      if (_watchedEpisodes.add(episodeKey(media.id, season, episode))) {
+        await _service.saveWatchedEpisodes(_watchedEpisodes, _currentProfileId);
+      }
+    }
 
     final hadEntry = _entries.any((e) => e.media.id == media.id);
     if (!entry.isWorthResuming && !hadEntry) return;

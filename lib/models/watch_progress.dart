@@ -31,7 +31,7 @@ class WatchProgress {
   /// Below this, the title barely got started; above [_completedFraction] it
   /// counts as watched. Neither belongs in "Continuar assistindo".
   static const Duration _minimumPosition = Duration(seconds: 30);
-  static const double _completedFraction = 0.95;
+  static const double completedFraction = 0.95;
 
   double get fraction {
     if (duration.inSeconds <= 0) return 0;
@@ -41,7 +41,9 @@ class WatchProgress {
   bool get isWorthResuming =>
       duration > Duration.zero &&
       position >= _minimumPosition &&
-      fraction < _completedFraction;
+      fraction < completedFraction;
+
+  bool get isFinished => duration > Duration.zero && fraction >= completedFraction;
 
   Duration get remaining {
     final left = duration - position;

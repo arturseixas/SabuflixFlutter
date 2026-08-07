@@ -23,6 +23,10 @@ class VideoPlayerScreen extends StatefulWidget {
   /// Where to pick playback back up, from "Continuar assistindo".
   final Duration? resumeFrom;
 
+  /// When set, finishing the episode offers to roll straight into this one.
+  /// The screen pops with `true` to ask the caller to start it.
+  final int? nextEpisode;
+
   const VideoPlayerScreen({
     Key? key,
     required this.media,
@@ -30,6 +34,7 @@ class VideoPlayerScreen extends StatefulWidget {
     this.season,
     this.episode,
     this.resumeFrom,
+    this.nextEpisode,
   }) : super(key: key);
 
   @override
@@ -57,6 +62,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   
   bool _showAudioMenu = false;
   bool _showSubtitleMenu = false;
+  bool _showSpeedMenu = false;
+
+  bool _isCompleted = false;
+
+  double _volume = 100;
+  double _volumeBeforeMute = 100;
+  double _speed = 1.0;
+
+  static const List<double> _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+  /// Subtitle scale, cycled by the "Aa" control.
+  int _subtitleSizeIndex = 1;
+  static const List<double> _subtitleSizes = [24, 32, 44];
+  static const List<String> _subtitleSizeLabels = ['P', 'M', 'G'];
+
+  /// Holds keyboard focus so the shortcuts work without a click first.
+  final FocusNode _keyboardFocus = FocusNode();
 
   String? _errorMessage;
 
@@ -159,6 +181,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         // Sources handed out by the provider expire, and a resumed one may no
         // longer be good — say so instead of sitting on a black screen.
         setState(() => _errorMessage = error);
+      }),
+      player.stream.completed.listen((completed) {
+        if (!mounted) return;
+        setState(() {
+          _isCompleted = completed;
+          // The end of an episode is the one moment the controls must stay up.
+          if (completed) _showControls = true;
+        });
+      }),
+      player.stream.volume.listen((volume) {
+        if (!mounted) return;
+        setState(() => _volume = volume);
+      }),
+      player.stream.rate.listen((rate) {
+        if (!mounted) return;
+        setState(() => _speed = rate);
       }),
     ]);
 
@@ -268,6 +306,74 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _startHideTimer();
   }
 
+  void _setVolume(double volume) {
+    final clamped = volume.clamp(0.0, 100.0);
+    _player?.setVolume(clamped);
+    setState(() => _volume = clamped);
+    _startHideTimer();
+  }
+
+  void _toggleMute() {
+    if (_volume > 0) {
+      _volumeBeforeMute = _volume;
+      _setVolume(0);
+    } else {
+      _setVolume(_volumeBeforeMute > 0 ? _volumeBeforeMute : 100);
+    }
+  }
+
+  void _setSpeed(double speed) {
+    _player?.setRate(speed);
+    setState(() {
+      _speed = speed;
+      _showSpeedMenu = false;
+    });
+    _startHideTimer();
+  }
+
+  void _cycleSubtitleSize() {
+    setState(() => _subtitleSizeIndex = (_subtitleSizeIndex + 1) % _subtitleSizes.length);
+    _startHideTimer();
+  }
+
+  /// Pops with `true`, which the details screen reads as "open the next one".
+  void _playNextEpisode() {
+    Navigator.pop(context, true);
+  }
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+
+    // Any key press means the viewer is present — bring the controls back.
+    if (!_showControls) setState(() => _showControls = true);
+    _startHideTimer();
+
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.space:
+      case LogicalKeyboardKey.keyK:
+        _playPause();
+      case LogicalKeyboardKey.arrowLeft:
+      case LogicalKeyboardKey.keyJ:
+        _seek(-10);
+      case LogicalKeyboardKey.arrowRight:
+      case LogicalKeyboardKey.keyL:
+        _seek(10);
+      case LogicalKeyboardKey.arrowUp:
+        _setVolume(_volume + 10);
+      case LogicalKeyboardKey.arrowDown:
+        _setVolume(_volume - 10);
+      case LogicalKeyboardKey.keyM:
+        _toggleMute();
+      case LogicalKeyboardKey.escape:
+        Navigator.maybePop(context);
+      case LogicalKeyboardKey.keyN:
+        if (widget.nextEpisode != null) _playNextEpisode();
+      default:
+        return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
+  }
+
   void _seekTo(double value) {
     if (_player != null) {
       _player!.seek(Duration(seconds: value.toInt()));
@@ -342,6 +448,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _isShuttingDown = true;
     _hideTimer?.cancel();
     _mockTimer?.cancel();
+    _keyboardFocus.dispose();
 
     // Hand the player and its listeners off to an async teardown: `dispose()`
     // cannot await, and every one of these calls is asynchronous.
@@ -364,7 +471,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) _onPopped();
       },
-      child: _buildPlayer(hasVideo),
+      child: Focus(
+        focusNode: _keyboardFocus,
+        autofocus: true,
+        onKeyEvent: _handleKey,
+        child: _buildPlayer(hasVideo),
+      ),
     );
   }
 
@@ -381,8 +493,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               Center(
                 child: Video(
                   controller: _videoController!,
-                  controls: NoVideoControls, 
+                  controls: NoVideoControls,
                   fill: Colors.black,
+                  subtitleViewConfiguration: SubtitleViewConfiguration(
+                    style: TextStyle(
+                      height: 1.4,
+                      fontSize: _subtitleSizes[_subtitleSizeIndex],
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                      backgroundColor: Colors.black.withValues(alpha: 0.65),
+                    ),
+                  ),
                 ),
               )
             else
@@ -396,6 +517,36 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
             if (_isBuffering && hasVideo && !_hasFatalError)
               const Center(child: CircularProgressIndicator(color: SabuflixTheme.accent)),
+
+            if (_isCompleted && widget.nextEpisode != null && !_hasFatalError)
+              Positioned(
+                right: 28,
+                bottom: 96,
+                child: GlassContainer(
+                  borderRadius: SabuflixTheme.radiusLg,
+                  blur: 30,
+                  fillOpacity: 0.5,
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('A seguir', style: SabuflixTheme.label(color: SabuflixTheme.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Episódio ${widget.nextEpisode}',
+                        style: SabuflixTheme.title(fontSize: 17, color: Colors.white),
+                      ),
+                      const SizedBox(height: 14),
+                      ElevatedButton.icon(
+                        onPressed: _playNextEpisode,
+                        icon: const Icon(Icons.skip_next_rounded, size: 20),
+                        label: const Text('Assistir agora'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
             if (_hasFatalError)
               Center(
@@ -499,23 +650,51 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                               ),
                               const SizedBox(width: 4),
-                              if (_subtitleTracks.isNotEmpty)
+                              IconButton(
+                                tooltip: 'Velocidade',
+                                icon: Text(
+                                  '${_speed.toString().replaceAll(RegExp(r'\.0$'), '')}x',
+                                  style: SabuflixTheme.body(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _showSpeedMenu = !_showSpeedMenu;
+                                    _showAudioMenu = false;
+                                    _showSubtitleMenu = false;
+                                  });
+                                  _startHideTimer();
+                                },
+                              ),
+                              if (_subtitleTracks.isNotEmpty) ...[
                                 IconButton(
+                                  tooltip: 'Legendas',
                                   icon: const Icon(Icons.subtitles_outlined, color: Colors.white),
                                   onPressed: () {
                                     setState(() {
                                       _showSubtitleMenu = !_showSubtitleMenu;
                                       _showAudioMenu = false;
+                                      _showSpeedMenu = false;
                                     });
                                   },
                                 ),
+                                IconButton(
+                                  tooltip: 'Tamanho da legenda',
+                                  icon: Text(
+                                    'Aa ${_subtitleSizeLabels[_subtitleSizeIndex]}',
+                                    style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                                  ),
+                                  onPressed: _cycleSubtitleSize,
+                                ),
+                              ],
                               if (_audioTracks.length > 1)
                                 IconButton(
+                                  tooltip: 'Áudio',
                                   icon: const Icon(Icons.audiotrack_rounded, color: Colors.white),
                                   onPressed: () {
                                     setState(() {
                                       _showAudioMenu = !_showAudioMenu;
                                       _showSubtitleMenu = false;
+                                      _showSpeedMenu = false;
                                     });
                                   },
                                 ),
@@ -565,6 +744,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         ),
 
 
+
+                        if (_showSpeedMenu)
+                          Positioned(
+                            right: 56,
+                            top: 64,
+                            child: _TrackMenu<double>(
+                              width: 150,
+                              tracks: _speeds,
+                              selectedTrack: _speed,
+                              titleBuilder: (s) => s == 1.0 ? 'Normal' : '${s.toString().replaceAll(RegExp(r'\.0$'), '')}x',
+                              onSelect: _setSpeed,
+                            ),
+                          ),
 
                         if (_showAudioMenu)
                           Positioned(
@@ -631,9 +823,44 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 10),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(_formatDuration(_currentPosition), style: SabuflixTheme.body(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                                    const Spacer(),
+                                    if (_player != null) ...[
+                                      IconButton(
+                                        tooltip: 'Mudo (M)',
+                                        visualDensity: VisualDensity.compact,
+                                        icon: Icon(
+                                          _volume <= 0
+                                              ? Icons.volume_off_rounded
+                                              : _volume < 50
+                                                  ? Icons.volume_down_rounded
+                                                  : Icons.volume_up_rounded,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        onPressed: _toggleMute,
+                                      ),
+                                      SizedBox(
+                                        width: 96,
+                                        child: SliderTheme(
+                                          data: SliderThemeData(
+                                            trackHeight: 3,
+                                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                                            activeTrackColor: Colors.white,
+                                            inactiveTrackColor: Colors.white.withValues(alpha: 0.25),
+                                            thumbColor: Colors.white,
+                                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                                          ),
+                                          child: Slider(
+                                            value: _volume.clamp(0.0, 100.0),
+                                            max: 100,
+                                            onChanged: _setVolume,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                    ],
                                     Text(_formatDuration(_totalDuration), style: SabuflixTheme.body(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
                                   ],
                                 ),

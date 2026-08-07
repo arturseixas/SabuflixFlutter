@@ -10,6 +10,8 @@ class WatchHistoryService {
 
   String _prefsKey(String? profileId) => 'sabuflix_continue_watching_${profileId ?? "default"}';
 
+  String _watchedKey(String? profileId) => 'sabuflix_watched_episodes_${profileId ?? "default"}';
+
   Future<List<WatchProgress>> load(String? profileId) async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString(_prefsKey(profileId));
@@ -33,5 +35,17 @@ class WatchHistoryService {
       _prefsKey(profileId),
       json.encode(trimmed.map((entry) => entry.toJson()).toList()),
     );
+  }
+
+  /// Kept apart from the resume points: an episode stays marked as watched
+  /// long after it has dropped off the "Continuar assistindo" row.
+  Future<Set<String>> loadWatchedEpisodes(String? profileId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_watchedKey(profileId)) ?? const []).toSet();
+  }
+
+  Future<void> saveWatchedEpisodes(Set<String> keys, String? profileId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_watchedKey(profileId), keys.toList());
   }
 }
