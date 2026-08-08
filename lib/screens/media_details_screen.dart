@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/media_item.dart';
 import '../models/cast_member.dart';
+import '../models/download_item.dart';
 import '../theme/sabuflix_theme.dart';
 import '../services/tmdb_service.dart';
 import '../providers/favorites_provider.dart';
@@ -13,6 +14,7 @@ import '../widgets/glass_container.dart';
 import '../services/froststream_service.dart';
 import '../providers/profile_provider.dart';
 import '../providers/playlist_provider.dart';
+import '../providers/downloads_provider.dart';
 import 'video_player_screen.dart';
 
 class MediaDetailsScreen extends StatefulWidget {
@@ -68,7 +70,9 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     }
   }
 
-  Future<void> _showStreamSelector({int? season, int? episode}) async {
+  /// Shows the available sources for a title. In [forDownload] mode picking a
+  /// source queues it for offline viewing instead of starting playback.
+  Future<void> _showStreamSelector({int? season, int? episode, bool forDownload = false}) async {
     final media = _detailedMedia ?? widget.media;
     final imdbId = media.imdbId;
     if (imdbId == null || imdbId.isEmpty) {
@@ -105,7 +109,10 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Selecione uma Fonte', style: SabuflixTheme.title(fontSize: 20)),
+                  Text(
+                    forDownload ? 'Baixar — Selecione a Qualidade' : 'Selecione uma Fonte',
+                    style: SabuflixTheme.title(fontSize: 20),
+                  ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: ListView.separated(
@@ -125,10 +132,18 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                               style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
                             ),
                           ),
-                          trailing: const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
+                          trailing: Icon(
+                            forDownload ? Icons.download_for_offline_rounded : Icons.play_circle_fill_rounded,
+                            color: SabuflixTheme.accent,
+                            size: 36,
+                          ),
                           onTap: () {
                             Navigator.pop(ctx);
-                            Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s['url'])));
+                            if (forDownload) {
+                              _enqueueDownload(media, s, season: season, episode: episode);
+                            } else {
+                              Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s['url'])));
+                            }
                           },
                         );
                       },
@@ -141,6 +156,37 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
         );
       }
     );
+  }
+
+  Future<void> _enqueueDownload(
+    MediaItem media,
+    Map<String, dynamic> stream, {
+    int? season,
+    int? episode,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final downloads = Provider.of<DownloadsProvider>(context, listen: false);
+
+    final url = (stream['url'] ?? '').toString();
+    if (url.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('Esta fonte não fornece um link para download.')));
+      return;
+    }
+
+    final added = await downloads.enqueue(
+      media: media,
+      url: url,
+      sourceName: (stream['name'] ?? 'Fonte desconhecida').toString(),
+      quality: (stream['title'] ?? '').toString(),
+      season: season,
+      episode: episode,
+    );
+
+    messenger.showSnackBar(SnackBar(
+      content: Text(added
+          ? 'Download iniciado — acompanhe na aba Downloads.'
+          : 'Este título já está na sua lista de downloads.'),
+    ));
   }
 
   void _showPlaylistsSelector(MediaItem media) {
@@ -415,6 +461,57 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                             ),
                           ),
                         ),
+                        Consumer<DownloadsProvider>(
+                          builder: (context, downloads, child) {
+                            final isTv = media.mediaType == 'tv';
+                            final entry = downloads.itemFor(
+                              media,
+                              season: isTv ? _seasonNumber : null,
+                              episode: isTv ? 1 : null,
+                            );
+                            final isDone = entry?.status == DownloadStatus.completed;
+                            final inProgress = entry != null && entry.isActive;
+
+                            return GlassContainer(
+                              borderRadius: SabuflixTheme.radiusPill,
+                              blur: 28,
+                              fillOpacity: 0.3,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: SabuflixTheme.radiusPill,
+                                  onTap: () {
+                                    if (isDone) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Já disponível offline na aba Downloads.')),
+                                      );
+                                      return;
+                                    }
+                                    _showStreamSelector(
+                                      season: isTv ? _seasonNumber : null,
+                                      episode: isTv ? 1 : null,
+                                      forDownload: true,
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Icon(
+                                      isDone
+                                          ? Icons.download_done_rounded
+                                          : inProgress
+                                              ? Icons.downloading_rounded
+                                              : Icons.download_outlined,
+                                      color: isDone || inProgress
+                                          ? SabuflixTheme.accent
+                                          : SabuflixTheme.textPrimary,
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                         GlassContainer(
                           borderRadius: SabuflixTheme.radiusPill,
                           blur: 28,
@@ -499,6 +596,54 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                                 shape: BoxShape.circle,
                                               ),
                                               child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            top: 6,
+                                            right: 6,
+                                            child: Consumer<DownloadsProvider>(
+                                              builder: (context, downloads, child) {
+                                                final entry = downloads.itemFor(
+                                                  media,
+                                                  season: _seasonNumber,
+                                                  episode: epNum,
+                                                );
+                                                final isDone = entry?.status == DownloadStatus.completed;
+                                                final inProgress = entry != null && entry.isActive;
+
+                                                return Material(
+                                                  color: Colors.black.withValues(alpha: 0.55),
+                                                  shape: const CircleBorder(),
+                                                  child: InkWell(
+                                                    customBorder: const CircleBorder(),
+                                                    onTap: () {
+                                                      if (isDone) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(content: Text('Episódio já disponível offline.')),
+                                                        );
+                                                        return;
+                                                      }
+                                                      _showStreamSelector(
+                                                        season: _seasonNumber,
+                                                        episode: epNum,
+                                                        forDownload: true,
+                                                      );
+                                                    },
+                                                    child: Padding(
+                                                      padding: const EdgeInsets.all(6),
+                                                      child: Icon(
+                                                        isDone
+                                                            ? Icons.download_done_rounded
+                                                            : inProgress
+                                                                ? Icons.downloading_rounded
+                                                                : Icons.download_outlined,
+                                                        size: 16,
+                                                        color: isDone || inProgress ? SabuflixTheme.accent : Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                );
+                                              },
                                             ),
                                           ),
                                         ],

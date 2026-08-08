@@ -8,6 +8,7 @@ import 'search_screen.dart';
 import 'categories_screen.dart';
 import 'my_list_screen.dart';
 import 'playlists_screen.dart';
+import 'downloads_screen.dart';
 import 'profile_selection_screen.dart';
 import '../providers/profile_provider.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +29,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _NavDestination(Icons.category, Icons.category_outlined, 'Categorias'),
     _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista'),
     _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined, 'Playlists'),
+    _NavDestination(Icons.download_rounded, Icons.download_outlined, 'Downloads'),
   ];
 
   final List<Widget> _screens = const [
@@ -36,6 +38,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     CategoriesScreen(),
     MyListScreen(),
     PlaylistsScreen(),
+    DownloadsScreen(),
   ];
 
   @override
@@ -134,8 +137,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           children: _screens,
         ),
         Positioned(
-          left: 20,
-          right: 20,
+          left: 12,
+          right: 12,
           bottom: 24,
           child: GlassContainer(
             borderRadius: SabuflixTheme.radiusPill,
@@ -143,7 +146,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             fillOpacity: 0.4,
             hasGlow: true,
             glowColor: SabuflixTheme.accent.withValues(alpha: 0.25),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -207,7 +210,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         borderRadius: SabuflixTheme.radiusPill,
         child: AnimatedContainer(
           duration: SabuflixTheme.durationFast,
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 1),
           decoration: BoxDecoration(
             color: isSelected ? SabuflixTheme.accent.withValues(alpha: 0.22) : Colors.transparent,
             borderRadius: SabuflixTheme.radiusPill,
@@ -219,15 +222,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               Icon(
                 isSelected ? destination.filledIcon : destination.outlineIcon,
                 color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
-                size: 20,
+                size: 19,
               ),
               const SizedBox(height: 2),
               Text(
                 destination.label,
                 maxLines: 1,
+                softWrap: false,
                 overflow: TextOverflow.ellipsis,
                 style: SabuflixTheme.caption(
-                  fontSize: 9,
+                  fontSize: 8.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
                 ),
