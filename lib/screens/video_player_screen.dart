@@ -12,9 +12,19 @@ import '../widgets/glass_container.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final MediaItem media;
+
+  /// Remote stream URL, or an absolute file path when playing a download.
   final String? videoUrl;
 
-  const VideoPlayerScreen({Key? key, required this.media, this.videoUrl}) : super(key: key);
+  /// Playing from local storage. Hides everything that needs the network.
+  final bool isOffline;
+
+  const VideoPlayerScreen({
+    Key? key,
+    required this.media,
+    this.videoUrl,
+    this.isOffline = false,
+  }) : super(key: key);
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -289,17 +299,36 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           right: 12,
                           child: Row(
                             children: [
-                              TextButton.icon(
-                                onPressed: _openOfficialTrailer,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.12),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
+                              // The trailer opens YouTube, so it is pointless
+                              // when the user is watching a download offline.
+                              if (!widget.isOffline)
+                                TextButton.icon(
+                                  onPressed: _openOfficialTrailer,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    backgroundColor: Colors.white.withValues(alpha: 0.12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
+                                  ),
+                                  icon: const Icon(Icons.smart_display_outlined, size: 18, color: Colors.white),
+                                  label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                                 ),
-                                icon: const Icon(Icons.smart_display_outlined, size: 18, color: Colors.white),
-                                label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-                              ),
+                              if (widget.isOffline)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                    borderRadius: SabuflixTheme.radiusSm,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.download_done_rounded, size: 16, color: SabuflixTheme.success),
+                                      const SizedBox(width: 6),
+                                      Text('Offline', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                                    ],
+                                  ),
+                                ),
                               const SizedBox(width: 4),
                               if (_subtitleTracks.isNotEmpty)
                                 IconButton(

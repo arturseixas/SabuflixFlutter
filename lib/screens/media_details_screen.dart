@@ -13,6 +13,7 @@ import '../widgets/glass_container.dart';
 import '../services/froststream_service.dart';
 import '../providers/profile_provider.dart';
 import '../providers/playlist_provider.dart';
+import '../providers/download_provider.dart';
 import 'video_player_screen.dart';
 
 class MediaDetailsScreen extends StatefulWidget {
@@ -125,7 +126,24 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                               style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
                             ),
                           ),
-                          trailing: const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Baixar para assistir offline',
+                                icon: const Icon(Icons.download_rounded, color: Colors.white, size: 26),
+                                onPressed: () => _startDownload(
+                                  sheetContext: ctx,
+                                  media: media,
+                                  stream: s,
+                                  season: season,
+                                  episode: episode,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              const Icon(Icons.play_circle_fill_rounded, color: SabuflixTheme.accent, size: 36),
+                            ],
+                          ),
                           onTap: () {
                             Navigator.pop(ctx);
                             Navigator.push(context, glassRoute(VideoPlayerScreen(media: media, videoUrl: s['url'])));
@@ -140,6 +158,59 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
           ),
         );
       }
+    );
+  }
+
+  /// Queues a source for offline playback and reports back what happened.
+  Future<void> _startDownload({
+    required BuildContext sheetContext,
+    required MediaItem media,
+    required Map<String, dynamic> stream,
+    int? season,
+    int? episode,
+  }) async {
+    final url = stream['url'] as String?;
+
+    // Capture before awaiting: the sheet's context is gone after the pop.
+    final messenger = ScaffoldMessenger.of(context);
+    final downloads = context.read<DownloadProvider>();
+
+    Navigator.pop(sheetContext);
+
+    if (url == null || url.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Esta fonte não forneceu um link válido.')),
+      );
+      return;
+    }
+
+    final result = await downloads.enqueue(
+      media: media,
+      url: url,
+      sourceName: stream['name'] ?? 'Fonte',
+      quality: stream['title'] ?? '',
+      season: season,
+      episode: episode,
+    );
+
+    final String message;
+    switch (result) {
+      case EnqueueResult.started:
+        message = '"${media.title}" foi para a fila de downloads.';
+        break;
+      case EnqueueResult.alreadyExists:
+        message = '"${media.title}" já está baixado.';
+        break;
+      case EnqueueResult.waitingForWifi:
+        message = 'Na fila. Vai baixar assim que houver Wi-Fi.';
+        break;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 

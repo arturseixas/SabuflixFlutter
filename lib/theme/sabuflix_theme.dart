@@ -27,6 +27,7 @@ class SabuflixTheme {
   // Supplementary semantic tokens — Apple system colors.
   static const Color gold = Color(0xFFFFD60A); // systemYellow, ratings only
   static const Color success = Color(0xFF30D158); // systemGreen
+  static const Color error = Color(0xFFFF453A); // systemRed, destructive only
 
   // Text scale — true label hierarchy, solid grays (not alpha) for
   // predictable contrast over photography.
