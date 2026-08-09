@@ -31,6 +31,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
   List<MediaItem> _similar = [];
   List<dynamic> _episodes = [];
   int _seasonNumber = 1;
+  List<int> _availableSeasons = [];
 
   @override
   void initState() {
@@ -46,10 +47,14 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
 
       List<dynamic> episodes = [];
       int sNum = 1;
+      List<int> availableSeasons = [];
       if (widget.media.mediaType == 'tv' && details != null) {
          if (details.seasons != null && details.seasons!.isNotEmpty) {
            final validSeasons = details.seasons!.where((s) => s['season_number'] > 0).toList();
-           if (validSeasons.isNotEmpty) sNum = validSeasons.first['season_number'];
+           if (validSeasons.isNotEmpty) {
+             sNum = validSeasons.first['season_number'];
+             availableSeasons = validSeasons.map<int>((s) => s['season_number'] as int).toList();
+           }
          }
          episodes = await _tmdbService.fetchSeasonEpisodes(widget.media.id, sNum);
       }
@@ -61,10 +66,28 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
         _similar = similarList;
         _episodes = episodes;
         _seasonNumber = sNum;
+        _availableSeasons = availableSeasons;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _detailedMedia = widget.media);
+    }
+  }
+
+  Future<void> _onSeasonChanged(int season) async {
+    setState(() {
+      _seasonNumber = season;
+      _episodes = [];
+    });
+    try {
+      final episodes = await _tmdbService.fetchSeasonEpisodes(widget.media.id, season);
+      if (!mounted) return;
+      setState(() {
+        _episodes = episodes;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao carregar episódios.')));
     }
   }
 
@@ -454,12 +477,52 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  if (!isBlocked && _episodes.isNotEmpty) ...[
-                    Text('Episódios', style: SabuflixTheme.title(fontSize: 19)),
+                  if (!isBlocked && (media.mediaType == 'tv' && _availableSeasons.isNotEmpty)) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Episódios', style: SabuflixTheme.title(fontSize: 19)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: SabuflixTheme.radiusSm,
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          child: DropdownButton<int>(
+                            value: _seasonNumber,
+                            dropdownColor: SabuflixTheme.surface,
+                            style: SabuflixTheme.body(color: Colors.white, fontWeight: FontWeight.bold),
+                            underline: const SizedBox(),
+                            icon: const Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Icon(Icons.arrow_drop_down, color: SabuflixTheme.accent),
+                            ),
+                            items: _availableSeasons.map((season) {
+                              return DropdownMenuItem<int>(
+                                value: season,
+                                child: Text('Temporada $season'),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null && value != _seasonNumber) {
+                                _onSeasonChanged(value);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 14),
-                    SizedBox(
-                      height: 150,
-                      child: ListView.builder(
+                    if (_episodes.isEmpty)
+                      const SizedBox(
+                        height: 150,
+                        child: Center(child: CircularProgressIndicator(color: SabuflixTheme.accent)),
+                      )
+                    else
+                      SizedBox(
+                        height: 150,
+                        child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: _episodes.length,
                         physics: const BouncingScrollPhysics(),
