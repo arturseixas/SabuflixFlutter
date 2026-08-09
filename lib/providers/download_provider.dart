@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/download_task.dart';
 import '../models/media_item.dart';
 import '../services/download_service.dart';
+import '../services/tmdb_service.dart';
 
 /// Why a download could not be started, so the UI can explain itself instead
 /// of failing silently.
@@ -27,6 +28,7 @@ class DownloadProvider extends ChangeNotifier {
 
   final DownloadService _service = DownloadService();
   final Connectivity _connectivity = Connectivity();
+  final TMDBService _tmdb = TMDBService();
 
   List<DownloadTask> _tasks = [];
   List<DownloadTask> get tasks => List.unmodifiable(_tasks);
@@ -106,6 +108,7 @@ class DownloadProvider extends ChangeNotifier {
     _indexLoaded = _loadError == null;
 
     if (_indexLoaded) {
+      await _adoptOrphans();
       await _persist();
     }
     _usedBytes = await _service.usedBytes();
@@ -228,6 +231,85 @@ class DownloadProvider extends ChangeNotifier {
     return EnqueueResult.started;
   }
 
+  /// Re-adopts downloaded files that have no metadata beside them.
+  ///
+  /// A library whose index was lost still has its media on disk, and the file
+  /// names carry enough identity to rebuild the entries. The titles and
+  /// posters are refetched from TMDB when there is a connection; without one
+  /// the entry is still restored, just with a placeholder title, because a
+  /// playable file listed plainly beats a file the app pretends is not there.
+  Future<void> _adoptOrphans() async {
+    final orphans = await _service.findOrphans();
+    if (orphans.isEmpty) return;
+
+    final known = _tasks.map((t) => t.id).toSet();
+    var adopted = 0;
+
+    for (final orphan in orphans) {
+      if (known.contains(orphan.id)) continue;
+
+      MediaItem? media;
+      try {
+        media = await _tmdb.fetchMediaDetails(orphan.mediaId, orphan.mediaType);
+      } catch (_) {
+        // Offline or TMDB unreachable: fall through to the placeholder.
+      }
+
+      // The task id is derived from the media type, and it has to match the
+      // file name or the file would be treated as an orphan again next time.
+      if (media != null && media.mediaType != orphan.mediaType) {
+        final patched = media.toJson();
+        patched['media_type'] = orphan.mediaType;
+        media = MediaItem.fromJson(patched);
+      }
+
+      media ??= MediaItem(
+        id: orphan.mediaId,
+        title: orphan.mediaType == 'tv'
+            ? 'Série recuperada (#${orphan.mediaId})'
+            : 'Filme recuperado (#${orphan.mediaId})',
+        voteAverage: 0,
+        voteCount: 0,
+        mediaType: orphan.mediaType,
+        genreIds: const [],
+      );
+
+      _tasks.add(DownloadTask(
+        mediaId: orphan.mediaId,
+        media: media,
+        sourceName: 'Recuperado do dispositivo',
+        quality: '',
+        // No source URL survives an orphaned file, so this entry can be
+        // played and deleted but not resumed.
+        url: '',
+        fileName: orphan.fileName,
+        season: orphan.season,
+        episode: orphan.episode,
+        status: DownloadStatus.completed,
+        bytesReceived: orphan.bytes,
+        totalBytes: orphan.bytes,
+        completedAt: DateTime.now(),
+      ));
+
+      known.add(orphan.id);
+      adopted++;
+    }
+
+    if (adopted > 0) {
+      _recoveredCount = adopted;
+      _tasks.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+  }
+
+  /// How many downloads were rebuilt from orphaned files on this launch.
+  int _recoveredCount = 0;
+  int get recoveredCount => _recoveredCount;
+
+  void clearRecoveredNotice() {
+    _recoveredCount = 0;
+    notifyListeners();
+  }
+
   /// Starts the next queued task if nothing is running.
   Future<void> _pump() async {
     if (_activeId != null) return;
@@ -291,7 +373,22 @@ class DownloadProvider extends ChangeNotifier {
     if (text.contains('No space left')) {
       return 'Espaço insuficiente no dispositivo';
     }
-    return text.replaceFirst('Exception: ', '');
+
+    // Strip the exception class name up to and including the first colon.
+    // Cutting on "Exception: " alone mangled HttpException, which turned
+    // "HttpException: O servidor..." into "HttpO servidor...".
+    var message = text;
+    final colon = message.indexOf(': ');
+    if (colon > 0 && colon < 40 && message.substring(0, colon).endsWith('Exception')) {
+      message = message.substring(colon + 2);
+    }
+
+    // Drop the appended ", uri = ..." — the URL is long, carries access
+    // tokens, and tells the user nothing they can act on.
+    final uriMark = message.indexOf(', uri = ');
+    if (uriMark > 0) message = message.substring(0, uriMark);
+
+    return message;
   }
 
   // --------------------------------------------------------------- actions
@@ -310,6 +407,12 @@ class DownloadProvider extends ChangeNotifier {
 
   Future<void> resume(DownloadTask task) async {
     if (task.status == DownloadStatus.completed) return;
+    // A recovered entry has no source URL, so there is nothing to resume.
+    if (task.url.isEmpty) {
+      task.error = 'Sem fonte salva — baixe de novo pela tela do título';
+      await _persist();
+      return;
+    }
     task.status = DownloadStatus.queued;
     task.error = null;
     await _persist();

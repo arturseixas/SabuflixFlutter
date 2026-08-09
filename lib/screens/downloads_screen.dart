@@ -47,6 +47,10 @@ class DownloadsScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 140),
           children: [
             _StorageHeader(downloads: downloads),
+            if (downloads.recoveredCount > 0) ...[
+              const SizedBox(height: 14),
+              _RecoveredNotice(downloads: downloads),
+            ],
             if (downloads.isBlockedByNetwork) ...[
               const SizedBox(height: 14),
               const _WifiNotice(),
@@ -243,6 +247,46 @@ class _StorageHeader extends StatelessWidget {
                 onChanged: downloads.setWifiOnly,
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tells the user that downloads already on the device were re-adopted, so
+/// files reappearing on their own does not look like another glitch.
+class _RecoveredNotice extends StatelessWidget {
+  final DownloadProvider downloads;
+
+  const _RecoveredNotice({required this.downloads});
+
+  @override
+  Widget build(BuildContext context) {
+    final count = downloads.recoveredCount;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: SabuflixTheme.success.withValues(alpha: 0.12),
+        borderRadius: SabuflixTheme.radiusMd,
+        border: Border.all(color: SabuflixTheme.success.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.restore_rounded, color: SabuflixTheme.success, size: 19),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              count == 1
+                  ? '1 download que já estava no dispositivo foi recuperado.'
+                  : '$count downloads que já estavam no dispositivo foram recuperados.',
+              style: SabuflixTheme.body(fontSize: 13, color: SabuflixTheme.success),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.close_rounded, size: 18, color: SabuflixTheme.success),
+            onPressed: downloads.clearRecoveredNotice,
           ),
         ],
       ),

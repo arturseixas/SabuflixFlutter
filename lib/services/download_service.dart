@@ -36,6 +36,54 @@ class DownloadDiagnostics {
   });
 }
 
+/// A media file sitting in the downloads directory with no metadata beside
+/// it, and the identity recovered from its file name.
+///
+/// These exist because the file name encodes what the download is, so a
+/// library whose index was lost can still be rebuilt from the files alone.
+class OrphanDownload {
+  final String fileName;
+  final String id;
+  final String mediaType;
+  final int mediaId;
+  final int? season;
+  final int? episode;
+  final int bytes;
+
+  const OrphanDownload({
+    required this.fileName,
+    required this.id,
+    required this.mediaType,
+    required this.mediaId,
+    required this.bytes,
+    this.season,
+    this.episode,
+  });
+
+  /// Matches the names buildFileName produces: movie_123 or tv_123_s1e2.
+  static final RegExp _pattern =
+      RegExp(r'^(movie|tv)_(\d+)(?:_s(\d+)e(\d+))?$');
+
+  /// Returns null when the name was not written by this app.
+  static OrphanDownload? parse(String fileName, String baseName, int bytes) {
+    final match = _pattern.firstMatch(baseName);
+    if (match == null) return null;
+
+    final mediaId = int.tryParse(match.group(2) ?? '');
+    if (mediaId == null) return null;
+
+    return OrphanDownload(
+      fileName: fileName,
+      id: baseName,
+      mediaType: match.group(1)!,
+      mediaId: mediaId,
+      season: match.group(3) != null ? int.tryParse(match.group(3)!) : null,
+      episode: match.group(4) != null ? int.tryParse(match.group(4)!) : null,
+      bytes: bytes,
+    );
+  }
+}
+
 /// A transfer currently in flight, kept so it can be stopped cleanly.
 class _ActiveTransfer {
   final http.Client client;
@@ -136,6 +184,22 @@ class DownloadService {
     } catch (e) {
       client.close();
       rethrow;
+    }
+
+    // 416 means the range we asked for starts past the end of the file — the
+    // bytes already on disk are stale or already complete. Restarting from
+    // zero is the only way forward, and it is not an error worth showing.
+    if (response.statusCode == HttpStatus.requestedRangeNotSatisfiable &&
+        existing > 0) {
+      client.close();
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {
+        // If it cannot be deleted the retry below will overwrite it anyway.
+      }
+      // With no bytes on disk the retry sends no range header, so this can
+      // only happen once.
+      return start(task, onProgress: onProgress);
     }
 
     if (response.statusCode != HttpStatus.ok &&
@@ -408,6 +472,46 @@ class DownloadService {
     } catch (_) {
       // Nothing to do; a leftover entry is dropped on the next full save.
     }
+  }
+
+  /// Finds downloaded media files that have no metadata beside them.
+  ///
+  /// This is what makes a lost library recoverable: the file name carries the
+  /// media type, the TMDB id and, for series, the season and episode, so an
+  /// orphaned file can be identified and re-adopted rather than sitting on
+  /// disk as unreachable bytes.
+  Future<List<OrphanDownload>> findOrphans() async {
+    final orphans = <OrphanDownload>[];
+    try {
+      final dir = await downloadsDirectory();
+
+      final metaNames = <String>{};
+      final candidates = <File>[];
+      await for (final entity in dir.list(followLinks: false)) {
+        if (entity is! File) continue;
+        final name = p.basename(entity.path);
+        if (name.endsWith(_metaSuffix)) {
+          metaNames.add(name);
+        } else if (!name.startsWith(_indexFileName) && !name.endsWith('.tmp')) {
+          candidates.add(entity);
+        }
+      }
+
+      for (final file in candidates) {
+        final name = p.basename(file.path);
+        final baseName = p.basenameWithoutExtension(name);
+        if (metaNames.contains('$baseName$_metaSuffix')) continue;
+
+        final length = await file.length();
+        if (length <= 0) continue;
+
+        final orphan = OrphanDownload.parse(name, baseName, length);
+        if (orphan != null) orphans.add(orphan);
+      }
+    } catch (_) {
+      return orphans;
+    }
+    return orphans;
   }
 
   /// Facts about what is actually on disk, for the diagnostics panel.
