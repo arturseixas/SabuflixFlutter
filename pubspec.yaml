@@ -48,6 +48,9 @@ dependencies:
   path_provider: ^2.1.4
   path: ^1.9.0
   connectivity_plus: ^6.0.5
+  # Desktop picture-in-picture: shrinks the app window and pins it above
+  # other programs. Desktop-only plugin, so it is simply absent on Android.
+  window_manager: ^0.4.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

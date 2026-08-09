@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/playback_controller.dart';
 import '../screens/video_player_screen.dart';
+import '../services/desktop_pip.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/app_route.dart';
 
@@ -88,7 +89,11 @@ class _PipPlayerState extends State<PipPlayer> {
     final media = playback.media;
     if (media == null) return;
 
-    playback.exitPip();
+    // The window has to be back to its normal size before the fullscreen
+    // page appears, or the page would render into a small pinned frame.
+    await playback.exitPip();
+    if (!context.mounted) return;
+
     await Navigator.push(
       context,
       glassRoute(VideoPlayerScreen(media: media, resumeSession: true)),
@@ -99,6 +104,12 @@ class _PipPlayerState extends State<PipPlayer> {
   Widget build(BuildContext context) {
     final playback = context.watch<PlaybackController>();
     if (!playback.isPip || !playback.hasVideo) return const SizedBox.shrink();
+
+    // The OS window is already the floating frame, so the video fills it
+    // rather than being drawn as a box inside a full-size app.
+    if (playback.isWindowPip) {
+      return SizedBox.expand(child: _buildWindowModeView(context, playback));
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -129,6 +140,53 @@ class _PipPlayerState extends State<PipPlayer> {
           ],
         );
       },
+    );
+  }
+
+  /// The view used when the app's own window has become the floating frame.
+  ///
+  /// There is no title bar left to grab, so dragging anywhere on the video
+  /// moves the window, the way Firefox's popped-out player behaves. Resizing
+  /// is left to the window edges, which the OS still handles.
+  Widget _buildWindowModeView(BuildContext context, PlaybackController playback) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _revealControls,
+      onPanStart: (_) => DesktopPip.startDragging(),
+      child: ColoredBox(
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Video(
+              controller: playback.videoController!,
+              controls: NoVideoControls,
+              fill: Colors.black,
+            ),
+
+            if (playback.isBuffering)
+              const Center(
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: SabuflixTheme.accent,
+                  ),
+                ),
+              ),
+
+            AnimatedOpacity(
+              duration: SabuflixTheme.durationFast,
+              opacity: _showControls ? 1 : 0,
+              child: IgnorePointer(
+                ignoring: !_showControls,
+                child: _buildControls(context, playback),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -8,6 +8,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../models/media_item.dart';
 import '../providers/playback_controller.dart';
+import '../services/desktop_pip.dart';
 import '../services/native_pip.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
@@ -139,7 +140,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Future<void> _enterPip(PlaybackController playback) async {
     if (await NativePip.enter()) return;
     if (!mounted) return;
-    playback.enterPip();
+    await playback.enterPip(useDesktopWindow: DesktopPip.isSupported);
+    if (!mounted) return;
     Navigator.pop(context);
   }
 

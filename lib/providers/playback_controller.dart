@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../models/media_item.dart';
+import '../services/desktop_pip.dart';
 
 /// Owns the video player for the whole app.
 ///
@@ -151,22 +152,46 @@ class PlaybackController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// True when picture-in-picture is the app's own OS window, shrunk and
+  /// pinned above other programs, rather than a box drawn inside the app.
+  bool _isWindowPip = false;
+  bool get isWindowPip => _isWindowPip;
+
   /// Moves playback into the floating window.
-  void enterPip() {
+  ///
+  /// With [useDesktopWindow] the app's window itself becomes the floating
+  /// frame; if the platform refuses, the in-app box is used instead so the
+  /// button always does something.
+  Future<void> enterPip({bool useDesktopWindow = false}) async {
     if (!hasVideo || _isPip) return;
     _isPip = true;
     notifyListeners();
+
+    if (useDesktopWindow) {
+      _isWindowPip = await DesktopPip.enter();
+      notifyListeners();
+    }
   }
 
   /// Brings playback back to the fullscreen page.
-  void exitPip() {
+  Future<void> exitPip() async {
     if (!_isPip) return;
     _isPip = false;
+    if (_isWindowPip) {
+      await DesktopPip.exit();
+      _isWindowPip = false;
+    }
     notifyListeners();
   }
 
   /// Ends the session entirely and releases the player.
   Future<void> stop() async {
+    // The window has to come back to normal size even when playback is being
+    // closed outright, or the app would be stranded as a small pinned frame.
+    if (_isWindowPip) {
+      await DesktopPip.exit();
+      _isWindowPip = false;
+    }
     await _teardown();
     _media = null;
     _url = null;
