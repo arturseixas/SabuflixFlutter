@@ -7,12 +7,60 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+# Needed so the default GITHUB_TOKEN can create a release and upload assets
+# to it (gh release create / gh release upload).
+permissions:
+  contents: write
+
 jobs:
+  # Builds land as release assets instead of workflow-run artifacts: Actions
+  # artifact storage is a separate, much smaller quota from Releases storage,
+  # and it fills up fast with binaries this size. This job just reserves the
+  # release so both platform jobs have somewhere to upload to.
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.release.outputs.tag_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine release tag
+        id: release
+        shell: bash
+        run: |
+          SAFE_BRANCH=$(echo "${{ github.ref_name }}" | tr -c 'a-zA-Z0-9._-' '-')
+          TAG="build-${SAFE_BRANCH}-${{ github.run_number }}"
+          echo "tag_name=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.release.outputs.tag_name }}"
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, reusing it (re-run of this workflow run)."
+            exit 0
+          fi
+
+          PRERELEASE_FLAG=""
+          if [ "${{ github.ref_name }}" != "main" ] && [ "${{ github.ref_name }}" != "master" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "Sabuflix build #${{ github.run_number }} (${{ github.ref_name }})" \
+            --notes "Automated multiplatform build from commit ${{ github.sha }} on branch \`${{ github.ref_name }}\`." \
+            --target "${{ github.sha }}" \
+            $PRERELEASE_FLAG
+
   build-windows:
     name: Build Windows Executable (.exe)
     runs-on: windows-latest
-    permissions:
-      contents: write
+    needs: create-release
 
     steps:
       - name: Checkout repository
@@ -54,22 +102,22 @@ jobs:
           & "C:\Program Files\7-Zip\7z.exe" a release.7z .\build\windows\x64\runner\Release\*
           cmd /c "copy /b `"C:\Program Files\7-Zip\7z.sfx`" + config.txt + release.7z dist\sabuflix.exe"
 
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
-        if: github.event_name != 'pull_request'
-        with:
-          files: |
-            dist/sabuflix.exe
-            dist/sabuflix-installer.exe
+      - name: Upload Windows builds to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.create-release.outputs.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --clobber \
+            dist/sabuflix.exe \
+            dist/sabuflix-installer.exe \
             dist/sabuflix-windows-bundle.zip
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
-          generate_release_notes: true
 
   build-android:
     name: Build Android Package (.apk)
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    needs: create-release
 
     steps:
       - name: Checkout repository
@@ -98,10 +146,11 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk dist/sabuflix.apk
 
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
-        if: github.event_name != 'pull_request'
-        with:
-          files: dist/sabuflix.apk
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
-          generate_release_notes: true
+      - name: Upload Android APK to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.create-release.outputs.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --clobber \
+            dist/sabuflix.apk

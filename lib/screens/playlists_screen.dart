@@ -114,7 +114,13 @@ class PlaylistsScreen extends StatelessWidget {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              MediaQuery.of(context).size.width < 800 ? 118 : 24,
+            ),
             itemCount: provider.playlists.length,
             itemBuilder: (context, index) {
               final playlist = provider.playlists[index];

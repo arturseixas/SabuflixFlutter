@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/profile_provider.dart';
+import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
+import '../widgets/home_skeleton.dart';
 import '../widgets/media_row.dart';
 import '../widgets/wordmark.dart';
 import 'profile_selection_screen.dart';
@@ -21,26 +23,9 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
       body: catalog.isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: CircularProgressIndicator(
-                      color: SabuflixTheme.textPrimary,
-                      strokeWidth: 2.5,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Carregando catálogo...',
-                    style: SabuflixTheme.body(fontSize: 14),
-                  ),
-                ],
-              ),
-            )
+          // Skeleton instead of a spinner: the page keeps its shape while the
+          // catalogue loads, so the first paint doesn't jump.
+          ? const HomeSkeleton()
           : RefreshIndicator(
               onRefresh: () => catalog.loadCatalog(),
               color: SabuflixTheme.textPrimary,
@@ -79,6 +64,7 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 16),
+                        const ContinueWatchingRow(),
                         MediaRow(
                           title: 'Em Alta Hoje',
                           mediaItems: catalog.trending,
@@ -107,7 +93,8 @@ class HomeScreen extends StatelessWidget {
                           title: 'Ficção Científica',
                           mediaItems: catalog.sciFiMovies,
                         ),
-                        const SizedBox(height: 60),
+                        // Clears the floating dock on phones.
+                        SizedBox(height: isDesktop ? 40 : 120),
                       ],
                     ),
                   ),

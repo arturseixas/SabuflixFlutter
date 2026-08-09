@@ -13,6 +13,8 @@ class MyListScreen extends StatelessWidget {
     final favorites = favoritesProvider.favorites;
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = (screenWidth / 160).floor().clamp(2, 6);
+    // Leave room for the floating dock so the last row stays reachable.
+    final bottomInset = screenWidth < 800 ? 118.0 : 32.0;
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
@@ -50,7 +52,7 @@ class MyListScreen extends StatelessWidget {
           : favorites.isEmpty
               ? Center(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: EdgeInsets.fromLTRB(32, 0, 32, bottomInset),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -71,7 +73,8 @@ class MyListScreen extends StatelessWidget {
                   ),
                 )
               : GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     childAspectRatio: 0.65,
