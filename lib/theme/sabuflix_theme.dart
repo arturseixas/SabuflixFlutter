@@ -35,16 +35,37 @@ class SabuflixTheme {
   static const Color textMuted = Color(0xFF636366);
 
   // --- Typography -------------------------------------------------------
-  // Inter throughout — the closest license-clean match to San Francisco's
-  // proportions and tight optical tracking. One family, weight does the work.
+  // Manrope throughout, in place of the default UI grotesques. Its high
+  // x-height, flat terminals and near-closed apertures give the wide, cinematic
+  // set that tvOS interfaces are built on, and the negative tracking below is
+  // what actually sells the Apple TV feel — type gets tighter as it gets
+  // bigger, exactly like SF Pro Display's optical sizes.
+
+  /// Poster-scale type: title cards, hero copy, empty-state headers.
+  static TextStyle display({
+    double fontSize = 40,
+    FontWeight fontWeight = FontWeight.w800,
+    Color color = textPrimary,
+    double height = 1.05,
+    double letterSpacing = -1.4,
+  }) {
+    return GoogleFonts.manrope(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+
   static TextStyle headline({
     double fontSize = 30,
-    FontWeight fontWeight = FontWeight.w700,
+    FontWeight fontWeight = FontWeight.w800,
     Color color = textPrimary,
-    double height = 1.12,
-    double letterSpacing = -0.4,
+    double height = 1.1,
+    double letterSpacing = -0.9,
   }) {
-    return GoogleFonts.inter(
+    return GoogleFonts.manrope(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -55,12 +76,12 @@ class SabuflixTheme {
 
   static TextStyle title({
     double fontSize = 18,
-    FontWeight fontWeight = FontWeight.w600,
+    FontWeight fontWeight = FontWeight.w700,
     Color color = textPrimary,
     double height = 1.2,
-    double letterSpacing = -0.2,
+    double letterSpacing = -0.5,
   }) {
-    return GoogleFonts.inter(
+    return GoogleFonts.manrope(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -71,26 +92,27 @@ class SabuflixTheme {
 
   static TextStyle body({
     double fontSize = 15,
-    FontWeight fontWeight = FontWeight.normal,
+    FontWeight fontWeight = FontWeight.w500,
     Color color = textSecondary,
     double height = 1.45,
   }) {
-    return GoogleFonts.inter(
+    return GoogleFonts.manrope(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
       height: height,
-      letterSpacing: -0.1,
+      letterSpacing: -0.2,
     );
   }
 
+  /// All-caps section eyebrow. The only place tracking goes positive.
   static TextStyle label({
     double fontSize = 12,
-    FontWeight fontWeight = FontWeight.w600,
+    FontWeight fontWeight = FontWeight.w700,
     Color color = textMuted,
-    double letterSpacing = 0.2,
+    double letterSpacing = 0.6,
   }) {
-    return GoogleFonts.inter(
+    return GoogleFonts.manrope(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -102,9 +124,9 @@ class SabuflixTheme {
     double fontSize = 12,
     FontWeight fontWeight = FontWeight.w500,
     Color color = textSecondary,
-    double letterSpacing = -0.05,
+    double letterSpacing = -0.25,
   }) {
-    return GoogleFonts.inter(
+    return GoogleFonts.manrope(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -113,16 +135,17 @@ class SabuflixTheme {
   }
 
   // --- Brand wordmark -----------------------------------------------
-  // Plain type, nothing else — no mark, no glyph, no color accent.
+  // Plain type, nothing else — no mark, no glyph, no color accent. Set heavy
+  // and very tight, the way streaming wordmarks are locked up on tvOS.
   static TextStyle wordmark({
     double fontSize = 20,
     Color color = textPrimary,
   }) {
-    return GoogleFonts.inter(
+    return GoogleFonts.manrope(
       fontSize: fontSize,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w800,
       color: color,
-      letterSpacing: -0.3,
+      letterSpacing: -1.0,
       height: 1.0,
     );
   }
@@ -176,10 +199,10 @@ class SabuflixTheme {
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       dividerColor: border,
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
-        bodyLarge: GoogleFonts.inter(color: textPrimary),
-        bodyMedium: GoogleFonts.inter(color: textSecondary),
-        titleLarge: GoogleFonts.inter(color: textPrimary, fontWeight: FontWeight.w700),
+      textTheme: GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme).copyWith(
+        bodyLarge: GoogleFonts.manrope(color: textPrimary),
+        bodyMedium: GoogleFonts.manrope(color: textSecondary),
+        titleLarge: GoogleFonts.manrope(color: textPrimary, fontWeight: FontWeight.w800, letterSpacing: -0.6),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -187,7 +210,7 @@ class SabuflixTheme {
         centerTitle: false,
         scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: textPrimary),
-        titleTextStyle: title(fontSize: 20, fontWeight: FontWeight.w600),
+        titleTextStyle: title(fontSize: 20, fontWeight: FontWeight.w800),
       ),
       iconTheme: const IconThemeData(color: textSecondary, size: 22),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -200,7 +223,7 @@ class SabuflixTheme {
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(980)),
           ),
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15, letterSpacing: -0.2),
+          textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.4),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -211,14 +234,14 @@ class SabuflixTheme {
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(980)),
           ),
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, letterSpacing: -0.2),
+          textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.4),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: textSecondary,
           splashFactory: NoSplash.splashFactory,
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+          textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.4),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -242,8 +265,8 @@ class SabuflixTheme {
       chipTheme: ChipThemeData(
         backgroundColor: Colors.white.withValues(alpha: 0.08),
         selectedColor: textPrimary,
-        labelStyle: GoogleFonts.inter(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
-        secondaryLabelStyle: GoogleFonts.inter(color: background, fontSize: 13, fontWeight: FontWeight.w600),
+        labelStyle: GoogleFonts.manrope(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+        secondaryLabelStyle: GoogleFonts.manrope(color: background, fontSize: 13, fontWeight: FontWeight.w600),
         side: BorderSide.none,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         shape: const RoundedRectangleBorder(
@@ -263,12 +286,12 @@ class SabuflixTheme {
           color: elevated,
           borderRadius: const BorderRadius.all(Radius.circular(8)),
         ),
-        textStyle: GoogleFonts.inter(color: textPrimary, fontSize: 12),
+        textStyle: GoogleFonts.manrope(color: textPrimary, fontSize: 12),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: elevated,
-        contentTextStyle: GoogleFonts.inter(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+        contentTextStyle: GoogleFonts.manrope(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
         shape: RoundedRectangleBorder(borderRadius: radiusMd),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(color: textPrimary),

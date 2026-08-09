@@ -33,8 +33,9 @@ class CategoriesScreen extends StatelessWidget {
         title: Text('Categorias', style: SabuflixTheme.title(fontSize: 20, fontWeight: FontWeight.w600)),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, screenWidth < 800 ? 108 : 20),
         child: GridView.builder(
+          physics: const BouncingScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             childAspectRatio: 1.7,

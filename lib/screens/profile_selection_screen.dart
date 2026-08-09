@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/profile.dart';
 import '../providers/profile_provider.dart';
+import '../providers/continue_watching_provider.dart';
+import '../providers/downloads_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../theme/sabuflix_theme.dart';
@@ -15,11 +17,15 @@ class ProfileSelectionScreen extends StatelessWidget {
     final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
     final favProvider = Provider.of<FavoritesProvider>(context, listen: false);
     final playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
+    final downloadsProvider = Provider.of<DownloadsProvider>(context, listen: false);
+    final continueWatchingProvider = Provider.of<ContinueWatchingProvider>(context, listen: false);
 
     try {
       await profileProvider.selectProfile(profile.id);
       await favProvider.loadFavorites(profile.id);
       await playlistProvider.loadForProfile(profile.id);
+      await downloadsProvider.loadForProfile(profile.id);
+      await continueWatchingProvider.loadForProfile(profile.id);
     } catch (e) {
       // ignore
     }

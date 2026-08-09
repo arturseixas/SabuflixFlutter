@@ -76,16 +76,34 @@ class MediaItem {
     final mType = json['media_type'] ?? (json['first_air_date'] != null ? 'tv' : defaultMediaType);
     final rDate = json['release_date'] ?? json['first_air_date'];
 
+    // Genres arrive in two shapes: TMDB sends `[{id, name}]`, while an item
+    // that has been through `toJson()` (favourites, downloads, continue
+    // watching) comes back as a plain `[String]`. Parsing only the TMDB shape
+    // used to throw while decoding local storage, and the caller's catch-all
+    // then discarded the *entire* saved list — which is how saved items
+    // "disappear" after the app is closed.
     List<int> gIds = [];
-    if (json['genre_ids'] != null) {
-      gIds = List<int>.from(json['genre_ids']);
-    } else if (json['genres'] != null) {
-      gIds = (json['genres'] as List).map((g) => g['id'] as int).toList();
+    final rawGenreIds = json['genre_ids'];
+    if (rawGenreIds is List) {
+      gIds = rawGenreIds.whereType<num>().map((g) => g.toInt()).toList();
     }
 
     List<String>? gNames;
-    if (json['genres'] != null) {
-      gNames = (json['genres'] as List).map((g) => g['name'].toString()).toList();
+    final rawGenres = json['genres'];
+    if (rawGenres is List) {
+      final names = <String>[];
+      final idsFromGenres = <int>[];
+      for (final g in rawGenres) {
+        if (g is Map) {
+          final id = g['id'];
+          if (id is num) idsFromGenres.add(id.toInt());
+          if (g['name'] != null) names.add(g['name'].toString());
+        } else if (g != null) {
+          names.add(g.toString());
+        }
+      }
+      if (names.isNotEmpty) gNames = names;
+      if (gIds.isEmpty) gIds = idsFromGenres;
     }
 
     String? parsedImdbId = json['imdb_id'];
@@ -136,6 +154,34 @@ class MediaItem {
       'seasons': seasons,
       'ageRating': ageRating,
     };
+  }
+
+  /// A slimmed copy meant for local storage.
+  ///
+  /// TMDB's `seasons` payload is several kilobytes per series and is always
+  /// re-fetched when the details screen opens, so it is dropped before a title
+  /// is written to shared preferences.
+  MediaItem get forStorage {
+    if (seasons == null) return this;
+    return MediaItem(
+      id: id,
+      title: title,
+      overview: overview,
+      posterPath: posterPath,
+      backdropPath: backdropPath,
+      logoPath: logoPath,
+      voteAverage: voteAverage,
+      voteCount: voteCount,
+      releaseDate: releaseDate,
+      mediaType: mediaType,
+      genreIds: genreIds,
+      genres: genres,
+      runtime: runtime,
+      numberOfSeasons: numberOfSeasons,
+      trailerKey: trailerKey,
+      imdbId: imdbId,
+      ageRating: ageRating,
+    );
   }
 
   MediaItem copyWith({

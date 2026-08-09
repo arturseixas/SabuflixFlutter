@@ -27,6 +27,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final searchProvider = Provider.of<SearchProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = (screenWidth / 160).floor().clamp(2, 6);
+    final bottomInset = screenWidth < 800 ? 118.0 : 32.0;
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
@@ -135,7 +136,8 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                         )
                       : GridView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: crossAxisCount,
                             childAspectRatio: 0.65,

@@ -6,15 +6,35 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:provider/provider.dart';
 import '../models/media_item.dart';
+import '../providers/continue_watching_provider.dart';
 import '../theme/sabuflix_theme.dart';
+import '../utils/formatters.dart';
 import '../widgets/glass_container.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final MediaItem media;
   final String? videoUrl;
 
-  const VideoPlayerScreen({Key? key, required this.media, this.videoUrl}) : super(key: key);
+  /// Season/episode context, so "Continuar Assistindo" can show and resume the
+  /// exact episode instead of just the show.
+  final int? season;
+  final int? episode;
+  final String? episodeTitle;
+
+  /// Where playback should pick up from.
+  final Duration startAt;
+
+  const VideoPlayerScreen({
+    Key? key,
+    required this.media,
+    this.videoUrl,
+    this.season,
+    this.episode,
+    this.episodeTitle,
+    this.startAt = Duration.zero,
+  }) : super(key: key);
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -41,13 +61,57 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   List<SubtitleTrack> _subtitleTracks = [];
   SubtitleTrack? _selectedSubtitleTrack;
 
+  /// Captured up front: `dispose` runs after the element is unmounted, so the
+  /// provider can no longer be looked up from the context by then.
+  ContinueWatchingProvider? _continueWatching;
+  Timer? _progressTimer;
+  bool _seekedToStart = false;
+  bool _resumeBannerVisible = false;
+
   @override
   void initState() {
     super.initState();
+    _continueWatching = Provider.of<ContinueWatchingProvider>(context, listen: false);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     _initPlayer();
     _startHideTimer();
+    _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
+  }
+
+  /// Persists the playback position so the title shows up on the
+  /// "Continuar Assistindo" shelf with the right resume point.
+  void _saveProgress() {
+    if (_player == null) return;
+    if (_totalDuration <= 0 || _currentPosition <= 0) return;
+    _continueWatching?.record(
+      media: widget.media,
+      season: widget.season,
+      episode: widget.episode,
+      episodeTitle: widget.episodeTitle,
+      positionSeconds: _currentPosition.toInt(),
+      durationSeconds: _totalDuration.toInt(),
+      sourceUrl: widget.videoUrl,
+    );
+  }
+
+  /// media_kit reports a duration only once the container has been parsed, so
+  /// the resume seek waits for the first real duration instead of firing
+  /// straight after `open` (where it would be dropped).
+  Future<void> _seekToStartOnce() async {
+    if (_seekedToStart) return;
+    if (_totalDuration <= 0) return;
+    _seekedToStart = true;
+
+    final start = widget.startAt.inSeconds;
+    if (start < 10 || start >= _totalDuration - 10) return;
+
+    await _player?.seek(widget.startAt);
+    if (!mounted) return;
+    setState(() => _resumeBannerVisible = true);
+    Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _resumeBannerVisible = false);
+    });
   }
 
   Future<void> _initPlayer() async {
@@ -63,6 +127,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _player!.stream.duration.listen((Duration duration) {
         if (!mounted) return;
         setState(() => _totalDuration = duration.inSeconds.toDouble());
+        if (_totalDuration > 0) _seekToStartOnce();
       });
       
       _player!.stream.playing.listen((bool playing) {
@@ -196,11 +261,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
+    // Save before tearing the player down; leaving the screen is the moment
+    // that matters most for resuming later.
+    _saveProgress();
+    _progressTimer?.cancel();
     _hideTimer?.cancel();
     _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
+  }
+
+  /// `T1 E4 · Nome do episódio` for series, release year for films.
+  String get _headerSubtitle {
+    final tag = formatEpisodeTag(widget.season, widget.episode);
+    if (tag.isEmpty) return widget.media.formattedYear;
+    final name = widget.episodeTitle;
+    if (name == null || name.trim().isEmpty) return tag;
+    return '$tag · ${name.trim()}';
   }
 
   @override
@@ -234,6 +312,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
             if (_isBuffering && hasVideo)
               const Center(child: CircularProgressIndicator(color: SabuflixTheme.accent)),
+
+            // Brief confirmation that playback jumped to where it stopped.
+            Positioned(
+              top: 24,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  duration: SabuflixTheme.durationMed,
+                  opacity: _resumeBannerVisible ? 1.0 : 0.0,
+                  child: Center(
+                    child: GlassContainer(
+                      borderRadius: SabuflixTheme.radiusPill,
+                      blur: 30,
+                      fillOpacity: 0.5,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      child: Text(
+                        'Retomando de ${_formatDuration(widget.startAt.inSeconds.toDouble())}',
+                        style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
             if (_showControls || !_isPlaying)
               AnimatedContainer(
@@ -274,7 +377,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                       style: SabuflixTheme.title(fontSize: 18, color: Colors.white),
                                     ),
                                     Text(
-                                      widget.media.formattedYear,
+                                      _headerSubtitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: SabuflixTheme.body(color: SabuflixTheme.textSecondary, fontSize: 12),
                                     ),
                                   ],
