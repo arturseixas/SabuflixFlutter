@@ -35,8 +35,10 @@ class _ActiveTransfer {
 /// uninstalled. Partial files are kept on disk so an interrupted transfer
 /// resumes with an HTTP range request instead of starting over.
 class DownloadService {
+  /// Only read now, to migrate libraries saved by the previous version.
   static const String _indexKey = 'sabuflix_downloads_index';
   static const String _dirName = 'sabuflix_downloads';
+  static const String _indexFileName = 'index.json';
 
   final Map<String, _ActiveTransfer> _transfers = {};
 
@@ -234,7 +236,9 @@ class DownloadService {
       final dir = await downloadsDirectory();
       var total = 0;
       await for (final entity in dir.list(followLinks: false)) {
-        if (entity is File) {
+        // The index is bookkeeping, not media; counting it would misreport
+        // what the downloads actually cost the user.
+        if (entity is File && !p.basename(entity.path).startsWith(_indexFileName)) {
           total += await entity.length();
         }
       }
@@ -244,11 +248,53 @@ class DownloadService {
     }
   }
 
-  Future<List<DownloadTask>> loadIndex() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_indexKey);
-    if (raw == null || raw.isEmpty) return [];
+  /// The index lives beside the media files rather than in SharedPreferences,
+  /// so the catalogue and the files it describes can never drift apart: if the
+  /// videos survived, their index survived with them.
+  Future<File> _indexFile() async {
+    final dir = await downloadsDirectory();
+    return File(p.join(dir.path, _indexFileName));
+  }
 
+  Future<List<DownloadTask>> loadIndex() async {
+    final fromFile = await _readIndexFile();
+    if (fromFile != null) return fromFile;
+
+    // Nothing on disk yet: pick up anything the previous SharedPreferences
+    // based version stored, so existing downloads are not orphaned.
+    final migrated = await _readLegacyIndex();
+    if (migrated.isNotEmpty) {
+      await saveIndex(migrated);
+    }
+    return migrated;
+  }
+
+  /// Returns null when there is no readable index file, which is different
+  /// from an index file that legitimately holds an empty list.
+  Future<List<DownloadTask>?> _readIndexFile() async {
+    try {
+      final file = await _indexFile();
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      if (raw.trim().isEmpty) return null;
+      return _decodeTasks(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<DownloadTask>> _readLegacyIndex() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_indexKey);
+      if (raw == null || raw.isEmpty) return [];
+      return _decodeTasks(raw);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  List<DownloadTask> _decodeTasks(String raw) {
     try {
       final decoded = json.decode(raw);
       if (decoded is! List) return [];
@@ -257,48 +303,55 @@ class DownloadService {
           .map((e) => DownloadTask.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     } catch (_) {
-      // A corrupt index must not brick the screen; start clean instead.
+      // A corrupt index must not brick the screen.
       return [];
     }
   }
 
+  /// Writes the index through a temporary file and renames it into place, so
+  /// an interrupted write can never leave a half-written index behind — the
+  /// old one stays intact until the new one is complete.
   Future<void> saveIndex(List<DownloadTask> tasks) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _indexKey,
-      json.encode(tasks.map((t) => t.toJson()).toList()),
-    );
+    final file = await _indexFile();
+    final temp = File('${file.path}.tmp');
+    final payload = json.encode(tasks.map((t) => t.toJson()).toList());
+
+    await temp.writeAsString(payload, flush: true);
+    await temp.rename(file.path);
   }
 
-  /// Drops index entries whose file vanished (OS cleanup, manual deletion) and
-  /// repairs sizes that drifted from what is actually on disk.
+  /// Realigns the index with what is actually on disk.
+  ///
+  /// Entries are never dropped here. An earlier version deleted completed
+  /// tasks whose file was missing, which meant a single bad path resolution
+  /// silently wiped the whole library on launch. A missing file is now
+  /// surfaced as a failed download the user can see and retry, because losing
+  /// the file should never also lose the record of it.
   Future<List<DownloadTask>> reconcileWithDisk(List<DownloadTask> tasks) async {
-    final kept = <DownloadTask>[];
     for (final task in tasks) {
       try {
         final file = await fileFor(task);
         if (await file.exists()) {
           final length = await file.length();
-          if (task.status == DownloadStatus.completed) {
-            // A completed file that shrank was truncated; make it resumable.
-            if (task.totalBytes > 0 && length < task.totalBytes) {
-              task.status = DownloadStatus.paused;
-            }
-            task.bytesReceived = length;
-          } else {
-            task.bytesReceived = length;
+          task.bytesReceived = length;
+          // A completed file that shrank was truncated; make it resumable.
+          if (task.status == DownloadStatus.completed &&
+              task.totalBytes > 0 &&
+              length < task.totalBytes) {
+            task.status = DownloadStatus.paused;
           }
-          kept.add(task);
-        } else if (task.status != DownloadStatus.completed) {
-          // Never started, or the partial file is gone: keep it queued from 0.
+        } else if (task.status == DownloadStatus.completed) {
+          task.status = DownloadStatus.failed;
           task.bytesReceived = 0;
-          kept.add(task);
+          task.error = 'Arquivo não encontrado no dispositivo';
+        } else {
+          // Never started, or the partial file is gone: restart from zero.
+          task.bytesReceived = 0;
         }
-        // A completed task with no file left is dropped entirely.
       } catch (_) {
-        kept.add(task);
+        // Unreadable path: leave the entry exactly as stored.
       }
     }
-    return kept;
+    return tasks;
   }
 }

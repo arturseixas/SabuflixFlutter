@@ -34,6 +34,15 @@ class DownloadProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
+  /// False until the stored index has been read. Guards every write, so a
+  /// save triggered during startup cannot clobber the saved library.
+  bool _indexLoaded = false;
+
+  /// Set when the stored library could not be read at all. The list is empty
+  /// in that case, but for a different reason than "nothing was downloaded".
+  String? _loadError;
+  String? get loadError => _loadError;
+
   String? _activeId;
   String? get activeId => _activeId;
 
@@ -62,18 +71,45 @@ class DownloadProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _wifiOnly = prefs.getBool(_wifiOnlyKey) ?? false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _wifiOnly = prefs.getBool(_wifiOnlyKey) ?? false;
+    } catch (_) {
+      _wifiOnly = false;
+    }
 
-    final stored = await _service.loadIndex();
-    _tasks = await _service.reconcileWithDisk(stored);
-    await _service.saveIndex(_tasks);
+    try {
+      final stored = await _service.loadIndex();
+      _tasks = await _service.reconcileWithDisk(stored);
+    } catch (e) {
+      // Never leave the library looking empty because of a read error — say
+      // so instead, so a real failure is not mistaken for "no downloads".
+      _tasks = [];
+      _loadError = e.toString();
+      debugPrint('Sabuflix: falha ao ler o índice de downloads: $e');
+    }
+
+    // Only from here on may anything write the index. Before this point
+    // _tasks is still the empty starting list, and persisting it would
+    // overwrite a perfectly good library on disk. A failed read also stays
+    // unwritten, so the file on disk survives for the next attempt.
+    _indexLoaded = _loadError == null;
+
+    if (_indexLoaded) {
+      await _persist();
+    }
     _usedBytes = await _service.usedBytes();
 
-    await _refreshConnectivity();
-    _connectivitySub = _connectivity.onConnectivityChanged.listen((results) {
-      _applyConnectivity(results);
-    });
+    try {
+      await _refreshConnectivity();
+      _connectivitySub = _connectivity.onConnectivityChanged.listen((results) {
+        _applyConnectivity(results);
+      });
+    } catch (_) {
+      // Without connectivity events the Wi-Fi-only rule cannot react to
+      // network changes, but downloads must still work.
+      _onAllowedNetwork = true;
+    }
 
     _isLoading = false;
     notifyListeners();
@@ -420,8 +456,21 @@ class DownloadProvider extends ChangeNotifier {
     _rateSampleBytes = received;
   }
 
+  /// Last error hit while writing the index, so a library that is silently
+  /// failing to save can be reported instead of appearing to work until the
+  /// next launch.
+  String? _persistError;
+  String? get persistError => _persistError;
+
   Future<void> _persist() async {
-    await _service.saveIndex(_tasks);
+    if (!_indexLoaded) return;
+    try {
+      await _service.saveIndex(_tasks);
+      _persistError = null;
+    } catch (e) {
+      _persistError = e.toString();
+      debugPrint('Sabuflix: falha ao salvar o índice de downloads: $e');
+    }
     notifyListeners();
   }
 }

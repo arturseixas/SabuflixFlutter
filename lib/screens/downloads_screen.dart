@@ -27,6 +27,10 @@ class DownloadsScreen extends StatelessWidget {
         final ready = downloads.completed;
 
         if (pending.isEmpty && ready.isEmpty) {
+          // An unreadable library is not an empty one; saying "no downloads"
+          // here is what made the earlier data loss look like normal state.
+          final failure = downloads.loadError;
+          if (failure != null) return _LoadFailure(message: failure);
           return const _EmptyState();
         }
 
@@ -609,6 +613,50 @@ class _ReadyTile extends StatelessWidget {
       confirmLabel: 'Excluir',
     );
     if (confirmed) await downloads.remove(task);
+  }
+}
+
+/// Shown when the stored library could not be read, so a real failure is
+/// never mistaken for "you have no downloads".
+class _LoadFailure extends StatelessWidget {
+  final String message;
+
+  const _LoadFailure({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 46,
+              color: SabuflixTheme.error,
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Não foi possível ler seus downloads',
+              style: SabuflixTheme.title(fontSize: 19),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Os arquivos continuam no dispositivo. Feche e abra o app para '
+              'tentar de novo.\n\n$message',
+              textAlign: TextAlign.center,
+              style: SabuflixTheme.body(
+                fontSize: 13,
+                color: SabuflixTheme.textSecondary,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
