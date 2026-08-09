@@ -43,6 +43,16 @@ class DownloadProvider extends ChangeNotifier {
   String? _loadError;
   String? get loadError => _loadError;
 
+  /// What the downloads directory really holds, refreshed on load and after
+  /// anything changes it.
+  DownloadDiagnostics? _diagnostics;
+  DownloadDiagnostics? get diagnostics => _diagnostics;
+
+  Future<void> refreshDiagnostics() async {
+    _diagnostics = await _service.diagnostics();
+    notifyListeners();
+  }
+
   String? _activeId;
   String? get activeId => _activeId;
 
@@ -99,6 +109,7 @@ class DownloadProvider extends ChangeNotifier {
       await _persist();
     }
     _usedBytes = await _service.usedBytes();
+    _diagnostics = await _service.diagnostics();
 
     try {
       await _refreshConnectivity();
@@ -469,8 +480,9 @@ class DownloadProvider extends ChangeNotifier {
       _persistError = null;
     } catch (e) {
       _persistError = e.toString();
-      debugPrint('Sabuflix: falha ao salvar o índice de downloads: $e');
+      debugPrint('Sabuflix: falha ao salvar os downloads: $e');
     }
+    _diagnostics = await _service.diagnostics();
     notifyListeners();
   }
 }

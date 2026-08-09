@@ -30,8 +30,17 @@ class DownloadsScreen extends StatelessWidget {
           // An unreadable library is not an empty one; saying "no downloads"
           // here is what made the earlier data loss look like normal state.
           final failure = downloads.loadError;
-          if (failure != null) return _LoadFailure(message: failure);
-          return const _EmptyState();
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 40, 20, 140),
+            children: [
+              if (failure != null)
+                _LoadFailure(message: failure)
+              else
+                const _EmptyState(),
+              const SizedBox(height: 32),
+              _DiagnosticsPanel(downloads: downloads),
+            ],
+          );
         }
 
         return ListView(
@@ -84,6 +93,8 @@ class DownloadsScreen extends StatelessWidget {
                   child: _ReadyTile(task: task, downloads: downloads),
                 ),
             ],
+            const SizedBox(height: 30),
+            _DiagnosticsPanel(downloads: downloads),
           ],
         );
       },
@@ -613,6 +624,131 @@ class _ReadyTile extends StatelessWidget {
       confirmLabel: 'Excluir',
     );
     if (confirmed) await downloads.remove(task);
+  }
+}
+
+/// Reports what the downloads directory actually contains.
+///
+/// When the library and the disk disagree, this is the only thing that says
+/// which of the two is wrong — the difference between "the files are gone"
+/// and "the files are there but the app cannot see them" needs evidence, not
+/// a guess.
+class _DiagnosticsPanel extends StatelessWidget {
+  final DownloadProvider downloads;
+
+  const _DiagnosticsPanel({required this.downloads});
+
+  @override
+  Widget build(BuildContext context) {
+    final info = downloads.diagnostics;
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        leading: const Icon(
+          Icons.troubleshoot_rounded,
+          size: 20,
+          color: SabuflixTheme.textMuted,
+        ),
+        title: Text(
+          'Diagnóstico do armazenamento',
+          style: SabuflixTheme.body(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: SabuflixTheme.textSecondary,
+          ),
+        ),
+        children: [
+          if (info == null)
+            Text(
+              'Ainda não verificado.',
+              style: SabuflixTheme.caption(
+                fontSize: 12,
+                color: SabuflixTheme.textMuted,
+              ),
+            )
+          else ...[
+            _row('Arquivos de vídeo no disco', '${info.mediaFiles}'),
+            _row('Fichas de metadados', '${info.metadataFiles}'),
+            _row('Ocupado', formatBytes(info.mediaBytes)),
+            _row('Itens na biblioteca', '${downloads.tasks.length}'),
+            const SizedBox(height: 10),
+            Text(
+              'Pasta:\n${info.directory}',
+              style: SabuflixTheme.caption(
+                fontSize: 11,
+                color: SabuflixTheme.textMuted,
+              ),
+            ),
+            if (info.error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Erro de leitura: ${info.error}',
+                style: SabuflixTheme.caption(
+                  fontSize: 11,
+                  color: SabuflixTheme.error,
+                ),
+              ),
+            ],
+            if (downloads.persistError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Erro ao salvar: ${downloads.persistError}',
+                style: SabuflixTheme.caption(
+                  fontSize: 11,
+                  color: SabuflixTheme.error,
+                ),
+              ),
+            ],
+          ],
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: downloads.refreshDiagnostics,
+              style: TextButton.styleFrom(foregroundColor: SabuflixTheme.accent),
+              icon: const Icon(Icons.refresh_rounded, size: 17),
+              label: Text(
+                'Verificar de novo',
+                style: SabuflixTheme.body(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: SabuflixTheme.accent,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: SabuflixTheme.caption(
+              fontSize: 12,
+              color: SabuflixTheme.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: SabuflixTheme.body(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: SabuflixTheme.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

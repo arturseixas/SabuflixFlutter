@@ -17,6 +17,25 @@ class DownloadPausedException implements Exception {
   String toString() => 'Download pausado';
 }
 
+/// What the downloads directory actually contains, independent of whatever
+/// the app thinks it has. Shown in the Downloads tab so a mismatch between
+/// disk and library is visible instead of having to be guessed at.
+class DownloadDiagnostics {
+  final String directory;
+  final int mediaFiles;
+  final int metadataFiles;
+  final int mediaBytes;
+  final String? error;
+
+  const DownloadDiagnostics({
+    required this.directory,
+    required this.mediaFiles,
+    required this.metadataFiles,
+    required this.mediaBytes,
+    this.error,
+  });
+}
+
 /// A transfer currently in flight, kept so it can be stopped cleanly.
 class _ActiveTransfer {
   final http.Client client;
@@ -39,6 +58,7 @@ class DownloadService {
   static const String _indexKey = 'sabuflix_downloads_index';
   static const String _dirName = 'sabuflix_downloads';
   static const String _indexFileName = 'index.json';
+  static const String _metaSuffix = '.meta.json';
 
   final Map<String, _ActiveTransfer> _transfers = {};
 
@@ -216,7 +236,7 @@ class DownloadService {
 
   bool isTransferring(String id) => _transfers.containsKey(id);
 
-  /// Stops the transfer and removes the file from disk.
+  /// Stops the transfer and removes both the media file and its metadata.
   Future<void> deleteFile(DownloadTask task) async {
     await pause(task.id);
     try {
@@ -227,6 +247,7 @@ class DownloadService {
     } catch (_) {
       // A file we cannot delete should not block removing the entry.
     }
+    await deleteTaskMeta(task);
   }
 
   /// Total bytes occupied by every file in the downloads directory, including
@@ -236,10 +257,13 @@ class DownloadService {
       final dir = await downloadsDirectory();
       var total = 0;
       await for (final entity in dir.list(followLinks: false)) {
-        // The index is bookkeeping, not media; counting it would misreport
+        // Metadata is bookkeeping, not media; counting it would misreport
         // what the downloads actually cost the user.
-        if (entity is File && !p.basename(entity.path).startsWith(_indexFileName)) {
-          total += await entity.length();
+        if (entity is File) {
+          final name = p.basename(entity.path);
+          if (!name.startsWith(_indexFileName) && !name.endsWith(_metaSuffix)) {
+            total += await entity.length();
+          }
         }
       }
       return total;
@@ -248,29 +272,62 @@ class DownloadService {
     }
   }
 
-  /// The index lives beside the media files rather than in SharedPreferences,
-  /// so the catalogue and the files it describes can never drift apart: if the
-  /// videos survived, their index survived with them.
   Future<File> _indexFile() async {
     final dir = await downloadsDirectory();
     return File(p.join(dir.path, _indexFileName));
   }
 
-  Future<List<DownloadTask>> loadIndex() async {
-    final fromFile = await _readIndexFile();
-    if (fromFile != null) return fromFile;
+  /// Metadata file sitting next to a task's media file.
+  Future<File> _metaFileFor(DownloadTask task) async {
+    final dir = await downloadsDirectory();
+    return File(p.join(dir.path, '${task.id}$_metaSuffix'));
+  }
 
-    // Nothing on disk yet: pick up anything the previous SharedPreferences
-    // based version stored, so existing downloads are not orphaned.
-    final migrated = await _readLegacyIndex();
+  /// Rebuilds the library by scanning the downloads directory.
+  ///
+  /// Each download carries its own metadata file beside its media file, so the
+  /// directory itself is the source of truth. Two earlier attempts to fix
+  /// downloads disappearing kept a single index — one key in SharedPreferences,
+  /// then one index.json — and losing that one object still lost everything.
+  /// Per-item metadata cannot fail that way: whatever files survived describe
+  /// themselves, and anything unreadable costs only its own entry.
+  Future<List<DownloadTask>> loadIndex() async {
+    final scanned = await _scanMetaFiles();
+    if (scanned.isNotEmpty) return scanned;
+
+    // Nothing scanned: adopt whatever the older single-index versions left
+    // behind, then write it out as per-item metadata.
+    final migrated = await _readIndexFile() ?? await _readLegacyIndex();
     if (migrated.isNotEmpty) {
       await saveIndex(migrated);
     }
     return migrated;
   }
 
-  /// Returns null when there is no readable index file, which is different
-  /// from an index file that legitimately holds an empty list.
+  Future<List<DownloadTask>> _scanMetaFiles() async {
+    final tasks = <DownloadTask>[];
+    try {
+      final dir = await downloadsDirectory();
+      await for (final entity in dir.list(followLinks: false)) {
+        if (entity is! File || !entity.path.endsWith(_metaSuffix)) continue;
+        try {
+          final raw = await entity.readAsString();
+          final decoded = json.decode(raw);
+          if (decoded is Map) {
+            tasks.add(DownloadTask.fromJson(Map<String, dynamic>.from(decoded)));
+          }
+        } catch (_) {
+          // One damaged metadata file must not cost the whole library.
+        }
+      }
+    } catch (_) {
+      return tasks;
+    }
+    tasks.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return tasks;
+  }
+
+  /// Returns null when there is no readable legacy index file.
   Future<List<DownloadTask>?> _readIndexFile() async {
     try {
       final file = await _indexFile();
@@ -308,16 +365,83 @@ class DownloadService {
     }
   }
 
-  /// Writes the index through a temporary file and renames it into place, so
-  /// an interrupted write can never leave a half-written index behind — the
-  /// old one stays intact until the new one is complete.
+  /// Writes one metadata file per task and removes the ones that no longer
+  /// have a task, so the directory always mirrors the library exactly.
+  ///
+  /// Each write goes through a temporary file that is renamed into place, so
+  /// an interrupted write leaves the previous metadata intact rather than a
+  /// truncated file.
   Future<void> saveIndex(List<DownloadTask> tasks) async {
-    final file = await _indexFile();
-    final temp = File('${file.path}.tmp');
-    final payload = json.encode(tasks.map((t) => t.toJson()).toList());
+    final dir = await downloadsDirectory();
 
-    await temp.writeAsString(payload, flush: true);
+    for (final task in tasks) {
+      await saveTask(task);
+    }
+
+    final live = tasks.map((t) => '${t.id}$_metaSuffix').toSet();
+    await for (final entity in dir.list(followLinks: false)) {
+      if (entity is! File) continue;
+      final name = p.basename(entity.path);
+      if (name.endsWith(_metaSuffix) && !live.contains(name)) {
+        try {
+          await entity.delete();
+        } catch (_) {
+          // A stale metadata file is harmless; it is filtered on the next scan.
+        }
+      }
+    }
+  }
+
+  /// Persists a single task's metadata.
+  Future<void> saveTask(DownloadTask task) async {
+    final file = await _metaFileFor(task);
+    final temp = File('${file.path}.tmp');
+    await temp.writeAsString(json.encode(task.toJson()), flush: true);
     await temp.rename(file.path);
+  }
+
+  /// Removes a task's metadata file.
+  Future<void> deleteTaskMeta(DownloadTask task) async {
+    try {
+      final file = await _metaFileFor(task);
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // Nothing to do; a leftover entry is dropped on the next full save.
+    }
+  }
+
+  /// Facts about what is actually on disk, for the diagnostics panel.
+  Future<DownloadDiagnostics> diagnostics() async {
+    try {
+      final dir = await downloadsDirectory();
+      var media = 0;
+      var metas = 0;
+      var bytes = 0;
+      await for (final entity in dir.list(followLinks: false)) {
+        if (entity is! File) continue;
+        final name = p.basename(entity.path);
+        if (name.endsWith(_metaSuffix)) {
+          metas++;
+        } else if (!name.startsWith(_indexFileName)) {
+          media++;
+          bytes += await entity.length();
+        }
+      }
+      return DownloadDiagnostics(
+        directory: dir.path,
+        mediaFiles: media,
+        metadataFiles: metas,
+        mediaBytes: bytes,
+      );
+    } catch (e) {
+      return DownloadDiagnostics(
+        directory: 'indisponível',
+        mediaFiles: 0,
+        metadataFiles: 0,
+        mediaBytes: 0,
+        error: e.toString(),
+      );
+    }
   }
 
   /// Realigns the index with what is actually on disk.
