@@ -8,6 +8,7 @@ import 'providers/search_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/playlist_provider.dart';
 import 'providers/download_provider.dart';
+import 'providers/playback_controller.dart';
 import 'screens/profile_selection_screen.dart';
 
 void main() {
@@ -29,6 +30,7 @@ class SabuflixApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),
         ChangeNotifierProvider(create: (_) => DownloadProvider()),
+        ChangeNotifierProvider(create: (_) => PlaybackController()),
       ],
       child: MaterialApp(
         title: 'Sabuflix - Streaming Platform',

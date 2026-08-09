@@ -10,6 +10,7 @@ import 'my_list_screen.dart';
 import 'playlists_screen.dart';
 import 'downloads_screen.dart';
 import 'profile_selection_screen.dart';
+import '../widgets/pip_player.dart';
 import '../providers/profile_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -48,7 +49,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
-      body: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+      body: Stack(
+        children: [
+          isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+          // Floats above every tab, so playback follows the user around the
+          // app instead of ending when they leave the player.
+          const PipPlayer(),
+        ],
+      ),
     );
   }
 
