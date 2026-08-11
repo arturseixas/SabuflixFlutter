@@ -7,10 +7,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
+import '../models/cast_device.dart';
 import '../models/media_item.dart';
 import '../providers/continue_watching_provider.dart';
+import '../services/cast_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/formatters.dart';
+import '../widgets/cast_button.dart';
 import '../widgets/glass_container.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -61,6 +64,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   List<SubtitleTrack> _subtitleTracks = [];
   SubtitleTrack? _selectedSubtitleTrack;
 
+  /// Casting to a TV takes over playback entirely: the local media_kit
+  /// player is paused and `_currentPosition`/`_totalDuration`/`_isPlaying`
+  /// start mirroring the receiver's own status instead, so the existing
+  /// scrubber, time labels, and "Continuar assistindo" tracking all keep
+  /// working unchanged regardless of where the video is actually playing.
+  final CastService _castService = CastService();
+  CastDevice? _castDevice;
+  bool _castConnecting = false;
+  StreamSubscription<CastPlaybackStatus>? _castStatusSub;
+
   /// Captured up front: `dispose` runs after the element is unmounted, so the
   /// provider can no longer be looked up from the context by then.
   ContinueWatchingProvider? _continueWatching;
@@ -77,6 +90,80 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _initPlayer();
     _startHideTimer();
     _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
+    _castStatusSub = _castService.status.listen(_onCastStatus);
+  }
+
+  void _onCastStatus(CastPlaybackStatus status) {
+    if (!mounted || _castDevice == null) return;
+    if (!status.connected) {
+      // The receiver dropped the session on its own (app closed on the TV,
+      // Wi-Fi hiccup) — fall back to local playback instead of leaving the
+      // UI stuck showing a "casting" screen with a dead connection.
+      _resumeLocalPlayback();
+      return;
+    }
+    setState(() {
+      _isPlaying = status.playing;
+      _isBuffering = status.buffering;
+      _currentPosition = status.position.inSeconds.toDouble();
+      if (status.duration > Duration.zero) {
+        _totalDuration = status.duration.inSeconds.toDouble();
+      }
+    });
+  }
+
+  Future<void> _openCastPicker() async {
+    final device = await showCastPicker(context, _castService);
+    if (device == null || !mounted) return;
+    await _startCasting(device);
+  }
+
+  Future<void> _startCasting(CastDevice device) async {
+    setState(() => _castConnecting = true);
+    _player?.pause();
+    try {
+      await _castService.connect(device);
+      await _castService.loadMedia(
+        contentUrl: widget.videoUrl!,
+        title: widget.media.title,
+        imageUrl: widget.media.fullBackdropPath,
+        startAt: Duration(seconds: _currentPosition.toInt()),
+      );
+      if (!mounted) return;
+      setState(() {
+        _castDevice = device;
+        _castConnecting = false;
+        _showAudioMenu = false;
+        _showSubtitleMenu = false;
+      });
+    } catch (e) {
+      await _castService.disconnect();
+      if (!mounted) return;
+      setState(() => _castConnecting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível conectar a essa TV. Tente novamente.')),
+      );
+    }
+  }
+
+  /// Tears the cast session down and hands playback back to the local
+  /// player, picking up from wherever the TV left off.
+  ///
+  /// `_castDevice` is cleared *before* awaiting `disconnect()` — that call
+  /// emits its own "disconnected" status event on the way out, which would
+  /// otherwise loop straight back into this method while the first call is
+  /// still in flight (`_onCastStatus` only stops forwarding once the device
+  /// is nulled out).
+  Future<void> _resumeLocalPlayback() async {
+    if (_castDevice == null) return;
+    final resumeAt = Duration(seconds: _currentPosition.toInt());
+    setState(() => _castDevice = null);
+    await _castService.disconnect();
+    if (!mounted) return;
+    if (_player != null) {
+      await _player!.seek(resumeAt);
+      await _player!.play();
+    }
   }
 
   /// Persists the playback position so the title shows up on the
@@ -209,7 +296,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _playPause() {
-    if (_player != null) {
+    if (_castDevice != null) {
+      if (_isPlaying) {
+        _castService.pause();
+      } else {
+        _castService.play();
+      }
+      setState(() => _isPlaying = !_isPlaying); // optimistic; the status stream corrects it
+    } else if (_player != null) {
       _player!.playOrPause();
     } else {
       setState(() => _isPlaying = !_isPlaying);
@@ -218,19 +312,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _seek(double seconds) {
-    if (_player != null) {
-      final newPos = (_currentPosition + seconds).clamp(0.0, _totalDuration);
+    final newPos = (_currentPosition + seconds).clamp(0.0, _totalDuration);
+    if (_castDevice != null) {
+      _castService.seek(Duration(seconds: newPos.toInt()));
+      setState(() => _currentPosition = newPos);
+    } else if (_player != null) {
       _player!.seek(Duration(seconds: newPos.toInt()));
     } else {
-      setState(() {
-        _currentPosition = (_currentPosition + seconds).clamp(0.0, _totalDuration);
-      });
+      setState(() => _currentPosition = newPos);
     }
     _startHideTimer();
   }
 
   void _seekTo(double value) {
-    if (_player != null) {
+    if (_castDevice != null) {
+      _castService.seek(Duration(seconds: value.toInt()));
+      setState(() => _currentPosition = value);
+    } else if (_player != null) {
       _player!.seek(Duration(seconds: value.toInt()));
     } else {
       setState(() => _currentPosition = value);
@@ -266,6 +364,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _saveProgress();
     _progressTimer?.cancel();
     _hideTimer?.cancel();
+    _castStatusSub?.cancel();
+    _castService.dispose();
     _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -284,6 +384,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final hasVideo = _videoController != null;
+    final isCasting = _castDevice != null;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -293,11 +394,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (hasVideo)
+            if (isCasting)
+              _CastingSurface(media: widget.media, deviceName: _castDevice!.name)
+            else if (hasVideo)
               Center(
                 child: Video(
                   controller: _videoController!,
-                  controls: NoVideoControls, 
+                  controls: NoVideoControls,
                   fill: Colors.black,
                 ),
               )
@@ -310,7 +413,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
               ),
 
-            if (_isBuffering && hasVideo)
+            if (_isBuffering && (hasVideo || isCasting))
               const Center(child: CircularProgressIndicator(color: SabuflixTheme.accent)),
 
             // Brief confirmation that playback jumped to where it stopped.
@@ -394,6 +497,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           right: 12,
                           child: Row(
                             children: [
+                              if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
+                                CastIconButton(
+                                  isCasting: isCasting,
+                                  isConnecting: _castConnecting,
+                                  onPressed: isCasting ? _resumeLocalPlayback : _openCastPicker,
+                                ),
                               TextButton.icon(
                                 onPressed: _openOfficialTrailer,
                                 style: TextButton.styleFrom(
@@ -406,7 +515,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                               ),
                               const SizedBox(width: 4),
-                              if (_subtitleTracks.isNotEmpty)
+                              // Track selection only applies to the local media_kit
+                              // player, so it's hidden once a TV owns playback.
+                              if (!isCasting && _subtitleTracks.isNotEmpty)
                                 IconButton(
                                   icon: const Icon(Icons.subtitles_outlined, color: Colors.white),
                                   onPressed: () {
@@ -416,7 +527,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     });
                                   },
                                 ),
-                              if (_audioTracks.length > 1)
+                              if (!isCasting && _audioTracks.length > 1)
                                 IconButton(
                                   icon: const Icon(Icons.audiotrack_rounded, color: Colors.white),
                                   onPressed: () {
@@ -556,6 +667,67 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Replaces the video surface while a TV owns playback: the backdrop stays
+/// visible (blurred, dimmed) so the screen doesn't just go dark, with a
+/// simple "now casting" readout on top. Playback controls underneath keep
+/// working as normal — they just drive the receiver instead of media_kit.
+class _CastingSurface extends StatelessWidget {
+  final MediaItem media;
+  final String deviceName;
+
+  const _CastingSurface({required this.media, required this.deviceName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CachedNetworkImage(
+          imageUrl: media.fullBackdropPath,
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          placeholder: (context, url) => Container(color: SabuflixTheme.background),
+          errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
+        ),
+        BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+          child: Container(color: Colors.black.withValues(alpha: 0.6)),
+        ),
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  color: SabuflixTheme.accent.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.cast_connected_rounded, color: SabuflixTheme.accent, size: 36),
+              ),
+              const SizedBox(height: 18),
+              Text('Transmitindo para', style: SabuflixTheme.body(fontSize: 13, color: Colors.white70)),
+              const SizedBox(height: 4),
+              Text(
+                deviceName,
+                style: SabuflixTheme.title(fontSize: 22, color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                media.title,
+                style: SabuflixTheme.caption(fontSize: 13, color: Colors.white54),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
