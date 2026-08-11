@@ -8,9 +8,13 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import '../models/media_item.dart';
+import '../providers/cast_provider.dart';
 import '../providers/continue_watching_provider.dart';
+import '../services/cast/cast_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/formatters.dart';
+import '../widgets/cast_sheet.dart';
+import '../widgets/casting_panel.dart';
 import '../widgets/glass_container.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -259,6 +263,75 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
+  /// Hands the stream over to a television on the same network.
+  ///
+  /// The TV fetches the video itself, so the phone stops decoding entirely and
+  /// becomes the remote control. Local playback is paused rather than torn
+  /// down, which is what makes coming back instant.
+  Future<void> _startCasting() async {
+    final url = widget.videoUrl;
+    final messenger = ScaffoldMessenger.of(context);
+
+    // A television can only fetch what it can reach: a path on this phone's
+    // private storage means nothing to it.
+    if (url == null || url.isEmpty || !url.startsWith('http')) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Este vídeo está salvo no aparelho e não pode ser transmitido. '
+              'Abra uma fonte online para enviar à TV.'),
+        ),
+      );
+      return;
+    }
+
+    final cast = context.read<CastProvider>();
+    final device = await showCastSheet(context);
+    await cast.stopDiscovery();
+    if (device == null || !mounted) return;
+
+    // Hold the position before pausing: it is where the television picks up.
+    final startAt = Duration(seconds: _currentPosition.toInt());
+    await _player?.pause();
+
+    final connected = await cast.castTo(
+      device,
+      url: url,
+      title: widget.media.title,
+      subtitle: _headerSubtitle,
+      imageUrl: widget.media.fullBackdropPath,
+      startAt: startAt,
+    );
+
+    if (!mounted) return;
+    if (!connected) {
+      // Nothing was handed over, so pick local playback back up where it was.
+      await _player?.play();
+      messenger.showSnackBar(
+        SnackBar(content: Text(cast.error ?? 'Não foi possível transmitir para ${device.name}.')),
+      );
+      cast.clearError();
+      return;
+    }
+
+    setState(() => _showControls = true);
+    _hideTimer?.cancel();
+  }
+
+  /// Brings playback back to the phone, resuming where the television stopped.
+  Future<void> _stopCasting() async {
+    final cast = context.read<CastProvider>();
+    final position = cast.status.position;
+    await cast.stopCasting();
+    if (!mounted) return;
+
+    if (position > Duration.zero) {
+      await _player?.seek(position);
+      setState(() => _currentPosition = position.inSeconds.toDouble());
+    }
+    await _player?.play();
+    _startHideTimer();
+  }
+
   @override
   void dispose() {
     // Save before tearing the player down; leaving the screen is the moment
@@ -284,11 +357,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final hasVideo = _videoController != null;
+    final cast = context.watch<CastProvider>();
+    final isCasting = cast.isCasting;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
-        onTap: _toggleControls,
+        // While the television is playing, the screen is a remote control:
+        // tapping it must not toggle a set of controls for a video that is not
+        // running here.
+        onTap: isCasting ? null : _toggleControls,
         behavior: HitTestBehavior.opaque,
         child: Stack(
           fit: StackFit.expand,
@@ -338,13 +416,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ),
             ),
 
-            if (_showControls || !_isPlaying)
+            if (!isCasting && (_showControls || !_isPlaying))
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 color: Colors.black.withValues(alpha: _isPlaying ? 0.35 : 0.65),
               ),
 
-            if (_showControls)
+            if (!isCasting && _showControls)
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
                 opacity: _showControls ? 1.0 : 0.0,
@@ -394,6 +472,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           right: 12,
                           child: Row(
                             children: [
+                              if (CastService.isSupported)
+                                IconButton(
+                                  tooltip: 'Transmitir para a TV',
+                                  icon: const Icon(Icons.cast_rounded, color: Colors.white),
+                                  onPressed: _startCasting,
+                                ),
                               TextButton.icon(
                                 onPressed: _openOfficialTrailer,
                                 style: TextButton.styleFrom(
@@ -552,6 +636,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     ),
                   ),
                 ),
+              ),
+
+            // Playing on the television: the phone stops being a screen and
+            // becomes the remote.
+            if (isCasting)
+              CastingPanel(
+                title: widget.media.title,
+                subtitle: _headerSubtitle,
+                onStop: _stopCasting,
+                onBack: () => Navigator.pop(context),
               ),
           ],
         ),

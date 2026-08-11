@@ -2,6 +2,14 @@
 
 A new Flutter project.
 
+## Transmitir para a TV
+
+O player envia o vídeo para uma TV na mesma rede — Chromecast e Google TV por
+Google Cast, Samsung, LG e as demais por DLNA — e o celular vira o controle
+remoto. Também há um atalho para o espelhamento de tela do sistema. Detalhes,
+limitações e solução de problemas em
+**[docs/TRANSMITIR-PARA-TV.md](docs/TRANSMITIR-PARA-TV.md)**.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

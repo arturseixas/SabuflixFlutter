@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/wordmark.dart';
+import '../widgets/cast_bar.dart';
 import '../widgets/glass_container.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
@@ -128,9 +129,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         ),
         Expanded(
-          child: IndexedStack(
-            index: _currentIndex,
-            children: _screens,
+          child: Stack(
+            children: [
+              IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
+              // Sits above the content so the television stays reachable from
+              // anywhere in the app.
+              const Positioned(
+                left: 20,
+                right: 20,
+                bottom: 20,
+                child: CastBar(),
+              ),
+            ],
           ),
         ),
       ],
@@ -145,6 +158,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         IndexedStack(
           index: _currentIndex,
           children: _screens,
+        ),
+        Positioned(
+          left: 12,
+          right: 12,
+          // Clears the dock, which is the one thing it must never cover.
+          bottom: (bottomSafeArea > 0 ? bottomSafeArea + 6 : 22) + 74,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: const CastBar(),
+            ),
+          ),
         ),
         Positioned(
           left: 12,

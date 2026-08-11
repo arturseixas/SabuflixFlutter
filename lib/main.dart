@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'theme/sabuflix_theme.dart';
+import 'providers/cast_provider.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/continue_watching_provider.dart';
 import 'providers/downloads_provider.dart';
@@ -31,6 +32,7 @@ class SabuflixApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SearchProvider()),
         ChangeNotifierProvider(create: (_) => DownloadsProvider()),
         ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
+        ChangeNotifierProvider(create: (_) => CastProvider()),
       ],
       child: MaterialApp(
         title: 'Sabuflix - Streaming Platform',
