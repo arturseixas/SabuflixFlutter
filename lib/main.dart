@@ -9,11 +9,27 @@ import 'providers/favorites_provider.dart';
 import 'providers/search_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/playlist_provider.dart';
+import 'screens/pip_player_window.dart';
 import 'screens/profile_selection_screen.dart';
+import 'services/pip/pip_window_args.dart';
+import 'services/pip/pip_window_controller.dart';
 
-void main() {
+/// `desktop_multi_window` runs the Picture-in-Picture floating window as a
+/// second Flutter engine, re-entering this same `main()` with
+/// `["multi_window", windowId, argsJson]` instead of the normal empty
+/// argument list — that's the only signal telling this process which root
+/// widget to boot. Every other platform/launch path falls through to the
+/// regular app below untouched.
+void main(List<String> args) {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+
+  if (args.isNotEmpty && args.first == 'multi_window') {
+    final pipArgs = PipWindowArgs.fromArguments(args.length > 2 ? args[2] : '');
+    runApp(PipPlayerWindow(args: pipArgs));
+    return;
+  }
+
   runApp(const SabuflixApp());
 }
 
@@ -33,6 +49,7 @@ class SabuflixApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: pipNavigatorKey,
         title: 'Sabuflix - Streaming Platform',
         debugShowCheckedModeBanner: false,
         theme: SabuflixTheme.themeData,

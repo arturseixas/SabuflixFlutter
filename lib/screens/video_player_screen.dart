@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,8 @@ import '../models/cast_device.dart';
 import '../models/media_item.dart';
 import '../providers/continue_watching_provider.dart';
 import '../services/cast_service.dart';
+import '../services/pip/android_pip_controller.dart';
+import '../services/pip/pip_window_controller.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/cast_button.dart';
@@ -74,6 +77,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _castConnecting = false;
   StreamSubscription<CastPlaybackStatus>? _castStatusSub;
 
+  /// Android: real system Picture-in-Picture — floats over the home screen
+  /// and every other app, not just within Sabuflix. Windows: a separate
+  /// always-on-top floating window (see PipWindowController) that survives
+  /// this very screen closing, since triggering it pops this route.
+  StreamSubscription<bool>? _pipModeSub;
+  StreamSubscription<void>? _pipToggleSub;
+  bool _isInAndroidPip = false;
+
   /// Captured up front: `dispose` runs after the element is unmounted, so the
   /// provider can no longer be looked up from the context by then.
   ContinueWatchingProvider? _continueWatching;
@@ -91,6 +102,55 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _startHideTimer();
     _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
     _castStatusSub = _castService.status.listen(_onCastStatus);
+    if (Platform.isAndroid) {
+      _pipModeSub = AndroidPipController.onModeChanged.listen(_onAndroidPipModeChanged);
+      _pipToggleSub = AndroidPipController.onTogglePlayPauseRequested.listen((_) => _playPause());
+    }
+  }
+
+  void _onAndroidPipModeChanged(bool inPip) {
+    if (!mounted) return;
+    setState(() {
+      _isInAndroidPip = inPip;
+      if (inPip) {
+        _showControls = false;
+        _showAudioMenu = false;
+        _showSubtitleMenu = false;
+      }
+    });
+  }
+
+  /// Keeps the native side's "should Home/app-switch auto-enter PiP" flag
+  /// and its play/pause action icon in sync with actual playback state —
+  /// there's nothing worth floating in a PiP window while paused or while
+  /// the video is actually playing on a cast receiver instead.
+  void _syncAndroidPipEligibility() {
+    if (!Platform.isAndroid) return;
+    AndroidPipController.setPlaying(_isPlaying);
+    AndroidPipController.setEligible(_isPlaying && _castDevice == null);
+  }
+
+  Future<void> _enterPip() async {
+    if (Platform.isAndroid) {
+      await AndroidPipController.enter();
+      return;
+    }
+    if (PipWindowController.isSupported && widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
+      await PipWindowController.instance.open(
+        media: widget.media,
+        season: widget.season,
+        episode: widget.episode,
+        episodeTitle: widget.episodeTitle,
+        videoUrl: widget.videoUrl!,
+        title: widget.media.title,
+        imageUrl: widget.media.fullBackdropPath,
+        startAt: Duration(seconds: _currentPosition.toInt()),
+      );
+      // Playback now lives entirely in the floating window — back out to
+      // wherever the user was browsing, same as clicking Firefox's PiP
+      // button hands the tab's video off and returns you to the page.
+      if (mounted) Navigator.pop(context);
+    }
   }
 
   void _onCastStatus(CastPlaybackStatus status) {
@@ -110,6 +170,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         _totalDuration = status.duration.inSeconds.toDouble();
       }
     });
+    _syncAndroidPipEligibility();
   }
 
   Future<void> _openCastPicker() async {
@@ -136,6 +197,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         _showAudioMenu = false;
         _showSubtitleMenu = false;
       });
+      _syncAndroidPipEligibility();
     } catch (e) {
       await _castService.disconnect();
       if (!mounted) return;
@@ -158,6 +220,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     if (_castDevice == null) return;
     final resumeAt = Duration(seconds: _currentPosition.toInt());
     setState(() => _castDevice = null);
+    _syncAndroidPipEligibility();
     await _castService.disconnect();
     if (!mounted) return;
     if (_player != null) {
@@ -220,6 +283,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _player!.stream.playing.listen((bool playing) {
         if (!mounted) return;
         setState(() => _isPlaying = playing);
+        _syncAndroidPipEligibility();
       });
       
       _player!.stream.buffering.listen((bool buffering) {
@@ -303,10 +367,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         _castService.play();
       }
       setState(() => _isPlaying = !_isPlaying); // optimistic; the status stream corrects it
+      _syncAndroidPipEligibility();
     } else if (_player != null) {
-      _player!.playOrPause();
+      _player!.playOrPause(); // _isPlaying/eligibility follow via the player's own stream
     } else {
       setState(() => _isPlaying = !_isPlaying);
+      _syncAndroidPipEligibility();
     }
     _startHideTimer();
   }
@@ -366,6 +432,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _hideTimer?.cancel();
     _castStatusSub?.cancel();
     _castService.dispose();
+    _pipModeSub?.cancel();
+    _pipToggleSub?.cancel();
+    if (Platform.isAndroid) AndroidPipController.setEligible(false);
     _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -385,6 +454,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Widget build(BuildContext context) {
     final hasVideo = _videoController != null;
     final isCasting = _castDevice != null;
+
+    if (_isInAndroidPip) {
+      // Android draws its own PiP chrome (drag affordance, close, our
+      // play/pause action) on top of this — everything else would just be
+      // illegible at that size, so show nothing but the bare video.
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: hasVideo
+            ? Video(controller: _videoController!, controls: NoVideoControls, fill: Colors.black)
+            : const SizedBox.shrink(),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -497,6 +578,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           right: 12,
                           child: Row(
                             children: [
+                              if (widget.videoUrl != null &&
+                                  widget.videoUrl!.isNotEmpty &&
+                                  !isCasting &&
+                                  (Platform.isAndroid || Platform.isWindows))
+                                IconButton(
+                                  icon: const Icon(Icons.picture_in_picture_alt_rounded, color: Colors.white),
+                                  tooltip: 'Picture-in-Picture',
+                                  onPressed: _enterPip,
+                                ),
                               if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
                                 CastIconButton(
                                   isCasting: isCasting,

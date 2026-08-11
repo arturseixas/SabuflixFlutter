@@ -46,6 +46,9 @@ dependencies:
   media_kit_libs_video: ^1.0.7
   multicast_dns: ^0.3.2+7
   xml: ^6.6.1
+  desktop_multi_window: ^0.3.0
+  window_manager: ^0.5.2
+  screen_retriever: ^0.2.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
