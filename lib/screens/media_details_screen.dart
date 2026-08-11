@@ -11,12 +11,13 @@ import '../providers/favorites_provider.dart';
 import '../utils/app_route.dart';
 import '../widgets/media_row.dart';
 import '../widgets/glass_container.dart';
-import '../services/froststream_service.dart';
+import '../services/stream_source_aggregator.dart';
 import '../providers/continue_watching_provider.dart';
 import '../providers/downloads_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../utils/playback.dart';
+import '../utils/source_branding.dart';
 import 'video_player_screen.dart';
 
 class MediaDetailsScreen extends StatefulWidget {
@@ -120,7 +121,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
           blur: 40,
           fillOpacity: 0.4,
           child: FutureBuilder<List<Map<String, dynamic>>>(
-            future: FrostStreamService.fetchStreams(
+            future: StreamSourceAggregator.fetchStreams(
               imdbId: imdbId,
               type: media.mediaType,
               season: season,
@@ -154,11 +155,11 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
                           tileColor: Colors.white.withValues(alpha: 0.08),
-                          title: Text(s['name'] ?? 'Stream', style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
+                          title: Text(sabuflixStreamTitle(s, i), style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 6.0),
                             child: Text(
-                              s['title'] ?? 'Qualidade desconhecida', 
+                              sabuflixStreamSubtitle(s),
                               style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
                             ),
                           ),
@@ -220,8 +221,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
       return;
     }
 
-    final rawQuality = (stream['title'] ?? stream['name'] ?? '').toString();
-    final quality = rawQuality.split('\n').first.trim();
+    final quality = sabuflixQualityLabel(stream);
 
     final added = await context.read<DownloadsProvider>().enqueue(
           media: media,
