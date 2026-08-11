@@ -115,7 +115,7 @@ jobs:
             dist/sabuflix-windows-bundle.zip
 
   build-android:
-    name: Build Android Package (.apk)
+    name: Build Android / Android TV Package (.apk)
     runs-on: ubuntu-latest
     needs: create-release
 
@@ -154,3 +154,42 @@ jobs:
             --repo "${{ github.repository }}" \
             --clobber \
             dist/sabuflix.apk
+
+  build-tv:
+    name: Build Smart TV Packages (Tizen .wgt source + webOS .ipk)
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # ares-cli turns the webOS application folder into a real .ipk without
+      # needing a signing certificate, so the LG installer can be produced here.
+      # Tizen's packager always requires a certificate, so that platform ships
+      # as a ready-to-package application tree instead.
+      - name: Install LG webOS CLI
+        run: npm install -g @webos-tools/cli
+
+      - name: Build Tizen and webOS packages
+        run: ./tools/build_tv.sh
+
+      - name: Upload Smart TV packages to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.create-release.outputs.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --clobber \
+            dist/sabuflix-tizen-webapp.zip \
+            dist/sabuflix-webos-app.zip \
+            dist/*.ipk

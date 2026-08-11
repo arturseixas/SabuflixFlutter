@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Samsung Tizen TV application descriptor.
+
+  `tools/build_tv.sh` copies this file (and icon.png) on top of the compiled
+  Flutter web output, which turns `build/web` into a Tizen web application
+  ready for `tizen build-web` / `tizen package`.
+
+  Two entries here are load-bearing and easy to lose:
+
+  * `tizen:privilege .../tv.inputdevice` — without it the remote's transport
+    keys never reach the page, and `tizen.tvinputdevice.registerKey()` in
+    web/index.html throws.
+  * the content security policy — Flutter's CanvasKit renderer instantiates
+    WebAssembly, which Tizen's default policy refuses ('wasm-unsafe-eval').
+-->
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="http://sabuflix.app/sabuflix" version="1.0.0" viewmodes="maximized">
+    <tizen:application id="SabuFlixTv.Sabuflix" package="SabuFlixTv" required_version="5.5"/>
+
+    <name>Sabuflix</name>
+    <description>Filmes e séries na sua TV.</description>
+    <author>Sabuflix</author>
+
+    <content src="index.html"/>
+    <icon src="icon.png"/>
+
+    <!-- The catalogue, the artwork and the streams all come from other hosts. -->
+    <access origin="*" subdomains="true"/>
+    <tizen:allow-navigation>*</tizen:allow-navigation>
+
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+
+    <tizen:profile name="tv-samsung"/>
+
+    <feature name="http://tizen.org/feature/screen.size.all"/>
+
+    <tizen:content-security-policy>
+        default-src * data: blob: 'unsafe-inline' 'unsafe-eval';
+        script-src * data: blob: 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval';
+        style-src * data: blob: 'unsafe-inline';
+        img-src * data: blob:;
+        media-src * data: blob:;
+        connect-src * data: blob:;
+        font-src * data: blob:;
+    </tizen:content-security-policy>
+
+    <tizen:setting screen-orientation="landscape"
+                   context-menu="disable"
+                   background-support="disable"
+                   encryption="disable"
+                   install-location="auto"
+                   hwkey-event="enable"/>
+</widget>

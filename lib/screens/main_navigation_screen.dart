@@ -12,6 +12,7 @@ import 'playlists_screen.dart';
 import 'profile_selection_screen.dart';
 import '../providers/downloads_provider.dart';
 import '../providers/profile_provider.dart';
+import '../tv/tv_platform.dart';
 import 'package:provider/provider.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -21,29 +22,34 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-/// Index of the Downloads tab inside [_MainNavigationScreenState._destinations].
-const int _downloadsIndex = 3;
-
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
-  static const List<_NavDestination> _destinations = [
-    _NavDestination(Icons.home, Icons.home_outlined, 'Início'),
-    _NavDestination(Icons.search, Icons.search, 'Pesquisar', shortLabel: 'Buscar'),
-    _NavDestination(Icons.category, Icons.category_outlined, 'Categorias', shortLabel: 'Gêneros'),
-    _NavDestination(Icons.download_rounded, Icons.download_outlined, 'Downloads'),
-    _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista', shortLabel: 'Lista'),
-    _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined, 'Playlists'),
+  /// Downloads need a real filesystem, which a browser build (including the
+  /// Tizen and webOS TV apps) does not have — so the tab is built out entirely
+  /// there rather than left in place to fail on tap.
+  static final bool _downloadsEnabled = TvPlatform.supportsDownloads;
+
+  static final List<_NavDestination> _destinations = [
+    const _NavDestination(Icons.home, Icons.home_outlined, 'Início'),
+    const _NavDestination(Icons.search, Icons.search, 'Pesquisar', shortLabel: 'Buscar'),
+    const _NavDestination(Icons.category, Icons.category_outlined, 'Categorias', shortLabel: 'Gêneros'),
+    if (_downloadsEnabled) const _NavDestination(Icons.download_rounded, Icons.download_outlined, 'Downloads'),
+    const _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista', shortLabel: 'Lista'),
+    const _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined, 'Playlists'),
   ];
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    SearchScreen(),
-    CategoriesScreen(),
-    DownloadsScreen(),
-    MyListScreen(),
-    PlaylistsScreen(),
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const SearchScreen(),
+    const CategoriesScreen(),
+    if (_downloadsEnabled) const DownloadsScreen(),
+    const MyListScreen(),
+    const PlaylistsScreen(),
   ];
+
+  /// Position of the Downloads tab, or -1 when it was built out.
+  static final int _downloadsIndex = _destinations.indexWhere((d) => d.label == 'Downloads');
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +58,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     // Only rebuilds the chrome when the number of pending downloads changes,
     // not on every progress tick.
-    final activeDownloads = context.select<DownloadsProvider, int>((provider) => provider.activeCount);
+    final activeDownloads = _downloadsEnabled
+        ? context.select<DownloadsProvider, int>((provider) => provider.activeCount)
+        : 0;
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,

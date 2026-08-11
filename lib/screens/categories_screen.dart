@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/search_provider.dart';
 import '../theme/sabuflix_theme.dart';
+import '../tv/tv_focus.dart';
+import '../tv/tv_metrics.dart';
 import '../utils/app_route.dart';
-import '../widgets/glass_container.dart';
 import 'search_screen.dart';
 
 class CategoriesScreen extends StatelessWidget {
@@ -23,58 +24,82 @@ class CategoriesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final searchProvider = Provider.of<SearchProvider>(context, listen: false);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = (screenWidth / 200).floor().clamp(2, 4);
+    final metrics = TvMetrics.of(context);
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
       appBar: AppBar(
         backgroundColor: SabuflixTheme.background,
-        title: Text('Categorias', style: SabuflixTheme.title(fontSize: 20, fontWeight: FontWeight.w600)),
+        toolbarHeight: metrics.isTv ? 84 : kToolbarHeight,
+        title: Text(
+          'Categorias',
+          style: SabuflixTheme.title(fontSize: metrics.isTv ? 34 : 20, fontWeight: FontWeight.w600),
+        ),
       ),
       body: Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, screenWidth < 800 ? 108 : 20),
+        padding: EdgeInsets.fromLTRB(metrics.gutter, 20, metrics.gutter, metrics.bottomInset),
         child: GridView.builder(
-          physics: const BouncingScrollPhysics(),
+          physics: metrics.isTv ? const ClampingScrollPhysics() : const BouncingScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
+            crossAxisCount: metrics.categoryCrossAxisCount,
             childAspectRatio: 1.7,
-            crossAxisSpacing: 14,
-            mainAxisSpacing: 14,
+            crossAxisSpacing: metrics.isTv ? 20 : 14,
+            mainAxisSpacing: metrics.isTv ? 20 : 14,
           ),
           itemCount: categoryCards.length,
           itemBuilder: (context, index) {
             final cat = categoryCards[index];
             final Color catColor = cat['color'] as Color;
 
-            return GlassContainer(
-              borderRadius: SabuflixTheme.radiusLg,
-              blur: 24,
-              fillOpacity: 0.25,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    searchProvider.filterByGenre(cat['id'] as int);
-                    Navigator.push(context, glassRoute(const SearchScreen()));
-                  },
+            return TvFocusable(
+              showRing: false,
+              scaleOnFocus: false,
+              semanticLabel: cat['name'] as String,
+              onPressed: () {
+                searchProvider.filterByGenre(cat['id'] as int);
+                Navigator.push(context, glassRoute(const SearchScreen()));
+              },
+              // Flat fills instead of the frosted panels used on phones: a
+              // grid of live BackdropFilters is more than a TV's GPU will
+              // render at 60fps while the focus highlight animates over it.
+              builder: (context, focused, child) => AnimatedContainer(
+                duration: SabuflixTheme.durationFast,
+                curve: SabuflixTheme.curveStandard,
+                padding: EdgeInsets.all(metrics.isTv ? 26 : 18),
+                decoration: tvFocusDecoration(
+                  focused: focused,
                   borderRadius: SabuflixTheme.radiusLg,
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Icon(cat['icon'] as IconData, size: 24, color: catColor),
-                        Text(
-                          cat['name'] as String,
-                          style: SabuflixTheme.body(fontSize: 14, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary),
-                        ),
-                      ],
-                    ),
+                  ringWidth: metrics.focusRingWidth,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      catColor.withValues(alpha: focused ? 0.55 : 0.28),
+                      SabuflixTheme.surface.withValues(alpha: focused ? 0.9 : 0.6),
+                    ],
                   ),
                 ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(
+                      cat['icon'] as IconData,
+                      size: metrics.isTv ? 38 : 24,
+                      color: focused ? SabuflixTheme.textPrimary : catColor,
+                    ),
+                    Text(
+                      cat['name'] as String,
+                      style: SabuflixTheme.body(
+                        fontSize: metrics.isTv ? 22 : 14,
+                        fontWeight: FontWeight.w600,
+                        color: SabuflixTheme.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              child: const SizedBox.shrink(),
             );
           },
         ),

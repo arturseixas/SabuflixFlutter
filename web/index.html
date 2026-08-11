@@ -13,26 +13,170 @@
 
     This is a placeholder for base href that will be replaced by the value of
     the `--base-href` argument provided to `flutter build`.
+
+    The Tizen and webOS packages are built with `--base-href ./` so the app can
+    be loaded from a file:// URL inside the TV's app container.
   -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Sabuflix — filmes e séries na sua TV.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="sabuflix">
+  <meta name="apple-mobile-web-app-title" content="Sabuflix">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>sabuflix</title>
+  <title>Sabuflix</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      /* A TV app is a fixed viewport: nothing outside the Flutter canvas
+         should ever scroll, bounce or show a scrollbar. */
+      overflow: hidden;
+      overscroll-behavior: none;
+      /* Remote-driven interfaces have no text selection and no tap flash. */
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* Holds the screen while the engine boots. Some TVs take a few seconds to
+       compile the app, and a white flash on a living-room panel is brutal. */
+    #sabuflix-boot {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 22px;
+      background: #000;
+      color: #fff;
+      letter-spacing: -0.04em;
+      font-size: 4vw;
+      font-weight: 800;
+      z-index: 10;
+      transition: opacity 400ms ease;
+    }
+
+    #sabuflix-boot .bar {
+      width: 8vw;
+      height: 4px;
+      border-radius: 2px;
+      background: #0a84ff;
+      animation: sabuflix-pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes sabuflix-pulse {
+      0%, 100% { opacity: 0.25; transform: scaleX(0.6); }
+      50%      { opacity: 1;    transform: scaleX(1); }
+    }
+  </style>
+
+  <script>
+    // ---------------------------------------------------------------------
+    // Smart-TV remote support for the browser-based TV platforms.
+    //
+    // Samsung (Tizen) and LG (webOS) deliver their remote as ordinary keyboard
+    // events, but with vendor key codes that mean nothing to any web engine:
+    // Tizen sends 10009 for Return and 415/19/413/412/417 for the transport
+    // keys, webOS sends 461 for Back. Flutter never sees them as anything it
+    // can name.
+    //
+    // So they are translated here, at the edge, before the framework is even
+    // loaded: the original event is swallowed in the capture phase and a
+    // standards-compliant one ('Escape', 'MediaPlayPause', …) is dispatched in
+    // its place. Everything above this line — Dart included — then deals with
+    // one keyboard, not three.
+    // ---------------------------------------------------------------------
+    (function () {
+      var REMOTE_KEYS = {
+        10009: 'Escape',          // Tizen — Return
+        461: 'Escape',            // webOS — Back
+        415: 'MediaPlay',         // Tizen / HbbTV — Play
+        19: 'MediaPause',         // Pause
+        10252: 'MediaPlayPause',  // Tizen — Play/Pause combo key
+        413: 'MediaStop',         // Stop
+        412: 'MediaRewind',       // Rewind
+        417: 'MediaFastForward',  // Fast forward
+        178: 'MediaStop',         // Some webOS/HbbTV remotes
+        179: 'MediaPlayPause',
+        227: 'MediaRewind',
+        228: 'MediaFastForward',
+        176: 'MediaTrackNext',
+        177: 'MediaTrackPrevious'
+      };
+
+      function handler(event) {
+        // Our own replacement events come back through this listener; letting
+        // them map again would loop forever.
+        if (!event.isTrusted) return;
+
+        var mapped = REMOTE_KEYS[event.keyCode];
+        if (!mapped) return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        var replacement = new KeyboardEvent(event.type, {
+          key: mapped,
+          code: mapped,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        });
+        (document.activeElement || document.body).dispatchEvent(replacement);
+      }
+
+      window.addEventListener('keydown', handler, true);
+      window.addEventListener('keyup', handler, true);
+
+      // Tizen hands the transport keys to an app only after it asks for them.
+      window.addEventListener('load', function () {
+        if (!window.tizen || !window.tizen.tvinputdevice) return;
+        [
+          'MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop',
+          'MediaRewind', 'MediaFastForward', 'MediaTrackPrevious', 'MediaTrackNext',
+          'ChannelUp', 'ChannelDown', 'Info', 'Exit'
+        ].forEach(function (key) {
+          try {
+            window.tizen.tvinputdevice.registerKey(key);
+          } catch (e) {
+            // Not every key exists on every remote; skip the ones that do not.
+          }
+        });
+      });
+    })();
+
+    // Drops the boot screen as soon as Flutter paints.
+    window.addEventListener('flutter-first-frame', function () {
+      var boot = document.getElementById('sabuflix-boot');
+      if (!boot) return;
+      boot.style.opacity = '0';
+      setTimeout(function () { boot.remove(); }, 420);
+    });
+  </script>
 </head>
 <body>
+  <div id="sabuflix-boot">
+    <div>Sabuflix</div>
+    <div class="bar"></div>
+  </div>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

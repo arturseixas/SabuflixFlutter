@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/favorites_provider.dart';
 import '../theme/sabuflix_theme.dart';
+import '../tv/tv_metrics.dart';
 import '../widgets/media_card.dart';
 
 class MyListScreen extends StatelessWidget {
@@ -11,18 +12,22 @@ class MyListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final favoritesProvider = Provider.of<FavoritesProvider>(context);
     final favorites = favoritesProvider.favorites;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = (screenWidth / 160).floor().clamp(2, 6);
+    final metrics = TvMetrics.of(context);
+    final crossAxisCount = metrics.gridCrossAxisCount;
     // Leave room for the floating dock so the last row stays reachable.
-    final bottomInset = screenWidth < 800 ? 118.0 : 32.0;
+    final bottomInset = metrics.bottomInset;
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
       appBar: AppBar(
         backgroundColor: SabuflixTheme.background,
+        toolbarHeight: metrics.isTv ? 84 : kToolbarHeight,
         title: Row(
           children: [
-            Text('Minha Lista', style: SabuflixTheme.title(fontSize: 20, fontWeight: FontWeight.w700)),
+            Text(
+              'Minha Lista',
+              style: SabuflixTheme.title(fontSize: metrics.isTv ? 34 : 20, fontWeight: FontWeight.w700),
+            ),
             if (favorites.isNotEmpty) ...[
               const SizedBox(width: 10),
               Container(
@@ -73,18 +78,20 @@ class MyListScreen extends StatelessWidget {
                   ),
                 )
               : GridView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
+                  physics: metrics.isTv ? const ClampingScrollPhysics() : const BouncingScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(metrics.gutter, 4, metrics.gutter, bottomInset),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     childAspectRatio: 0.65,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    crossAxisSpacing: metrics.isTv ? 20 : 12,
+                    mainAxisSpacing: metrics.isTv ? 26 : 12,
                   ),
                   itemCount: favorites.length,
                   itemBuilder: (context, index) {
                     final item = favorites[index];
-                    return MediaCard(media: item);
+                    // The grid cell already sets the width; letting the card
+                    // impose its own would either overflow or leave a gap.
+                    return MediaCard(media: item, width: double.infinity);
                   },
                 ),
     );
