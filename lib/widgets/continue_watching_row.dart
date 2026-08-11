@@ -5,8 +5,6 @@ import 'package:provider/provider.dart';
 import '../models/watch_progress.dart';
 import '../providers/continue_watching_provider.dart';
 import '../theme/sabuflix_theme.dart';
-import '../tv/tv_focus.dart';
-import '../tv/tv_metrics.dart';
 import '../utils/playback.dart';
 
 /// The "Continuar Assistindo" shelf: wide 16:9 cards with a progress line,
@@ -21,30 +19,26 @@ class ContinueWatchingRow extends StatelessWidget {
         final entries = provider.entries;
         if (entries.isEmpty) return const SizedBox.shrink();
 
-        final metrics = TvMetrics.of(context);
-        final cardWidth = metrics.continueCardWidth;
+        final isMobile = MediaQuery.of(context).size.width < 800;
+        final cardWidth = isMobile ? 232.0 : 268.0;
+        final rowHeight = cardWidth * 9 / 16 + 62;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(
-                metrics.gutter + 8,
-                metrics.isTv ? 30 : 20,
-                metrics.gutter,
-                metrics.isTv ? 18 : 14,
-              ),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 14),
               child: Text(
                 'Continuar Assistindo',
-                style: SabuflixTheme.title(fontSize: metrics.sectionTitleSize, fontWeight: FontWeight.w800),
+                style: SabuflixTheme.title(fontSize: 19, fontWeight: FontWeight.w800),
               ),
             ),
             SizedBox(
-              height: metrics.continueRowHeight,
+              height: rowHeight,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                physics: metrics.isTv ? const ClampingScrollPhysics() : const BouncingScrollPhysics(),
-                padding: EdgeInsets.symmetric(horizontal: metrics.gutter),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: entries.length,
                 itemBuilder: (context, index) {
                   return Padding(
@@ -69,18 +63,14 @@ class _ContinueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = TvMetrics.of(context);
-
     return SizedBox(
       width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          TvFocusable(
-            onPressed: () => resumeWatching(context, entry),
-            borderRadius: SabuflixTheme.radiusMd,
-            semanticLabel: 'Continuar ${entry.media.title}',
+          GestureDetector(
+            onTap: () => resumeWatching(context, entry),
             child: ClipRRect(
               borderRadius: SabuflixTheme.radiusMd,
               child: AspectRatio(
@@ -144,15 +134,11 @@ class _ContinueCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    // A 24-pixel target in the corner of a card is fine for a
-                    // finger and impossible for a D-pad, so the TV gets its
-                    // own focusable button underneath instead.
-                    if (!metrics.isTv)
-                      Positioned(
-                        top: 6,
-                        right: 6,
-                        child: _RemoveButton(mediaId: entry.media.id),
-                      ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: _RemoveButton(mediaId: entry.media.id),
+                    ),
                   ],
                 ),
               ),
@@ -163,51 +149,14 @@ class _ContinueCard extends StatelessWidget {
             entry.media.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: SabuflixTheme.caption(
-              fontSize: metrics.cardLabelSize,
-              fontWeight: FontWeight.w700,
-              color: SabuflixTheme.textPrimary,
-            ),
+            style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w700, color: SabuflixTheme.textPrimary),
           ),
           const SizedBox(height: 2),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  entry.subtitleLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: SabuflixTheme.caption(
-                    fontSize: metrics.isTv ? 14 : 11,
-                    color: SabuflixTheme.textMuted,
-                  ),
-                ),
-              ),
-              if (metrics.isTv)
-                TvFocusable(
-                  showRing: false,
-                  scaleOnFocus: false,
-                  semanticLabel: 'Remover ${entry.media.title} da lista',
-                  onPressed: () => context.read<ContinueWatchingProvider>().remove(entry.media.id),
-                  builder: (context, focused, child) => AnimatedContainer(
-                    duration: SabuflixTheme.durationFast,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: focused ? SabuflixTheme.textPrimary : Colors.white.withValues(alpha: 0.08),
-                      borderRadius: SabuflixTheme.radiusPill,
-                    ),
-                    child: Text(
-                      'Remover',
-                      style: SabuflixTheme.caption(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: focused ? SabuflixTheme.background : SabuflixTheme.textSecondary,
-                      ),
-                    ),
-                  ),
-                  child: const SizedBox.shrink(),
-                ),
-            ],
+          Text(
+            entry.subtitleLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: SabuflixTheme.caption(fontSize: 11, color: SabuflixTheme.textMuted),
           ),
         ],
       ),

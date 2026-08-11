@@ -4,10 +4,9 @@ import 'package:provider/provider.dart';
 import '../models/media_item.dart';
 import '../theme/sabuflix_theme.dart';
 import '../providers/favorites_provider.dart';
-import '../tv/tv_focus.dart';
-import '../tv/tv_metrics.dart';
 import '../utils/app_route.dart';
 import '../screens/media_details_screen.dart';
+import 'glass_container.dart';
 
 class HeroBanner extends StatelessWidget {
   final MediaItem media;
@@ -18,12 +17,11 @@ class HeroBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final favoritesProvider = Provider.of<FavoritesProvider>(context);
     final isFav = favoritesProvider.isFavorite(media.id);
-    final metrics = TvMetrics.of(context);
-    final screenWidth = metrics.screen.width;
-    final isWide = metrics.isWide;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
 
     return SizedBox(
-      height: metrics.heroHeight,
+      height: 560,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,
@@ -67,9 +65,9 @@ class HeroBanner extends StatelessWidget {
           ),
 
           Positioned(
-            bottom: metrics.isTv ? 56 : 44,
-            left: isWide ? metrics.gutter + 12 : 24,
-            right: isWide ? screenWidth * 0.4 : 24,
+            bottom: 44,
+            left: isDesktop ? 56 : 24,
+            right: isDesktop ? screenWidth * 0.42 : 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -77,8 +75,8 @@ class HeroBanner extends StatelessWidget {
                 if (media.fullLogoPath != null) ...[
                   ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxHeight: metrics.isTv ? 190 : (isWide ? 120 : 80),
-                      maxWidth: metrics.isTv ? 620 : (isWide ? 440 : 290),
+                      maxHeight: isDesktop ? 120 : 80,
+                      maxWidth: isDesktop ? 440 : 290,
                     ),
                     child: CachedNetworkImage(
                       imageUrl: media.fullLogoPath!,
@@ -89,7 +87,7 @@ class HeroBanner extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: SabuflixTheme.headline(
-                          fontSize: metrics.isTv ? 62 : (isWide ? 44 : 30),
+                          fontSize: isDesktop ? 44 : 30,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -101,73 +99,116 @@ class HeroBanner extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: SabuflixTheme.headline(
-                      fontSize: metrics.isTv ? 62 : (isWide ? 44 : 30),
+                      fontSize: isDesktop ? 44 : 30,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
-                SizedBox(height: metrics.isTv ? 18 : 14),
+                const SizedBox(height: 14),
 
                 Row(
                   children: [
-                    Icon(Icons.star_rounded, color: SabuflixTheme.gold, size: metrics.isTv ? 24 : 16),
+                    const Icon(Icons.star_rounded, color: SabuflixTheme.gold, size: 16),
                     const SizedBox(width: 4),
                     Text(
                       media.formattedRating,
-                      style: SabuflixTheme.body(
-                        fontSize: metrics.bodySize,
-                        fontWeight: FontWeight.w600,
-                        color: SabuflixTheme.textPrimary,
-                      ),
+                      style: SabuflixTheme.body(fontSize: 14, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary),
                     ),
                     const SizedBox(width: 10),
-                    Text('·', style: SabuflixTheme.body(fontSize: metrics.bodySize, color: SabuflixTheme.textMuted)),
+                    Text('·', style: SabuflixTheme.body(fontSize: 14, color: SabuflixTheme.textMuted)),
                     const SizedBox(width: 10),
-                    Text(media.formattedYear, style: SabuflixTheme.body(fontSize: metrics.bodySize)),
+                    Text(media.formattedYear, style: SabuflixTheme.body(fontSize: 14)),
                   ],
                 ),
-                SizedBox(height: metrics.isTv ? 20 : 16),
+                const SizedBox(height: 16),
 
                 if (media.overview != null && media.overview!.isNotEmpty)
                   Text(
                     media.overview!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: SabuflixTheme.body(
-                      fontSize: metrics.isTv ? 21 : 15,
-                      height: 1.5,
-                      color: SabuflixTheme.textSecondary,
-                    ),
+                    style: SabuflixTheme.body(fontSize: 15, height: 1.5, color: SabuflixTheme.textSecondary),
                   ),
-                SizedBox(height: metrics.isTv ? 34 : 26),
+                const SizedBox(height: 26),
 
                 Wrap(
-                  spacing: metrics.isTv ? 18 : 12,
+                  spacing: 12,
                   runSpacing: 12,
                   children: [
-                    _HeroButton(
-                      icon: Icons.play_arrow_rounded,
-                      label: 'Assistir',
-                      primary: true,
-                      // The first thing a remote should land on when the home
-                      // screen opens.
-                      autofocus: metrics.isTv,
-                      onPressed: () {
-                        Navigator.push(context, glassRoute(MediaDetailsScreen(media: media)));
-                      },
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        borderRadius: SabuflixTheme.radiusPill,
+                        gradient: const LinearGradient(
+                          colors: [SabuflixTheme.accent, SabuflixTheme.accentHover],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: SabuflixTheme.accent.withValues(alpha: 0.38),
+                            blurRadius: 18,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(context, glassRoute(MediaDetailsScreen(media: media)));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                          shape: const StadiumBorder(),
+                        ),
+                        icon: const Icon(Icons.play_arrow_rounded, size: 24, color: Colors.white),
+                        label: Text(
+                          'Assistir',
+                          style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                      ),
                     ),
-                    _HeroButton(
-                      icon: isFav ? Icons.check_rounded : Icons.add_rounded,
-                      label: isFav ? 'Na Lista' : 'Minha Lista',
-                      primary: false,
-                      highlighted: isFav,
-                      onPressed: () {
-                        favoritesProvider.toggleFavorite(media);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(isFav ? 'Removido da lista' : 'Adicionado à lista')),
-                        );
-                      },
+                    GlassContainer(
+                      borderRadius: SabuflixTheme.radiusPill,
+                      blur: 28,
+                      fillOpacity: 0.3,
+                      hasGlow: isFav,
+                      glowColor: SabuflixTheme.accent,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: SabuflixTheme.radiusPill,
+                          onTap: () {
+                            favoritesProvider.toggleFavorite(media);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(isFav ? 'Removido da lista' : 'Adicionado à lista')),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isFav ? Icons.check_rounded : Icons.add_rounded,
+                                  size: 20,
+                                  color: isFav ? SabuflixTheme.accent : SabuflixTheme.textPrimary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  isFav ? 'Na Lista' : 'Minha Lista',
+                                  style: SabuflixTheme.body(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: isFav ? SabuflixTheme.accent : SabuflixTheme.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
+
                   ],
                 ),
               ],
@@ -175,89 +216,6 @@ class HeroBanner extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// The hero's call to action, focusable by remote.
-///
-/// Solid fills instead of the frosted glass used elsewhere: a `BackdropFilter`
-/// behind a moving focus highlight is the fastest way to drop frames on a TV.
-class _HeroButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool primary;
-  final bool highlighted;
-  final bool autofocus;
-  final VoidCallback onPressed;
-
-  const _HeroButton({
-    required this.icon,
-    required this.label,
-    required this.primary,
-    required this.onPressed,
-    this.highlighted = false,
-    this.autofocus = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final metrics = TvMetrics.of(context);
-
-    return TvFocusable(
-      autofocus: autofocus,
-      onPressed: onPressed,
-      showRing: false,
-      scaleOnFocus: false,
-      semanticLabel: label,
-      builder: (context, focused, child) {
-        final Color background = focused
-            ? SabuflixTheme.textPrimary
-            : primary
-                ? SabuflixTheme.accent
-                : Colors.white.withValues(alpha: 0.16);
-        final Color foreground = focused
-            ? SabuflixTheme.background
-            : highlighted
-                ? SabuflixTheme.accent
-                : Colors.white;
-
-        return AnimatedContainer(
-          duration: SabuflixTheme.durationFast,
-          curve: SabuflixTheme.curveStandard,
-          padding: EdgeInsets.symmetric(
-            horizontal: metrics.isTv ? 34 : 24,
-            vertical: metrics.isTv ? 18 : 14,
-          ),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: SabuflixTheme.radiusPill,
-            border: Border.all(
-              color: focused ? SabuflixTheme.textPrimary : Colors.white.withValues(alpha: 0.16),
-              width: focused ? metrics.focusRingWidth : 1,
-            ),
-            boxShadow: focused
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 26, offset: const Offset(0, 10))]
-                : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: metrics.isTv ? 30 : 22, color: foreground),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: SabuflixTheme.body(
-                  fontSize: metrics.isTv ? 20 : 15,
-                  fontWeight: FontWeight.w700,
-                  color: foreground,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-      child: const SizedBox.shrink(),
     );
   }
 }

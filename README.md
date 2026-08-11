@@ -1,35 +1,17 @@
-# Sabuflix
+# sabuflix
 
-Catálogo de filmes e séries em Flutter, com perfis, listas, downloads offline e
-player próprio — rodando em celular, desktop e **televisão**.
+A new Flutter project.
 
-## Plataformas
+## Getting Started
 
-| | Como instalar |
-|---|---|
-| **Android TV / Google TV** | `flutter build apk --release --no-tree-shake-icons` |
-| **Samsung (Tizen)** | `./tools/build_tv.sh` → `dist/sabuflix-tizen-webapp.zip` |
-| **LG (webOS)** | `./tools/build_tv.sh` → `dist/*.ipk` |
-| Android e iOS | `flutter build apk` / `flutter build ipa` |
-| Windows, macOS e Linux | `flutter build windows` / `macos` / `linux` |
-| Navegador (inclusive TVs Hisense, Philips, Foxxum, Zeasn) | `flutter build web --release` |
+This project is a starting point for a Flutter application.
 
-A interface muda sozinha conforme o aparelho: dock flutuante e alvos de toque no
-celular, menu lateral e navegação por controle remoto na TV. Os detalhes de
-build, instalação, teclas do controle e limitações de cada plataforma estão em
-**[docs/TV.md](docs/TV.md)**.
+A few resources to get you started if this is your first Flutter project:
 
-## Rodando localmente
+- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
+- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
 
-```bash
-flutter pub get
-flutter run
-```
-
-Para testar a interface de TV em qualquer máquina:
-
-```bash
-flutter run --dart-define=SABUFLIX_TV=on
-```
-
-(ou, dentro do app, **Ajustes → Interface → Sempre TV**)
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.

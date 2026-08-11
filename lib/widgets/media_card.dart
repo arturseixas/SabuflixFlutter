@@ -2,96 +2,80 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media_item.dart';
 import '../theme/sabuflix_theme.dart';
-import '../tv/tv_focus.dart';
-import '../tv/tv_metrics.dart';
 import '../utils/app_route.dart';
 import '../screens/media_details_screen.dart';
 
 /// A poster card in the Apple Music / Apple TV idiom: artwork only, title
 /// set below in small type. No badges, no overlays, no rating chip.
-///
-/// The same card serves the phone and the television — it takes D-pad focus,
-/// grows and rings itself when selected, and pulls its size from [TvMetrics]
-/// so a shelf reads at arm's length and from the sofa alike.
-class MediaCard extends StatelessWidget {
+class MediaCard extends StatefulWidget {
   final MediaItem media;
-
-  /// Overrides the width from [TvMetrics]; used by the fixed-width grids.
-  final double? width;
-
-  final bool autofocus;
+  final double width;
 
   const MediaCard({
     Key? key,
     required this.media,
-    this.width,
-    this.autofocus = false,
+    this.width = 148,
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final metrics = TvMetrics.of(context);
-    final cardWidth = width ?? metrics.posterWidth;
+  State<MediaCard> createState() => _MediaCardState();
+}
 
-    return TvFocusable(
-      autofocus: autofocus,
-      borderRadius: SabuflixTheme.radiusLg,
-      semanticLabel: media.title,
-      onPressed: () {
-        Navigator.push(context, glassRoute(MediaDetailsScreen(media: media)));
-      },
-      builder: (context, focused, child) => AnimatedScale(
-        scale: focused ? metrics.focusScale : 1.0,
-        duration: SabuflixTheme.durationFast,
-        curve: SabuflixTheme.curveStandard,
+class _MediaCardState extends State<MediaCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(context, glassRoute(MediaDetailsScreen(media: widget.media)));
+        },
         child: SizedBox(
-          width: cardWidth,
+          width: widget.width,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: AnimatedContainer(
+                child: AnimatedScale(
+                  scale: _isHovered ? 1.045 : 1.0,
                   duration: SabuflixTheme.durationFast,
-                  decoration: BoxDecoration(
-                    borderRadius: SabuflixTheme.radiusLg,
-                    border: Border.all(
-                      color: focused ? SabuflixTheme.textPrimary : Colors.transparent,
-                      width: focused ? metrics.focusRingWidth : 0,
+                  curve: SabuflixTheme.curveSpring,
+                  child: AnimatedContainer(
+                    duration: SabuflixTheme.durationFast,
+                    decoration: BoxDecoration(
+                      borderRadius: SabuflixTheme.radiusLg,
+                      boxShadow: _isHovered ? SabuflixTheme.shadowMd : SabuflixTheme.shadowSm,
                     ),
-                    boxShadow: focused ? SabuflixTheme.shadowMd : SabuflixTheme.shadowSm,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: SabuflixTheme.radiusLg,
-                    child: CachedNetworkImage(
-                      imageUrl: media.fullPosterPath,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: SabuflixTheme.surface),
-                      errorWidget: (context, url, error) => Container(
-                        color: SabuflixTheme.surface,
-                        child: Icon(Icons.image_outlined, color: SabuflixTheme.textMuted, size: metrics.iconSize),
+                    child: ClipRRect(
+                      borderRadius: SabuflixTheme.radiusLg,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.media.fullPosterPath,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(color: SabuflixTheme.surface),
+                        errorWidget: (context, url, error) => Container(
+                          color: SabuflixTheme.surface,
+                          child: const Icon(Icons.image_outlined, color: SabuflixTheme.textMuted, size: 28),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-              SizedBox(height: metrics.isTv ? 14 : 10),
+              const SizedBox(height: 10),
               Text(
-                media.title,
+                widget.media.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: SabuflixTheme.caption(
-                  fontSize: metrics.cardLabelSize,
-                  fontWeight: FontWeight.w600,
-                  // The unfocused title stays quiet so the focused one reads
-                  // as the current selection from across the room.
-                  color: focused || !metrics.isTv ? SabuflixTheme.textPrimary : SabuflixTheme.textSecondary,
-                ),
+                style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary),
               ),
             ],
           ),
         ),
       ),
-      child: const SizedBox.shrink(),
     );
   }
 }

@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/profile_provider.dart';
-import '../tv/tv_metrics.dart';
 import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/home_skeleton.dart';
@@ -18,13 +17,21 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final catalog = Provider.of<CatalogProvider>(context);
-    final metrics = TvMetrics.of(context);
-    final isDesktop = metrics.isWide;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 800;
 
-    final scrollView = CustomScrollView(
-                // Pinning the scroll to the focused card is the TV's only
-                // navigation, so the elastic overscroll goes away there.
-                physics: metrics.isTv ? const ClampingScrollPhysics() : const BouncingScrollPhysics(),
+    return Scaffold(
+      backgroundColor: SabuflixTheme.background,
+      body: catalog.isLoading
+          // Skeleton instead of a spinner: the page keeps its shape while the
+          // catalogue loads, so the first paint doesn't jump.
+          ? const HomeSkeleton()
+          : RefreshIndicator(
+              onRefresh: () => catalog.loadCatalog(),
+              color: SabuflixTheme.textPrimary,
+              backgroundColor: SabuflixTheme.surface,
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
                 slivers: [
                   if (!isDesktop)
                     SliverAppBar(
@@ -61,9 +68,6 @@ class HomeScreen extends StatelessWidget {
                         MediaRow(
                           title: 'Em Alta Hoje',
                           mediaItems: catalog.trending,
-                          // Fallback landing spot for the remote when the
-                          // catalogue came back without a hero title.
-                          autofocusFirst: metrics.isTv && catalog.heroItem == null,
                         ),
                         MediaRow(
                           title: 'Filmes Populares',
@@ -90,29 +94,13 @@ class HomeScreen extends StatelessWidget {
                           mediaItems: catalog.sciFiMovies,
                         ),
                         // Clears the floating dock on phones.
-                        SizedBox(height: metrics.bottomInset),
+                        SizedBox(height: isDesktop ? 40 : 120),
                       ],
                     ),
                   ),
                 ],
-              );
-
-    return Scaffold(
-      backgroundColor: SabuflixTheme.background,
-      body: catalog.isLoading
-          // Skeleton instead of a spinner: the page keeps its shape while the
-          // catalogue loads, so the first paint doesn't jump.
-          ? const HomeSkeleton()
-          // Pull-to-refresh needs a finger; on a TV the gesture cannot happen
-          // and the indicator only gets in the way of D-pad scrolling.
-          : metrics.isTv
-              ? scrollView
-              : RefreshIndicator(
-                  onRefresh: () => catalog.loadCatalog(),
-                  color: SabuflixTheme.textPrimary,
-                  backgroundColor: SabuflixTheme.surface,
-                  child: scrollView,
-                ),
+              ),
+            ),
     );
   }
 }
