@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -120,83 +121,37 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
           padding: const EdgeInsets.all(24),
           blur: 40,
           fillOpacity: 0.4,
-          child: FutureBuilder<List<Map<String, dynamic>>>(
-            future: StreamSourceAggregator.fetchStreams(
-              imdbId: imdbId,
-              type: media.mediaType,
-              season: season,
-              episode: episode,
-            ),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: SabuflixTheme.accent));
+          // A widget of its own so the search starts once, in initState.
+          // Built inline it was rebuilt with the sheet, firing a fresh round
+          // of requests and restarting the spinner each time.
+          child: _StreamSelectorSheet(
+            imdbId: imdbId,
+            mediaType: media.mediaType,
+            season: season,
+            episode: episode,
+            forDownload: forDownload,
+            onSelected: (stream) {
+              Navigator.pop(ctx);
+              if (forDownload) {
+                _startDownload(
+                  media: media,
+                  stream: stream,
+                  season: season,
+                  episode: episode,
+                  episodeTitle: episodeTitle,
+                );
+                return;
               }
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                return Center(child: Text('Nenhuma fonte encontrada', style: SabuflixTheme.body(color: Colors.white)));
-              }
-              
-              final streams = snapshot.data!;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    forDownload ? 'Baixar de qual fonte?' : 'Selecione uma Fonte',
-                    style: SabuflixTheme.title(fontSize: 20),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: streams.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (ctx, i) {
-                        final s = streams[i];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
-                          tileColor: Colors.white.withValues(alpha: 0.08),
-                          title: Text(sabuflixStreamTitle(s, i), style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 6.0),
-                            child: Text(
-                              sabuflixStreamSubtitle(s),
-                              style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
-                            ),
-                          ),
-                          trailing: Icon(
-                            forDownload ? Icons.download_for_offline_rounded : Icons.play_circle_fill_rounded,
-                            color: SabuflixTheme.accent,
-                            size: 36,
-                          ),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            if (forDownload) {
-                              _startDownload(
-                                media: media,
-                                stream: s,
-                                season: season,
-                                episode: episode,
-                                episodeTitle: episodeTitle,
-                              );
-                              return;
-                            }
-                            Navigator.push(
-                              context,
-                              glassRoute(VideoPlayerScreen(
-                                media: media,
-                                videoUrl: s['url'],
-                                season: season,
-                                episode: episode,
-                                episodeTitle: episodeTitle,
-                                startAt: startAt,
-                              )),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
+              Navigator.push(
+                context,
+                glassRoute(VideoPlayerScreen(
+                  media: media,
+                  videoUrl: stream['url'],
+                  season: season,
+                  episode: episode,
+                  episodeTitle: episodeTitle,
+                  startAt: startAt,
+                )),
               );
             },
           ),
@@ -972,6 +927,128 @@ class _EpisodeDownloadBadge extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Source picker contents: starts one search on mount and fills the list as
+/// each source answers, so a fast source is usable immediately instead of
+/// everyone waiting on the slowest one.
+class _StreamSelectorSheet extends StatefulWidget {
+  final String imdbId;
+  final String mediaType;
+  final int? season;
+  final int? episode;
+  final bool forDownload;
+  final ValueChanged<Map<String, dynamic>> onSelected;
+
+  const _StreamSelectorSheet({
+    required this.imdbId,
+    required this.mediaType,
+    required this.season,
+    required this.episode,
+    required this.forDownload,
+    required this.onSelected,
+  });
+
+  @override
+  State<_StreamSelectorSheet> createState() => _StreamSelectorSheetState();
+}
+
+class _StreamSelectorSheetState extends State<_StreamSelectorSheet> {
+  StreamSubscription<StreamDiscoveryUpdate>? _subscription;
+  List<Map<String, dynamic>> _streams = const [];
+  bool _done = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = StreamSourceAggregator.discover(
+      imdbId: widget.imdbId,
+      type: widget.mediaType,
+      season: widget.season,
+      episode: widget.episode,
+    ).listen((update) {
+      if (!mounted) return;
+      setState(() {
+        _streams = update.streams;
+        _done = update.done;
+      });
+    }, onDone: () {
+      if (mounted) setState(() => _done = true);
+    }, onError: (_) {
+      if (mounted) setState(() => _done = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_streams.isEmpty) {
+      return Center(
+        child: _done
+            ? Text('Nenhuma fonte encontrada', style: SabuflixTheme.body(color: Colors.white))
+            : const CircularProgressIndicator(color: SabuflixTheme.accent),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.forDownload ? 'Baixar de qual fonte?' : 'Selecione uma Fonte',
+                style: SabuflixTheme.title(fontSize: 20),
+              ),
+            ),
+            // Results are already tappable while the remaining sources finish.
+            if (!_done)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: SabuflixTheme.accent),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: ListView.separated(
+            itemCount: _streams.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (ctx, i) {
+              final s = _streams[i];
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
+                tileColor: Colors.white.withValues(alpha: 0.08),
+                title: Text(sabuflixStreamTitle(s, i),
+                    style: SabuflixTheme.body(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 6.0),
+                  child: Text(
+                    sabuflixStreamSubtitle(s),
+                    style: SabuflixTheme.body(fontSize: 13, color: Colors.white70, height: 1.4),
+                  ),
+                ),
+                trailing: Icon(
+                  widget.forDownload ? Icons.download_for_offline_rounded : Icons.play_circle_fill_rounded,
+                  color: SabuflixTheme.accent,
+                  size: 36,
+                ),
+                onTap: () => widget.onSelected(s),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
