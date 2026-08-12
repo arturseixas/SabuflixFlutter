@@ -11,7 +11,6 @@ import 'package:window_manager/window_manager.dart';
 import '../services/pip/pip_window_args.dart';
 import '../theme/sabuflix_theme.dart';
 
-const _pipChannel = WindowMethodChannel('sabuflix_pip');
 const _pipSize = Size(400, 225); // 16:9
 const _pipMargin = 24.0;
 
@@ -34,6 +33,10 @@ class PipPlayerWindow extends StatefulWidget {
 }
 
 class _PipPlayerWindowState extends State<PipPlayerWindow> with WindowListener {
+  /// Named by the main window, unique to this session — see
+  /// [PipWindowArgs.channelName].
+  late final WindowMethodChannel _pipChannel = WindowMethodChannel(widget.args.channelName);
+
   late final Player _player;
   late final VideoController _videoController;
   bool _isPlaying = true;
@@ -45,9 +48,12 @@ class _PipPlayerWindowState extends State<PipPlayerWindow> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
-    _setUpWindow();
-    _setUpPlayer();
+    // Registered before anything else: the channel pairs the two engines, and
+    // the `ready` handshake below is dropped if the main window isn't paired
+    // yet by the time it fires.
     _pipChannel.setMethodCallHandler(_handleMessage);
+    _setUpPlayer();
+    _setUpWindow();
     _startHideTimer();
   }
 
@@ -74,14 +80,34 @@ class _PipPlayerWindowState extends State<PipPlayerWindow> with WindowListener {
       titleBarStyle: TitleBarStyle.hidden,
       windowButtonVisibility: false,
     );
-    await windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.setAsFrameless();
-      await windowManager.setAspectRatio(_pipSize.width / _pipSize.height);
-      await windowManager.setPosition(position);
-      await windowManager.setPreventClose(true);
-      await windowManager.show();
-      await windowManager.focus();
-    });
+
+    try {
+      await windowManager.waitUntilReadyToShow(options, () async {
+        // Cosmetics are best-effort — none of them are worth leaving the
+        // window hidden over, since it launches with SW_HIDE and only the
+        // show() below puts it on screen.
+        try {
+          await windowManager.setAsFrameless();
+          await windowManager.setAspectRatio(_pipSize.width / _pipSize.height);
+          await windowManager.setPosition(position);
+          await windowManager.setPreventClose(true);
+        } catch (_) {}
+        await windowManager.show();
+        await windowManager.focus();
+      });
+    } catch (_) {
+      // Last resort: get it visible even if the configuration pass blew up.
+      try {
+        await windowManager.show();
+      } catch (_) {}
+    }
+    _notifyReady();
+  }
+
+  void _notifyReady() {
+    // Lets the main window stop waiting and hand playback over. If this never
+    // arrives it falls back to showing the window itself.
+    _pipChannel.invokeMethod('ready').catchError((_) => null);
   }
 
   void _setUpPlayer() {

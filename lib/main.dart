@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:window_manager/window_manager.dart';
 import 'theme/sabuflix_theme.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/continue_watching_provider.dart';
@@ -20,9 +22,18 @@ import 'services/pip/pip_window_controller.dart';
 /// argument list — that's the only signal telling this process which root
 /// widget to boot. Every other platform/launch path falls through to the
 /// regular app below untouched.
-void main(List<String> args) {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+
+  // `ensureInitialized` is the only thing that tells window_manager which
+  // native window it controls — every later call (show, resize, always-on-top)
+  // acts on an uninitialized handle without it, silently doing nothing. Each
+  // Flutter engine gets its own plugin instance, so the Picture-in-Picture
+  // window below has to do this for itself as much as the main window does.
+  if (_isDesktop) {
+    await windowManager.ensureInitialized();
+  }
 
   if (args.isNotEmpty && args.first == 'multi_window') {
     final pipArgs = PipWindowArgs.fromArguments(args.length > 2 ? args[2] : '');
@@ -32,6 +43,14 @@ void main(List<String> args) {
 
   runApp(const SabuflixApp());
 }
+
+/// Uses `defaultTargetPlatform` rather than `dart:io`'s `Platform` so this
+/// file stays compilable for the web target.
+bool get _isDesktop =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS);
 
 class SabuflixApp extends StatelessWidget {
   const SabuflixApp({Key? key}) : super(key: key);

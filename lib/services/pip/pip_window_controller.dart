@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
@@ -14,8 +15,6 @@ import 'pip_window_args.dart';
 /// cross-engine method call, not a widget tree, so this is how it reaches
 /// the app's `Navigator`.
 final GlobalKey<NavigatorState> pipNavigatorKey = GlobalKey<NavigatorState>();
-
-const _channel = WindowMethodChannel('sabuflix_pip');
 
 /// Owns the Windows Picture-in-Picture floating window from the main
 /// window's side: creates it, and reacts when it hands playback back
@@ -37,11 +36,18 @@ class PipWindowController {
 
   WindowController? _windowController;
   _PipContext? _context;
-  bool _handlerInstalled = false;
+  WindowMethodChannel? _channel;
+
+  /// Completed when the floating window reports it has finished sizing and
+  /// positioning itself and is on screen.
+  Completer<void>? _readyCompleter;
 
   bool get isActive => _windowController != null;
 
-  Future<void> open({
+  /// Returns whether the floating window actually made it on screen, so the
+  /// caller can keep the full-screen player instead of dropping the user on
+  /// a blank screen when it didn't.
+  Future<bool> open({
     required MediaItem media,
     int? season,
     int? episode,
@@ -51,7 +57,7 @@ class PipWindowController {
     String? imageUrl,
     required Duration startAt,
   }) async {
-    if (!isSupported) return;
+    if (!isSupported) return false;
 
     // Only one floating window at a time — starting a new one replaces
     // whatever was already floating.
@@ -64,27 +70,61 @@ class PipWindowController {
       episodeTitle: episodeTitle,
       videoUrl: videoUrl,
     );
-    _ensureHandler();
+
+    final channelName = '${PipWindowArgs.defaultChannelName}_${DateTime.now().microsecondsSinceEpoch}';
+    final channel = WindowMethodChannel(channelName);
+    await channel.setMethodCallHandler(_handleMessage);
+    _channel = channel;
 
     final args = PipWindowArgs(
       videoUrl: videoUrl,
       title: title,
       imageUrl: imageUrl,
       startAtSeconds: startAt.inSeconds,
+      channelName: channelName,
     );
-    _windowController = await WindowController.create(
-      WindowConfiguration(hiddenAtLaunch: true, arguments: args.toArguments()),
-    );
+
+    final ready = Completer<void>();
+    _readyCompleter = ready;
+    try {
+      final controller = await WindowController.create(
+        WindowConfiguration(hiddenAtLaunch: true, arguments: args.toArguments()),
+      );
+      _windowController = controller;
+
+      // The window is created hidden so it can size and position itself
+      // before appearing, instead of flashing at the default 800x600 in the
+      // corner. If it never reports back, show it anyway — a slightly ugly
+      // window beats an invisible one the user can't find or close.
+      try {
+        await ready.future.timeout(const Duration(seconds: 6));
+      } on TimeoutException {
+        await controller.show();
+      }
+      return true;
+    } catch (_) {
+      _windowController = null;
+      _context = null;
+      _releaseChannel();
+      return false;
+    } finally {
+      _readyCompleter = null;
+    }
   }
 
-  void _ensureHandler() {
-    if (_handlerInstalled) return;
-    _handlerInstalled = true;
-    _channel.setMethodCallHandler(_handleMessage);
+  /// Drops this session's channel handler. Not awaited on purpose — it is
+  /// often called from inside a handler for that very channel.
+  void _releaseChannel() {
+    final channel = _channel;
+    _channel = null;
+    channel?.setMethodCallHandler(null).catchError((_) {});
   }
 
   Future<dynamic> _handleMessage(MethodCall call) async {
     switch (call.method) {
+      case 'ready':
+        if (_readyCompleter?.isCompleted == false) _readyCompleter!.complete();
+        break;
       case 'restore':
         final seconds = (call.arguments as num?)?.toInt() ?? 0;
         _restore(Duration(seconds: seconds));
@@ -92,6 +132,7 @@ class PipWindowController {
       case 'closed':
         _windowController = null;
         _context = null;
+        _releaseChannel();
         break;
     }
     return null;
@@ -101,6 +142,7 @@ class PipWindowController {
     final ctx = _context;
     _windowController = null;
     _context = null;
+    _releaseChannel();
     if (ctx == null) return;
     pipNavigatorKey.currentState?.push(
       glassRoute(
@@ -120,12 +162,17 @@ class PipWindowController {
   /// tear its own player down cleanly instead of force-killing the window.
   /// Safe to call with none active.
   Future<void> close() async {
-    if (_windowController == null) return;
+    final channel = _channel;
+    if (_windowController == null) {
+      _releaseChannel();
+      return;
+    }
     _windowController = null;
     _context = null;
     try {
-      await _channel.invokeMethod('close');
+      await channel?.invokeMethod('close');
     } catch (_) {}
+    _releaseChannel();
   }
 }
 

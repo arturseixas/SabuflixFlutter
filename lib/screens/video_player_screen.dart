@@ -135,22 +135,38 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       await AndroidPipController.enter();
       return;
     }
-    if (PipWindowController.isSupported && widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
-      await PipWindowController.instance.open(
-        media: widget.media,
-        season: widget.season,
-        episode: widget.episode,
-        episodeTitle: widget.episodeTitle,
-        videoUrl: widget.videoUrl!,
-        title: widget.media.title,
-        imageUrl: widget.media.fullBackdropPath,
-        startAt: Duration(seconds: _currentPosition.toInt()),
+    final url = widget.videoUrl;
+    if (!PipWindowController.isSupported || url == null || url.isEmpty) return;
+
+    // Paused up front so the two players never overlap while the floating
+    // window spins up its own engine and starts buffering.
+    _player?.pause();
+
+    final opened = await PipWindowController.instance.open(
+      media: widget.media,
+      season: widget.season,
+      episode: widget.episode,
+      episodeTitle: widget.episodeTitle,
+      videoUrl: url,
+      title: widget.media.title,
+      imageUrl: widget.media.fullBackdropPath,
+      startAt: Duration(seconds: _currentPosition.toInt()),
+    );
+    if (!mounted) return;
+
+    if (!opened) {
+      // Never strand the user on a blank screen: keep playing here instead.
+      _player?.play();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível abrir a janela flutuante.')),
       );
-      // Playback now lives entirely in the floating window — back out to
-      // wherever the user was browsing, same as clicking Firefox's PiP
-      // button hands the tab's video off and returns you to the page.
-      if (mounted) Navigator.pop(context);
+      return;
     }
+
+    // Playback now lives entirely in the floating window — back out to
+    // wherever the user was browsing, same as clicking Firefox's PiP
+    // button hands the tab's video off and returns you to the page.
+    Navigator.pop(context);
   }
 
   void _onCastStatus(CastPlaybackStatus status) {
