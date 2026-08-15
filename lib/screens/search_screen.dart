@@ -39,7 +39,7 @@ class _SearchScreenState extends State<SearchScreen> {
               child: GlassContainer(
                 borderRadius: SabuflixTheme.radiusPill,
                 blur: 24,
-                fillOpacity: 0.35,
+                fillOpacity: 0.18,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _searchController,
@@ -47,7 +47,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   onChanged: (val) => searchProvider.search(val),
                   decoration: InputDecoration(
                     hintText: 'Pesquisar filmes, séries e gêneros',
-                    hintStyle: SabuflixTheme.body(fontSize: 15, color: SabuflixTheme.textMuted),
+                    hintStyle: SabuflixTheme.body(
+                      fontSize: 15,
+                      color: Colors.white.withValues(alpha: 0.78),
+                    ),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,

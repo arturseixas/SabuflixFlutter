@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'theme/sabuflix_theme.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/continue_watching_provider.dart';
+import 'providers/casting_provider.dart';
 import 'providers/downloads_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/search_provider.dart';
@@ -31,6 +32,7 @@ class SabuflixApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SearchProvider()),
         ChangeNotifierProvider(create: (_) => DownloadsProvider()),
         ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
+        ChangeNotifierProvider(create: (_) => CastingProvider()),
       ],
       child: MaterialApp(
         title: 'Sabuflix - Streaming Platform',
@@ -57,7 +59,8 @@ class _AppLifecycleGate extends StatefulWidget {
   State<_AppLifecycleGate> createState() => _AppLifecycleGateState();
 }
 
-class _AppLifecycleGateState extends State<_AppLifecycleGate> with WidgetsBindingObserver {
+class _AppLifecycleGateState extends State<_AppLifecycleGate>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
