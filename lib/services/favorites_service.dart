@@ -4,8 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/media_item.dart';
 
 class FavoritesService {
-  String _getPrefsKey(String? profileId) =>
-      'sabuflix_favorites_${profileId ?? "default"}';
+  String _getPrefsKey(String? profileId) => 'sabuflix_favorites_${profileId ?? "default"}';
 
   Future<List<MediaItem>> getFavorites(String? profileId) async {
     final prefs = await SharedPreferences.getInstance();
@@ -20,8 +19,7 @@ class FavoritesService {
             // Decode entry by entry: a single malformed record must never
             // take the whole list down with it.
             try {
-              restored.add(
-                  MediaItem.fromJson(Map<String, dynamic>.from(entry as Map)));
+              restored.add(MediaItem.fromJson(Map<String, dynamic>.from(entry as Map)));
             } catch (e) {
               debugPrint('Skipping unreadable favorite: $e');
             }
@@ -35,11 +33,9 @@ class FavoritesService {
     return [];
   }
 
-  Future<void> saveFavorites(
-      List<MediaItem> favorites, String? profileId) async {
+  Future<void> saveFavorites(List<MediaItem> favorites, String? profileId) async {
     final prefs = await SharedPreferences.getInstance();
-    final String encoded =
-        json.encode(favorites.map((item) => item.forStorage.toJson()).toList());
+    final String encoded = json.encode(favorites.map((item) => item.forStorage.toJson()).toList());
     await prefs.setString(_getPrefsKey(profileId), encoded);
   }
 
@@ -51,13 +47,13 @@ class FavoritesService {
   Future<void> toggleFavorite(MediaItem media, String? profileId) async {
     final favorites = await getFavorites(profileId);
     final existingIndex = favorites.indexWhere((item) => item.id == media.id);
-
+    
     if (existingIndex >= 0) {
       favorites.removeAt(existingIndex);
     } else {
       favorites.add(media);
     }
-
+    
     await saveFavorites(favorites, profileId);
   }
 }

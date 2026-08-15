@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/sabuflix_theme.dart';
 
-/// Matte segmented control used for compact library filters.
+/// A UIKit-style segmented control: a recessed track with a single light
+/// "thumb" that slides between segments.
 class SabuSegmentedControl extends StatelessWidget {
   final List<String> segments;
   final int selectedIndex;
@@ -26,9 +27,8 @@ class SabuSegmentedControl extends StatelessWidget {
         return Container(
           height: height,
           decoration: BoxDecoration(
-            color: SabuflixTheme.surfaceLight,
-            borderRadius: SabuflixTheme.radiusMd,
-            border: Border.all(color: SabuflixTheme.border),
+            color: Colors.white.withValues(alpha: 0.07),
+            borderRadius: SabuflixTheme.radiusPill,
           ),
           child: Stack(
             children: [
@@ -42,10 +42,9 @@ class SabuSegmentedControl extends StatelessWidget {
                 child: Container(
                   margin: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
-                    color: SabuflixTheme.accentSoft,
-                    borderRadius: SabuflixTheme.radiusSm,
-                    border: Border.all(
-                        color: SabuflixTheme.accent.withValues(alpha: 0.4)),
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: SabuflixTheme.radiusPill,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.16), width: 0.8),
                   ),
                 ),
               ),
@@ -61,15 +60,10 @@ class SabuSegmentedControl extends StatelessWidget {
                             duration: SabuflixTheme.durationFast,
                             style: SabuflixTheme.caption(
                               fontSize: 13,
-                              fontWeight: i == selectedIndex
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              color: i == selectedIndex
-                                  ? SabuflixTheme.accentHover
-                                  : SabuflixTheme.textSecondary,
+                              fontWeight: i == selectedIndex ? FontWeight.w800 : FontWeight.w600,
+                              color: i == selectedIndex ? SabuflixTheme.textPrimary : SabuflixTheme.textSecondary,
                             ),
-                            child: Text(segments[i],
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            child: Text(segments[i], maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
                         ),
                       ),

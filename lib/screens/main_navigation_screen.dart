@@ -29,16 +29,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   static const List<_NavDestination> _destinations = [
     _NavDestination(Icons.home, Icons.home_outlined, 'Início'),
-    _NavDestination(Icons.search, Icons.search, 'Pesquisar',
-        shortLabel: 'Buscar'),
-    _NavDestination(Icons.category, Icons.category_outlined, 'Categorias',
-        shortLabel: 'Gêneros'),
-    _NavDestination(
-        Icons.download_rounded, Icons.download_outlined, 'Downloads'),
-    _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista',
-        shortLabel: 'Lista'),
-    _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined,
-        'Playlists'),
+    _NavDestination(Icons.search, Icons.search, 'Pesquisar', shortLabel: 'Buscar'),
+    _NavDestination(Icons.category, Icons.category_outlined, 'Categorias', shortLabel: 'Gêneros'),
+    _NavDestination(Icons.download_rounded, Icons.download_outlined, 'Downloads'),
+    _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista', shortLabel: 'Lista'),
+    _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined, 'Playlists'),
   ];
 
   final List<Widget> _screens = const [
@@ -57,14 +52,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     // Only rebuilds the chrome when the number of pending downloads changes,
     // not on every progress tick.
-    final activeDownloads = context
-        .select<DownloadsProvider, int>((provider) => provider.activeCount);
+    final activeDownloads = context.select<DownloadsProvider, int>((provider) => provider.activeCount);
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
-      body: isDesktop
-          ? _buildDesktopLayout(activeDownloads)
-          : _buildMobileLayout(context, activeDownloads),
+      body: isDesktop ? _buildDesktopLayout(activeDownloads) : _buildMobileLayout(context, activeDownloads),
     );
   }
 
@@ -75,12 +67,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
             child: Container(
-              width: 220,
-              padding: const EdgeInsets.symmetric(vertical: 26),
+              width: 240,
+              padding: const EdgeInsets.symmetric(vertical: 28),
               decoration: BoxDecoration(
-                color: SabuflixTheme.surface.withValues(alpha: 0.94),
-                border: const Border(
-                    right: BorderSide(color: SabuflixTheme.border)),
+                color: SabuflixTheme.surface.withValues(alpha: 0.6),
+                border: const Border(right: BorderSide(color: SabuflixTheme.border, width: 0.6)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,61 +80,47 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 28),
                     child: SabuflixWordmark(fontSize: 19),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 36),
                   for (int i = 0; i < _destinations.length; i++)
                     _buildNavItem(i, _destinations[i], activeDownloads),
                   const Spacer(),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Consumer<ProfileProvider>(
-                        builder: (context, profileProvider, child) {
-                      final profile = profileProvider.currentProfile;
-                      if (profile == null) return const SizedBox.shrink();
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ProfileSelectionScreen()));
-                        },
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: SabuflixTheme.accentSoft,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: SabuflixTheme.accent
-                                        .withValues(alpha: 0.45)),
+                      builder: (context, profileProvider, child) {
+                        final profile = profileProvider.currentProfile;
+                        if (profile == null) return const SizedBox.shrink();
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileSelectionScreen()));
+                          },
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: Color(profile.colorValue),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.person, size: 20, color: Colors.white),
                               ),
-                              child: const Icon(Icons.person_outline_rounded,
-                                  size: 18, color: SabuflixTheme.accentHover),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(profile.name,
-                                      style: SabuflixTheme.caption(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: SabuflixTheme.textPrimary)),
-                                  Text('Trocar perfil',
-                                      style: SabuflixTheme.caption(
-                                          fontSize: 11,
-                                          color: SabuflixTheme.textMuted)),
-                                ],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(profile.name, style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary)),
+                                    Text('Trocar Perfil', style: SabuflixTheme.caption(fontSize: 12, color: SabuflixTheme.accent)),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                            ],
+                          ),
+                        );
+                      }
+                    ),
                   ),
                 ],
               ),
@@ -170,25 +147,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           children: _screens,
         ),
         Positioned(
-          left: 14,
-          right: 14,
+          left: 12,
+          right: 12,
           bottom: bottomSafeArea > 0 ? bottomSafeArea + 6 : 22,
           child: Center(
             child: ConstrainedBox(
               // Keeps the dock centred and finger-sized instead of stretching
               // edge to edge on wide phones and small tablets.
-              constraints: const BoxConstraints(maxWidth: 520),
+              constraints: const BoxConstraints(maxWidth: 460),
               child: GlassContainer(
-                borderRadius: SabuflixTheme.radiusLg,
-                blur: 24,
-                fillOpacity: 0.72,
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+                borderRadius: SabuflixTheme.radiusPill,
+                blur: 32,
+                fillOpacity: 0.4,
+                hasGlow: true,
+                glowColor: SabuflixTheme.accent.withValues(alpha: 0.25),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     for (int i = 0; i < _destinations.length; i++)
-                      _buildMobileDockItem(
-                          i, _destinations[i], activeDownloads),
+                      _buildMobileDockItem(i, _destinations[i], activeDownloads),
                   ],
                 ),
               ),
@@ -199,8 +177,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _buildNavItem(
-      int index, _NavDestination destination, int activeDownloads) {
+  Widget _buildNavItem(int index, _NavDestination destination, int activeDownloads) {
     final isSelected = _currentIndex == index;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -208,17 +185,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => setState(() => _currentIndex = index),
-          borderRadius: SabuflixTheme.radiusMd,
+          borderRadius: SabuflixTheme.radiusPill,
           child: AnimatedContainer(
             duration: SabuflixTheme.durationFast,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(
-              color: isSelected ? SabuflixTheme.accentSoft : Colors.transparent,
-              borderRadius: SabuflixTheme.radiusMd,
-              border: isSelected
-                  ? Border.all(
-                      color: SabuflixTheme.accent.withValues(alpha: 0.35))
-                  : null,
+              color: isSelected ? SabuflixTheme.accent.withValues(alpha: 0.18) : Colors.transparent,
+              borderRadius: SabuflixTheme.radiusPill,
+              border: isSelected ? Border.all(color: SabuflixTheme.accent.withValues(alpha: 0.4), width: 1) : null,
             ),
             child: Row(
               children: [
@@ -234,9 +208,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   style: SabuflixTheme.body(
                     fontSize: 14,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected
-                        ? SabuflixTheme.textPrimary
-                        : SabuflixTheme.textMuted,
+                    color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
                   ),
                 ),
               ],
@@ -250,27 +222,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   /// Dock item in the iOS idiom: only the active tab spells out its name, the
   /// rest stay as icons. Six destinations then fit a narrow phone without the
   /// 9pt labels that used to overflow, and the label never has to be truncated.
-  Widget _buildMobileDockItem(
-      int index, _NavDestination destination, int activeDownloads) {
+  Widget _buildMobileDockItem(int index, _NavDestination destination, int activeDownloads) {
     final isSelected = _currentIndex == index;
 
     final button = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => setState(() => _currentIndex = index),
-        borderRadius: SabuflixTheme.radiusMd,
+        borderRadius: SabuflixTheme.radiusPill,
         child: AnimatedContainer(
           duration: SabuflixTheme.durationFast,
           curve: SabuflixTheme.curveStandard,
-          padding: EdgeInsets.symmetric(
-              vertical: 10, horizontal: isSelected ? 12 : 9),
+          padding: EdgeInsets.symmetric(vertical: 10, horizontal: isSelected ? 13 : 9),
           decoration: BoxDecoration(
-            color: isSelected ? SabuflixTheme.accentSoft : Colors.transparent,
-            borderRadius: SabuflixTheme.radiusMd,
-            border: isSelected
-                ? Border.all(
-                    color: SabuflixTheme.accent.withValues(alpha: 0.35))
-                : null,
+            color: isSelected ? SabuflixTheme.accent.withValues(alpha: 0.22) : Colors.transparent,
+            borderRadius: SabuflixTheme.radiusPill,
+            border: isSelected ? Border.all(color: SabuflixTheme.accent.withValues(alpha: 0.4), width: 1) : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -292,7 +259,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     style: SabuflixTheme.caption(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: SabuflixTheme.textPrimary,
+                      color: SabuflixTheme.accent,
                     ),
                   ),
                 ),
@@ -326,7 +293,7 @@ class _DockIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final icon = Icon(
       isSelected ? destination.filledIcon : destination.outlineIcon,
-      color: isSelected ? SabuflixTheme.accentHover : SabuflixTheme.textMuted,
+      color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
       size: size,
     );
 
@@ -364,8 +331,9 @@ class _NavDestination {
   /// row with five other icons.
   final String? shortLabel;
 
-  const _NavDestination(this.filledIcon, this.outlineIcon, this.label,
-      {this.shortLabel});
+  const _NavDestination(this.filledIcon, this.outlineIcon, this.label, {this.shortLabel});
 
   String get dockLabel => shortLabel ?? label;
 }
+
+

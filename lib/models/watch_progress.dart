@@ -46,8 +46,7 @@ class WatchProgress {
   /// Treated as watched once the credits are effectively rolling.
   bool get isFinished => durationSeconds > 0 && progress >= 0.95;
 
-  int get remainingSeconds =>
-      (durationSeconds - positionSeconds).clamp(0, durationSeconds);
+  int get remainingSeconds => (durationSeconds - positionSeconds).clamp(0, durationSeconds);
 
   String get remainingLabel => formatRemaining(remainingSeconds);
 
@@ -60,8 +59,7 @@ class WatchProgress {
     return '$tag · ${name.trim()}';
   }
 
-  String get resumeLabel =>
-      isEpisode ? 'Retomar ${formatEpisodeTag(season, episode)}' : 'Retomar';
+  String get resumeLabel => isEpisode ? 'Retomar ${formatEpisodeTag(season, episode)}' : 'Retomar';
 
   Duration get position => Duration(seconds: positionSeconds);
 
@@ -102,16 +100,14 @@ class WatchProgress {
 
   factory WatchProgress.fromJson(Map<String, dynamic> json) {
     return WatchProgress(
-      media:
-          MediaItem.fromJson(Map<String, dynamic>.from(json['media'] as Map)),
+      media: MediaItem.fromJson(Map<String, dynamic>.from(json['media'] as Map)),
       season: (json['season'] as num?)?.toInt(),
       episode: (json['episode'] as num?)?.toInt(),
       episodeTitle: json['episodeTitle'] as String?,
       positionSeconds: (json['positionSeconds'] as num?)?.toInt() ?? 0,
       durationSeconds: (json['durationSeconds'] as num?)?.toInt() ?? 0,
       sourceUrl: json['sourceUrl'] as String?,
-      updatedAt: (json['updatedAt'] as num?)?.toInt() ??
-          DateTime.now().millisecondsSinceEpoch,
+      updatedAt: (json['updatedAt'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
     );
   }
 }

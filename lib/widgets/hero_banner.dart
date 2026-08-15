@@ -1,208 +1,221 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
-
 import '../models/media_item.dart';
-import '../providers/favorites_provider.dart';
-import '../screens/media_details_screen.dart';
 import '../theme/sabuflix_theme.dart';
+import '../providers/favorites_provider.dart';
 import '../utils/app_route.dart';
+import '../screens/media_details_screen.dart';
+import 'glass_container.dart';
 
 class HeroBanner extends StatelessWidget {
   final MediaItem media;
 
-  const HeroBanner({super.key, required this.media});
-
-  String get _shortOverview {
-    final source = (media.overview ?? '').trim();
-    if (source.isEmpty) return '';
-    final words = source.split(RegExp(r'\s+'));
-    if (words.length <= 20) return source;
-    return '${words.take(20).join(' ')}...';
-  }
+  const HeroBanner({Key? key, required this.media}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final favorites = context.watch<FavoritesProvider>();
-    final isFavorite = favorites.isFavorite(media.id);
-    final width = MediaQuery.sizeOf(context).width;
-    final isDesktop = width >= 800;
+    final favoritesProvider = Provider.of<FavoritesProvider>(context);
+    final isFav = favoritesProvider.isFavorite(media.id);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
 
-    return Padding(
-      padding:
-          EdgeInsets.fromLTRB(isDesktop ? 24 : 0, 0, isDesktop ? 24 : 0, 0),
-      child: ClipRRect(
-        borderRadius: isDesktop ? SabuflixTheme.radiusXl : BorderRadius.zero,
-        child: SizedBox(
-          height: isDesktop ? 590 : 510,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CachedNetworkImage(
-                imageUrl: media.fullBackdropPath,
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                placeholder: (_, __) => Container(color: SabuflixTheme.surface),
-                errorWidget: (_, __, ___) =>
-                    Container(color: SabuflixTheme.surface),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    stops: const [0, 0.58, 1],
-                    colors: [
-                      SabuflixTheme.background.withValues(alpha: 0.96),
-                      SabuflixTheme.background.withValues(alpha: 0.46),
-                      SabuflixTheme.background.withValues(alpha: 0.08),
-                    ],
-                  ),
-                ),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0, 0.56, 1],
-                    colors: [
-                      SabuflixTheme.background.withValues(alpha: 0.16),
-                      Colors.transparent,
-                      SabuflixTheme.background,
-                    ],
-                  ),
-                ),
-              ),
-              Align(
-                alignment: Alignment.bottomLeft,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    isDesktop ? 42 : 22,
-                    24,
-                    isDesktop ? width * 0.42 : 22,
-                    isDesktop ? 42 : 34,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (media.fullLogoPath != null)
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxHeight: isDesktop ? 108 : 72,
-                            maxWidth: isDesktop ? 420 : 280,
-                          ),
-                          child: CachedNetworkImage(
-                            imageUrl: media.fullLogoPath!,
-                            fit: BoxFit.contain,
-                            alignment: Alignment.centerLeft,
-                            errorWidget: (_, __, ___) =>
-                                _Title(media: media, isDesktop: isDesktop),
-                          ),
-                        )
-                      else
-                        _Title(media: media, isDesktop: isDesktop),
-                      const SizedBox(height: 14),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(media.formattedYear,
-                              style: SabuflixTheme.label(
-                                  color: SabuflixTheme.textPrimary)),
-                          Container(
-                            height: 14,
-                            width: 1,
-                            margin: const EdgeInsets.symmetric(horizontal: 10),
-                            color: SabuflixTheme.borderStrong,
-                          ),
-                          const Icon(Icons.star_rounded,
-                              color: SabuflixTheme.accentHover, size: 15),
-                          const SizedBox(width: 5),
-                          Text(media.formattedRating,
-                              style: SabuflixTheme.label(
-                                  color: SabuflixTheme.textPrimary)),
-                        ],
-                      ),
-                      if (_shortOverview.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        Text(
-                          _shortOverview,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: SabuflixTheme.body(
-                              fontSize: 15, color: SabuflixTheme.textSecondary),
-                        ),
-                      ],
-                      const SizedBox(height: 22),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: () => Navigator.push(
-                              context,
-                              glassRoute(MediaDetailsScreen(media: media)),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(142, 48),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 22),
-                            ),
-                            icon:
-                                const Icon(Icons.play_arrow_rounded, size: 23),
-                            label: const Text('Assistir'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              favorites.toggleFavorite(media);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text(isFavorite
-                                        ? 'Removido da lista'
-                                        : 'Adicionado à lista')),
-                              );
-                            },
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(142, 48),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 18),
-                            ),
-                            icon: Icon(
-                                isFavorite
-                                    ? Icons.check_rounded
-                                    : Icons.add_rounded,
-                                size: 20),
-                            label:
-                                Text(isFavorite ? 'Na lista' : 'Minha lista'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+    return SizedBox(
+      height: 560,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedNetworkImage(
+            imageUrl: media.fullBackdropPath,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            placeholder: (context, url) => Container(color: SabuflixTheme.surface),
+            errorWidget: (context, url, err) => Container(color: SabuflixTheme.surface),
           ),
-        ),
+
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.4, 0.78, 1.0],
+                colors: [
+                  SabuflixTheme.background.withValues(alpha: 0.55),
+                  SabuflixTheme.background.withValues(alpha: 0.1),
+                  SabuflixTheme.background.withValues(alpha: 0.9),
+                  SabuflixTheme.background,
+                ],
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                stops: const [0.0, 0.55, 1.0],
+                colors: [
+                  SabuflixTheme.background.withValues(alpha: 0.85),
+                  SabuflixTheme.background.withValues(alpha: 0.3),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+
+          Positioned(
+            bottom: 44,
+            left: isDesktop ? 56 : 24,
+            right: isDesktop ? screenWidth * 0.42 : 24,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (media.fullLogoPath != null) ...[
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: isDesktop ? 120 : 80,
+                      maxWidth: isDesktop ? 440 : 290,
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: media.fullLogoPath!,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
+                      errorWidget: (context, url, err) => Text(
+                        media.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: SabuflixTheme.headline(
+                          fontSize: isDesktop ? 44 : 30,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Text(
+                    media.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: SabuflixTheme.headline(
+                      fontSize: isDesktop ? 44 : 30,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+
+                Row(
+                  children: [
+                    const Icon(Icons.star_rounded, color: SabuflixTheme.gold, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      media.formattedRating,
+                      style: SabuflixTheme.body(fontSize: 14, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('·', style: SabuflixTheme.body(fontSize: 14, color: SabuflixTheme.textMuted)),
+                    const SizedBox(width: 10),
+                    Text(media.formattedYear, style: SabuflixTheme.body(fontSize: 14)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                if (media.overview != null && media.overview!.isNotEmpty)
+                  Text(
+                    media.overview!,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: SabuflixTheme.body(fontSize: 15, height: 1.5, color: SabuflixTheme.textSecondary),
+                  ),
+                const SizedBox(height: 26),
+
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        borderRadius: SabuflixTheme.radiusPill,
+                        gradient: const LinearGradient(
+                          colors: [SabuflixTheme.accent, SabuflixTheme.accentHover],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: SabuflixTheme.accent.withValues(alpha: 0.38),
+                            blurRadius: 18,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(context, glassRoute(MediaDetailsScreen(media: media)));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                          shape: const StadiumBorder(),
+                        ),
+                        icon: const Icon(Icons.play_arrow_rounded, size: 24, color: Colors.white),
+                        label: Text(
+                          'Assistir',
+                          style: SabuflixTheme.body(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    GlassContainer(
+                      borderRadius: SabuflixTheme.radiusPill,
+                      blur: 28,
+                      fillOpacity: 0.3,
+                      hasGlow: isFav,
+                      glowColor: SabuflixTheme.accent,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: SabuflixTheme.radiusPill,
+                          onTap: () {
+                            favoritesProvider.toggleFavorite(media);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(isFav ? 'Removido da lista' : 'Adicionado à lista')),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isFav ? Icons.check_rounded : Icons.add_rounded,
+                                  size: 20,
+                                  color: isFav ? SabuflixTheme.accent : SabuflixTheme.textPrimary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  isFav ? 'Na Lista' : 'Minha Lista',
+                                  style: SabuflixTheme.body(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: isFav ? SabuflixTheme.accent : SabuflixTheme.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _Title extends StatelessWidget {
-  final MediaItem media;
-  final bool isDesktop;
-
-  const _Title({required this.media, required this.isDesktop});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      media.title,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: SabuflixTheme.display(fontSize: isDesktop ? 46 : 32),
     );
   }
 }

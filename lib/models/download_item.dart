@@ -80,8 +80,7 @@ class DownloadItem {
 
   /// Stable identity for a title or a single episode of a series.
   static String buildId(int mediaId, {int? season, int? episode}) {
-    if (season != null && episode != null)
-      return 'tv_${mediaId}_s${season}e$episode';
+    if (season != null && episode != null) return 'tv_${mediaId}_s${season}e$episode';
     return 'movie_$mediaId';
   }
 
@@ -93,8 +92,7 @@ class DownloadItem {
       final dot = path.lastIndexOf('.');
       if (dot != -1 && dot < path.length - 1) {
         final candidate = path.substring(dot + 1).toLowerCase();
-        if (RegExp(r'^[a-z0-9]{2,4}$').hasMatch(candidate))
-          extension = candidate;
+        if (RegExp(r'^[a-z0-9]{2,4}$').hasMatch(candidate)) extension = candidate;
       }
     } catch (_) {
       // Keep the default extension for URLs we cannot parse.
@@ -105,8 +103,7 @@ class DownloadItem {
   bool get isEpisode => season != null && episode != null;
   bool get isCompleted => status == DownloadStatus.completed;
   bool get isRunning => status == DownloadStatus.downloading;
-  bool get isPending =>
-      status == DownloadStatus.queued || status == DownloadStatus.downloading;
+  bool get isPending => status == DownloadStatus.queued || status == DownloadStatus.downloading;
 
   double get progress {
     if (totalBytes <= 0) return 0;
@@ -123,8 +120,7 @@ class DownloadItem {
 
   String get episodeTag => formatEpisodeTag(season, episode);
 
-  String get sizeLabel =>
-      formatBytes(totalBytes > 0 ? totalBytes : receivedBytes);
+  String get sizeLabel => formatBytes(totalBytes > 0 ? totalBytes : receivedBytes);
 
   String get statusLabel {
     switch (status) {
@@ -135,9 +131,7 @@ class DownloadItem {
             ? '${(progress * 100).round()}% · ${formatBytes(receivedBytes)} de ${formatBytes(totalBytes)}'
             : 'Baixando · ${formatBytes(receivedBytes)}';
       case DownloadStatus.paused:
-        return totalBytes > 0
-            ? 'Pausado · ${(progress * 100).round()}%'
-            : 'Pausado';
+        return totalBytes > 0 ? 'Pausado · ${(progress * 100).round()}%' : 'Pausado';
       case DownloadStatus.completed:
         return sizeLabel;
       case DownloadStatus.failed:
@@ -193,12 +187,10 @@ class DownloadItem {
   }
 
   factory DownloadItem.fromJson(Map<String, dynamic> json) {
-    final media =
-        MediaItem.fromJson(Map<String, dynamic>.from(json['media'] as Map));
+    final media = MediaItem.fromJson(Map<String, dynamic>.from(json['media'] as Map));
     final season = (json['season'] as num?)?.toInt();
     final episode = (json['episode'] as num?)?.toInt();
-    final id = (json['id'] as String?) ??
-        DownloadItem.buildId(media.id, season: season, episode: episode);
+    final id = (json['id'] as String?) ?? DownloadItem.buildId(media.id, season: season, episode: episode);
     final url = (json['url'] as String?) ?? '';
     return DownloadItem(
       id: id,
@@ -208,14 +200,12 @@ class DownloadItem {
       episodeTitle: json['episodeTitle'] as String?,
       url: url,
       quality: (json['quality'] as String?) ?? '',
-      fileName:
-          (json['fileName'] as String?) ?? DownloadItem.fileNameFor(id, url),
+      fileName: (json['fileName'] as String?) ?? DownloadItem.fileNameFor(id, url),
       receivedBytes: (json['receivedBytes'] as num?)?.toInt() ?? 0,
       totalBytes: (json['totalBytes'] as num?)?.toInt() ?? 0,
       status: _statusFromName(json['status']),
       error: json['error'] as String?,
-      addedAt: (json['addedAt'] as num?)?.toInt() ??
-          DateTime.now().millisecondsSinceEpoch,
+      addedAt: (json['addedAt'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
     );
   }
 }
@@ -230,10 +220,8 @@ class SeriesDownloadGroup {
 
   int get completedCount => episodes.where((e) => e.isCompleted).length;
   int get pendingCount => episodes.where((e) => !e.isCompleted).length;
-  int get totalBytes => episodes.fold(
-      0, (sum, e) => sum + (e.isCompleted ? e.totalBytes : e.receivedBytes));
-  int get newestAt =>
-      episodes.fold(0, (newest, e) => e.addedAt > newest ? e.addedAt : newest);
+  int get totalBytes => episodes.fold(0, (sum, e) => sum + (e.isCompleted ? e.totalBytes : e.receivedBytes));
+  int get newestAt => episodes.fold(0, (newest, e) => e.addedAt > newest ? e.addedAt : newest);
 
   /// Seasons present in this group, ascending.
   List<int> get seasons {

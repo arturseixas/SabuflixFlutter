@@ -42,9 +42,7 @@ class HomeScreen extends StatelessWidget {
                       flexibleSpace: ClipRect(
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                          child: Container(
-                              color: SabuflixTheme.background
-                                  .withValues(alpha: 0.5)),
+                          child: Container(color: SabuflixTheme.background.withValues(alpha: 0.5)),
                         ),
                       ),
                       title: const SabuflixWordmark(fontSize: 19),
@@ -55,10 +53,12 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ],
                     ),
+
                   if (catalog.heroItem != null)
                     SliverToBoxAdapter(
                       child: HeroBanner(media: catalog.heroItem!),
                     ),
+
                   SliverToBoxAdapter(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,29 +114,24 @@ class _AccountBadge extends StatelessWidget {
       builder: (context, provider, child) {
         final profile = provider.currentProfile;
         if (profile == null) return const SizedBox.shrink();
-
+        
         return GestureDetector(
           onTap: () {
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const ProfileSelectionScreen()));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileSelectionScreen()));
           },
           child: Container(
             width: 32,
             height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: SabuflixTheme.accentSoft,
+              color: Color(profile.colorValue),
               shape: BoxShape.circle,
-              border: Border.all(
-                  color: SabuflixTheme.accent.withValues(alpha: 0.5)),
             ),
-            child: const Icon(Icons.person_outline_rounded,
-                size: 19, color: SabuflixTheme.accentHover),
+            child: const Icon(Icons.person, size: 20, color: Colors.white),
           ),
         );
       },
     );
   }
 }
+

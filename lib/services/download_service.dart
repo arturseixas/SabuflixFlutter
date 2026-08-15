@@ -45,8 +45,7 @@ class DownloadService {
   Future<Directory> folderFor(String profileKey) async {
     final base = await getApplicationDocumentsDirectory();
     final separator = Platform.pathSeparator;
-    final directory = Directory(
-        '${base.path}${separator}sabuflix_downloads$separator$profileKey');
+    final directory = Directory('${base.path}${separator}sabuflix_downloads$separator$profileKey');
     if (!await directory.exists()) {
       await directory.create(recursive: true);
     }
@@ -133,8 +132,7 @@ class DownloadService {
     if (!append) received = 0;
 
     var total = _totalBytesFrom(response, append ? received : 0);
-    final sink = file.openWrite(
-        mode: append ? FileMode.writeOnlyAppend : FileMode.writeOnly);
+    final sink = file.openWrite(mode: append ? FileMode.writeOnlyAppend : FileMode.writeOnly);
     final task = _ActiveTask(client, sink);
     _active[item.id] = task;
 

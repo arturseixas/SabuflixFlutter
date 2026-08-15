@@ -25,7 +25,7 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-
+    
     // Load profiles
     final String? profilesJson = prefs.getString(_profilesKey);
     if (profilesJson != null) {
@@ -96,8 +96,7 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<void> selectProfile(String id) async {
-    final profile =
-        _profiles.firstWhere((p) => p.id == id, orElse: () => _profiles.first);
+    final profile = _profiles.firstWhere((p) => p.id == id, orElse: () => _profiles.first);
     _currentProfile = profile;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_currentProfileIdKey, profile.id);

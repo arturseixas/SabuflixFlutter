@@ -10,7 +10,7 @@ class FavoritesProvider extends ChangeNotifier {
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
-
+  
   String? _currentProfileId;
 
   FavoritesProvider() {

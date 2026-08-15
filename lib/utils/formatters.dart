@@ -11,9 +11,7 @@ String formatBytes(int bytes) {
     value /= 1024;
     unit++;
   }
-  final text = (unit <= 1 || value >= 100)
-      ? value.toStringAsFixed(0)
-      : value.toStringAsFixed(1);
+  final text = (unit <= 1 || value >= 100) ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
   return '${text.replaceAll('.', ',')} ${units[unit]}';
 }
 

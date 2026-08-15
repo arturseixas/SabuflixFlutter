@@ -42,10 +42,8 @@ class TMDBService {
     return genreMap[id] ?? 'Entretenimento';
   }
 
-  Future<List<MediaItem>> fetchTrending(
-      {String mediaType = 'all', String timeWindow = 'week'}) async {
-    final url = Uri.parse(
-        '$baseUrl/trending/$mediaType/$timeWindow?api_key=$apiKey&language=$defaultLang');
+  Future<List<MediaItem>> fetchTrending({String mediaType = 'all', String timeWindow = 'week'}) async {
+    final url = Uri.parse('$baseUrl/trending/$mediaType/$timeWindow?api_key=$apiKey&language=$defaultLang');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -60,16 +58,13 @@ class TMDBService {
   }
 
   Future<List<MediaItem>> fetchPopularMovies() async {
-    final url = Uri.parse(
-        '$baseUrl/movie/popular?api_key=$apiKey&language=$defaultLang&page=1');
+    final url = Uri.parse('$baseUrl/movie/popular?api_key=$apiKey&language=$defaultLang&page=1');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results
-            .map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie'))
-            .toList();
+        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie')).toList();
       }
     } catch (e) {
       print('Error fetching popular movies: $e');
@@ -78,16 +73,13 @@ class TMDBService {
   }
 
   Future<List<MediaItem>> fetchPopularTV() async {
-    final url = Uri.parse(
-        '$baseUrl/tv/popular?api_key=$apiKey&language=$defaultLang&page=1');
+    final url = Uri.parse('$baseUrl/tv/popular?api_key=$apiKey&language=$defaultLang&page=1');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results
-            .map((item) => MediaItem.fromJson(item, defaultMediaType: 'tv'))
-            .toList();
+        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'tv')).toList();
       }
     } catch (e) {
       print('Error fetching popular tv: $e');
@@ -96,16 +88,13 @@ class TMDBService {
   }
 
   Future<List<MediaItem>> fetchTopRatedMovies() async {
-    final url = Uri.parse(
-        '$baseUrl/movie/top_rated?api_key=$apiKey&language=$defaultLang&page=1');
+    final url = Uri.parse('$baseUrl/movie/top_rated?api_key=$apiKey&language=$defaultLang&page=1');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results
-            .map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie'))
-            .toList();
+        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: 'movie')).toList();
       }
     } catch (e) {
       print('Error fetching top rated: $e');
@@ -113,20 +102,15 @@ class TMDBService {
     return [];
   }
 
-  Future<List<MediaItem>> fetchByGenre(int genreId,
-      {String mediaType = 'movie'}) async {
+  Future<List<MediaItem>> fetchByGenre(int genreId, {String mediaType = 'movie'}) async {
     final endpoint = mediaType == 'movie' ? 'discover/movie' : 'discover/tv';
-    final url = Uri.parse(
-        '$baseUrl/$endpoint?api_key=$apiKey&language=$defaultLang&with_genres=$genreId&sort_by=popularity.desc');
+    final url = Uri.parse('$baseUrl/$endpoint?api_key=$apiKey&language=$defaultLang&with_genres=$genreId&sort_by=popularity.desc');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results
-            .map(
-                (item) => MediaItem.fromJson(item, defaultMediaType: mediaType))
-            .toList();
+        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: mediaType)).toList();
       }
     } catch (e) {
       print('Error fetching by genre $genreId: $e');
@@ -135,25 +119,20 @@ class TMDBService {
   }
 
   Future<MediaItem?> fetchMediaDetails(int id, String mediaType) async {
-    final append =
-        mediaType == 'tv' ? 'external_ids,content_ratings' : 'release_dates';
-    final endpoint = mediaType == 'tv'
-        ? 'tv/$id?append_to_response=$append&'
-        : 'movie/$id?append_to_response=$append&';
-    final url =
-        Uri.parse('$baseUrl/${endpoint}api_key=$apiKey&language=$defaultLang');
+    final append = mediaType == 'tv' ? 'external_ids,content_ratings' : 'release_dates';
+    final endpoint = mediaType == 'tv' ? 'tv/$id?append_to_response=$append&' : 'movie/$id?append_to_response=$append&';
+    final url = Uri.parse('$baseUrl/${endpoint}api_key=$apiKey&language=$defaultLang');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
+        
         // Extract age rating for Brazil (BR)
         String? ageRating;
         if (mediaType == 'movie') {
           final releaseDates = data['release_dates']?['results'] as List?;
           if (releaseDates != null) {
-            final brRelease = releaseDates
-                .firstWhere((r) => r['iso_3166_1'] == 'BR', orElse: () => null);
+            final brRelease = releaseDates.firstWhere((r) => r['iso_3166_1'] == 'BR', orElse: () => null);
             if (brRelease != null) {
               final dates = brRelease['release_dates'] as List?;
               if (dates != null && dates.isNotEmpty) {
@@ -165,22 +144,21 @@ class TMDBService {
         } else {
           final contentRatings = data['content_ratings']?['results'] as List?;
           if (contentRatings != null) {
-            final brRating = contentRatings
-                .firstWhere((r) => r['iso_3166_1'] == 'BR', orElse: () => null);
+            final brRating = contentRatings.firstWhere((r) => r['iso_3166_1'] == 'BR', orElse: () => null);
             if (brRating != null) {
               ageRating = brRating['rating'];
               if (ageRating != null && ageRating.isEmpty) ageRating = null;
             }
           }
         }
-
+        
         // Normalize L to Livre or 10, 12, etc.
         if (ageRating == 'L') ageRating = 'Livre';
-
+        
         data['ageRating'] = ageRating;
 
         final media = MediaItem.fromJson(data, defaultMediaType: mediaType);
-
+        
         // Fetch trailer key & logo path in parallel
         final results = await Future.wait<String?>([
           fetchTrailerKey(id, mediaType),
@@ -199,8 +177,7 @@ class TMDBService {
   }
 
   Future<List<dynamic>> fetchSeasonEpisodes(int tvId, int seasonNumber) async {
-    final url = Uri.parse(
-        '$baseUrl/tv/$tvId/season/$seasonNumber?api_key=$apiKey&language=$defaultLang');
+    final url = Uri.parse('$baseUrl/tv/$tvId/season/$seasonNumber?api_key=$apiKey&language=$defaultLang');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -215,26 +192,20 @@ class TMDBService {
 
   Future<String?> fetchLogoPath(int id, String mediaType) async {
     final endpoint = mediaType == 'tv' ? 'tv' : 'movie';
-    final url = Uri.parse(
-        '$baseUrl/$endpoint/$id/images?api_key=$apiKey&include_image_language=pt,en,null');
+    final url = Uri.parse('$baseUrl/$endpoint/$id/images?api_key=$apiKey&include_image_language=pt,en,null');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List logos = data['logos'] ?? [];
         if (logos.isNotEmpty) {
-          final ptLogo = logos.firstWhere((l) => l['iso_639_1'] == 'pt',
-              orElse: () => null);
-          if (ptLogo != null && ptLogo['file_path'] != null)
-            return ptLogo['file_path'];
+          final ptLogo = logos.firstWhere((l) => l['iso_639_1'] == 'pt', orElse: () => null);
+          if (ptLogo != null && ptLogo['file_path'] != null) return ptLogo['file_path'];
 
-          final enLogo = logos.firstWhere((l) => l['iso_639_1'] == 'en',
-              orElse: () => null);
-          if (enLogo != null && enLogo['file_path'] != null)
-            return enLogo['file_path'];
+          final enLogo = logos.firstWhere((l) => l['iso_639_1'] == 'en', orElse: () => null);
+          if (enLogo != null && enLogo['file_path'] != null) return enLogo['file_path'];
 
-          final anyLogo = logos.firstWhere((l) => l['file_path'] != null,
-              orElse: () => null);
+          final anyLogo = logos.firstWhere((l) => l['file_path'] != null, orElse: () => null);
           if (anyLogo != null) return anyLogo['file_path'];
         }
       }
@@ -246,17 +217,13 @@ class TMDBService {
 
   Future<List<CastMember>> fetchCast(int id, String mediaType) async {
     final endpoint = mediaType == 'tv' ? 'tv' : 'movie';
-    final url = Uri.parse(
-        '$baseUrl/$endpoint/$id/credits?api_key=$apiKey&language=$defaultLang');
+    final url = Uri.parse('$baseUrl/$endpoint/$id/credits?api_key=$apiKey&language=$defaultLang');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List castList = data['cast'] ?? [];
-        return castList
-            .map((item) => CastMember.fromJson(item))
-            .take(10)
-            .toList();
+        return castList.map((item) => CastMember.fromJson(item)).take(10).toList();
       }
     } catch (e) {
       print('Error fetching cast: $e');
@@ -266,18 +233,16 @@ class TMDBService {
 
   Future<String?> fetchTrailerKey(int id, String mediaType) async {
     final endpoint = mediaType == 'tv' ? 'tv' : 'movie';
-    final url = Uri.parse(
-        '$baseUrl/$endpoint/$id/videos?api_key=$apiKey&language=$defaultLang');
+    final url = Uri.parse('$baseUrl/$endpoint/$id/videos?api_key=$apiKey&language=$defaultLang');
     try {
       var response = await http.get(url);
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
         List results = data['results'] ?? [];
-
+        
         // If empty in pt-BR, try en-US
         if (results.isEmpty) {
-          final fallbackUrl = Uri.parse(
-              '$baseUrl/$endpoint/$id/videos?api_key=$apiKey&language=en-US');
+          final fallbackUrl = Uri.parse('$baseUrl/$endpoint/$id/videos?api_key=$apiKey&language=en-US');
           response = await http.get(fallbackUrl);
           if (response.statusCode == 200) {
             data = json.decode(response.body);
@@ -286,9 +251,7 @@ class TMDBService {
         }
 
         final trailer = results.firstWhere(
-          (v) =>
-              (v['type'] == 'Trailer' || v['type'] == 'Teaser') &&
-              v['site'] == 'YouTube',
+          (v) => (v['type'] == 'Trailer' || v['type'] == 'Teaser') && v['site'] == 'YouTube',
           orElse: () => results.isNotEmpty ? results.first : null,
         );
 
@@ -304,18 +267,13 @@ class TMDBService {
 
   Future<List<MediaItem>> fetchSimilar(int id, String mediaType) async {
     final endpoint = mediaType == 'tv' ? 'tv' : 'movie';
-    final url = Uri.parse(
-        '$baseUrl/$endpoint/$id/recommendations?api_key=$apiKey&language=$defaultLang');
+    final url = Uri.parse('$baseUrl/$endpoint/$id/recommendations?api_key=$apiKey&language=$defaultLang');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
-        return results
-            .map(
-                (item) => MediaItem.fromJson(item, defaultMediaType: mediaType))
-            .take(10)
-            .toList();
+        return results.map((item) => MediaItem.fromJson(item, defaultMediaType: mediaType)).take(10).toList();
       }
     } catch (e) {
       print('Error fetching recommendations: $e');
@@ -325,16 +283,14 @@ class TMDBService {
 
   Future<List<MediaItem>> searchMedia(String query) async {
     if (query.trim().isEmpty) return [];
-    final url = Uri.parse(
-        '$baseUrl/search/multi?api_key=$apiKey&language=$defaultLang&query=${Uri.encodeComponent(query)}&page=1');
+    final url = Uri.parse('$baseUrl/search/multi?api_key=$apiKey&language=$defaultLang&query=${Uri.encodeComponent(query)}&page=1');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
         return results
-            .where((item) =>
-                item['media_type'] == 'movie' || item['media_type'] == 'tv')
+            .where((item) => item['media_type'] == 'movie' || item['media_type'] == 'tv')
             .map((item) => MediaItem.fromJson(item))
             .toList();
       }

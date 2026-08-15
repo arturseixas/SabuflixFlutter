@@ -57,8 +57,7 @@ class DownloadsProvider extends ChangeNotifier {
       grouped.putIfAbsent(item.media.id, () => []).add(item);
     }
     final groups = grouped.values
-        .map((episodes) => SeriesDownloadGroup(
-            series: episodes.first.media, episodes: episodes))
+        .map((episodes) => SeriesDownloadGroup(series: episodes.first.media, episodes: episodes))
         .toList();
     groups.sort((a, b) => b.newestAt.compareTo(a.newestAt));
     return groups;
@@ -71,8 +70,7 @@ class DownloadsProvider extends ChangeNotifier {
     return null;
   }
 
-  List<DownloadItem> get inProgress =>
-      _items.where((item) => !item.isCompleted).toList();
+  List<DownloadItem> get inProgress => _items.where((item) => !item.isCompleted).toList();
 
   int get activeCount => _items.where((item) => item.isPending).length;
 
@@ -148,8 +146,7 @@ class DownloadsProvider extends ChangeNotifier {
         for (final entry in decoded) {
           // One unreadable record must not cost the user their whole library.
           try {
-            restored.add(
-                DownloadItem.fromJson(Map<String, dynamic>.from(entry as Map)));
+            restored.add(DownloadItem.fromJson(Map<String, dynamic>.from(entry as Map)));
           } catch (e) {
             debugPrint('Skipping unreadable download: $e');
           }
@@ -263,10 +260,7 @@ class DownloadsProvider extends ChangeNotifier {
     final item = _byId(id);
     if (item == null || item.isCompleted) return;
     if (item.url.isEmpty) return;
-    _replace(
-        id,
-        (current) =>
-            current.copyWith(status: DownloadStatus.queued, clearError: true));
+    _replace(id, (current) => current.copyWith(status: DownloadStatus.queued, clearError: true));
     await _persist();
     notifyListeners();
     _pumpQueue();
@@ -276,12 +270,8 @@ class DownloadsProvider extends ChangeNotifier {
     var changed = false;
     for (final item in _items) {
       if (item.isCompleted || item.url.isEmpty) continue;
-      if (item.status == DownloadStatus.paused ||
-          item.status == DownloadStatus.failed) {
-        _replace(
-            item.id,
-            (current) => current.copyWith(
-                status: DownloadStatus.queued, clearError: true));
+      if (item.status == DownloadStatus.paused || item.status == DownloadStatus.failed) {
+        _replace(item.id, (current) => current.copyWith(status: DownloadStatus.queued, clearError: true));
         changed = true;
       }
     }
@@ -305,9 +295,7 @@ class DownloadsProvider extends ChangeNotifier {
 
   /// Removes every downloaded episode of a series in one go.
   Future<void> removeSeries(int mediaId) async {
-    final targets = _items
-        .where((item) => item.isEpisode && item.media.id == mediaId)
-        .toList();
+    final targets = _items.where((item) => item.isEpisode && item.media.id == mediaId).toList();
     for (final item in targets) {
       await _service.stop(item.id);
       await _service.deleteFile(_profileKey, item.fileName);
@@ -332,10 +320,7 @@ class DownloadsProvider extends ChangeNotifier {
 
   void _pumpQueue() {
     if (!_hydrated) return;
-    var slots = _maxParallel -
-        _items
-            .where((item) => item.status == DownloadStatus.downloading)
-            .length;
+    var slots = _maxParallel - _items.where((item) => item.status == DownloadStatus.downloading).length;
     if (slots <= 0) return;
     for (final item in _items) {
       if (slots <= 0) break;
@@ -350,10 +335,7 @@ class DownloadsProvider extends ChangeNotifier {
     final item = _byId(id);
     if (item == null) return;
 
-    _replace(
-        id,
-        (current) => current.copyWith(
-            status: DownloadStatus.downloading, clearError: true));
+    _replace(id, (current) => current.copyWith(status: DownloadStatus.downloading, clearError: true));
     notifyListeners();
 
     try {
@@ -362,28 +344,21 @@ class DownloadsProvider extends ChangeNotifier {
         item: item,
         onProgress: (received, total) => _onProgress(id, received, total),
       );
-      _replace(
-          id,
-          (current) => current.copyWith(
-                status: DownloadStatus.completed,
-                totalBytes: current.totalBytes > 0
-                    ? current.totalBytes
-                    : current.receivedBytes,
-                clearError: true,
-              ));
+      _replace(id, (current) => current.copyWith(
+            status: DownloadStatus.completed,
+            totalBytes: current.totalBytes > 0 ? current.totalBytes : current.receivedBytes,
+            clearError: true,
+          ));
     } on DownloadCancelled {
       // Paused or removed on purpose — `pause`/`remove` already set the state.
       if (_byId(id)?.status == DownloadStatus.downloading) {
-        _replace(
-            id, (current) => current.copyWith(status: DownloadStatus.paused));
+        _replace(id, (current) => current.copyWith(status: DownloadStatus.paused));
       }
     } catch (e) {
-      _replace(
-          id,
-          (current) => current.copyWith(
-                status: DownloadStatus.failed,
-                error: _friendlyError(e),
-              ));
+      _replace(id, (current) => current.copyWith(
+            status: DownloadStatus.failed,
+            error: _friendlyError(e),
+          ));
     }
 
     await _persist();
@@ -392,12 +367,10 @@ class DownloadsProvider extends ChangeNotifier {
   }
 
   void _onProgress(String id, int received, int total) {
-    _replace(
-        id,
-        (current) => current.copyWith(
-              receivedBytes: received,
-              totalBytes: total > 0 ? total : current.totalBytes,
-            ));
+    _replace(id, (current) => current.copyWith(
+          receivedBytes: received,
+          totalBytes: total > 0 ? total : current.totalBytes,
+        ));
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - _lastNotifyMs < _notifyIntervalMs) return;
     _lastNotifyMs = now;
@@ -419,14 +392,11 @@ class DownloadsProvider extends ChangeNotifier {
 
   String _friendlyError(Object error) {
     final text = error.toString();
-    if (text.contains('SocketException') ||
-        text.contains('Failed host lookup')) {
+    if (text.contains('SocketException') || text.contains('Failed host lookup')) {
       return 'Sem conexão com a fonte';
     }
-    if (text.contains('No space left'))
-      return 'Espaço insuficiente no aparelho';
-    if (text.contains('respondeu'))
-      return text.replaceAll('HttpException: ', '');
+    if (text.contains('No space left')) return 'Espaço insuficiente no aparelho';
+    if (text.contains('respondeu')) return text.replaceAll('HttpException: ', '');
     return 'Falha no download';
   }
 

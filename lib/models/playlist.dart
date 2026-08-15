@@ -15,10 +15,7 @@ class Playlist {
     return Playlist(
       id: json['id'],
       name: json['name'],
-      items: (json['items'] as List?)
-              ?.map((i) => MediaItem.fromJson(i))
-              .toList() ??
-          [],
+      items: (json['items'] as List?)?.map((i) => MediaItem.fromJson(i)).toList() ?? [],
     );
   }
 
