@@ -57,7 +57,8 @@ class ContinueWatchingProvider extends ChangeNotifier {
           for (final entry in decoded) {
             // Skip only the broken record, never the whole shelf.
             try {
-              restored.add(WatchProgress.fromJson(Map<String, dynamic>.from(entry as Map)));
+              restored.add(WatchProgress.fromJson(
+                  Map<String, dynamic>.from(entry as Map)));
             } catch (e) {
               debugPrint('Skipping unreadable watch progress: $e');
             }
@@ -131,7 +132,8 @@ class ContinueWatchingProvider extends ChangeNotifier {
   Future<void> _persist() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final encoded = json.encode(_entries.map((entry) => entry.toJson()).toList());
+      final encoded =
+          json.encode(_entries.map((entry) => entry.toJson()).toList());
       await prefs.setString('$_keyPrefix$_profileKey', encoded);
     } catch (e) {
       debugPrint('Error saving watch progress: $e');

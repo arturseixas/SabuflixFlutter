@@ -5,8 +5,7 @@ import '../theme/sabuflix_theme.dart';
 import '../utils/app_route.dart';
 import '../screens/media_details_screen.dart';
 
-/// A poster card in the Apple Music / Apple TV idiom: artwork only, title
-/// set below in small type. No badges, no overlays, no rating chip.
+/// Editorial poster card. Artwork stays dominant; metadata lives below it.
 class MediaCard extends StatefulWidget {
   final MediaItem media;
   final double width;
@@ -32,7 +31,8 @@ class _MediaCardState extends State<MediaCard> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () {
-          Navigator.push(context, glassRoute(MediaDetailsScreen(media: widget.media)));
+          Navigator.push(
+              context, glassRoute(MediaDetailsScreen(media: widget.media)));
         },
         child: SizedBox(
           width: widget.width,
@@ -41,24 +41,31 @@ class _MediaCardState extends State<MediaCard> {
             children: [
               Expanded(
                 child: AnimatedScale(
-                  scale: _isHovered ? 1.045 : 1.0,
+                  scale: _isHovered ? 1.025 : 1.0,
                   duration: SabuflixTheme.durationFast,
                   curve: SabuflixTheme.curveSpring,
                   child: AnimatedContainer(
                     duration: SabuflixTheme.durationFast,
                     decoration: BoxDecoration(
-                      borderRadius: SabuflixTheme.radiusLg,
-                      boxShadow: _isHovered ? SabuflixTheme.shadowMd : SabuflixTheme.shadowSm,
+                      borderRadius: SabuflixTheme.radiusMd,
+                      border: Border.all(
+                        color: _isHovered
+                            ? SabuflixTheme.accent.withValues(alpha: 0.7)
+                            : SabuflixTheme.border,
+                      ),
+                      boxShadow: _isHovered ? SabuflixTheme.shadowMd : const [],
                     ),
                     child: ClipRRect(
-                      borderRadius: SabuflixTheme.radiusLg,
+                      borderRadius: SabuflixTheme.radiusMd,
                       child: CachedNetworkImage(
                         imageUrl: widget.media.fullPosterPath,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(color: SabuflixTheme.surface),
+                        placeholder: (context, url) =>
+                            Container(color: SabuflixTheme.surface),
                         errorWidget: (context, url, error) => Container(
                           color: SabuflixTheme.surface,
-                          child: const Icon(Icons.image_outlined, color: SabuflixTheme.textMuted, size: 28),
+                          child: const Icon(Icons.image_outlined,
+                              color: SabuflixTheme.textMuted, size: 28),
                         ),
                       ),
                     ),
@@ -70,7 +77,16 @@ class _MediaCardState extends State<MediaCard> {
                 widget.media.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary),
+                style: SabuflixTheme.title(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '${widget.media.mediaType == 'tv' ? 'Série' : 'Filme'}  ${widget.media.formattedYear}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: SabuflixTheme.caption(
+                    fontSize: 11, color: SabuflixTheme.textMuted),
               ),
             ],
           ),

@@ -71,9 +71,15 @@ class MediaItem {
     return voteAverage.toStringAsFixed(1);
   }
 
-  factory MediaItem.fromJson(Map<String, dynamic> json, {String defaultMediaType = 'movie'}) {
-    final titleStr = json['title'] ?? json['name'] ?? json['original_title'] ?? json['original_name'] ?? 'Sem Título';
-    final mType = json['media_type'] ?? (json['first_air_date'] != null ? 'tv' : defaultMediaType);
+  factory MediaItem.fromJson(Map<String, dynamic> json,
+      {String defaultMediaType = 'movie'}) {
+    final titleStr = json['title'] ??
+        json['name'] ??
+        json['original_title'] ??
+        json['original_name'] ??
+        'Sem Título';
+    final mType = json['media_type'] ??
+        (json['first_air_date'] != null ? 'tv' : defaultMediaType);
     final rDate = json['release_date'] ?? json['first_air_date'];
 
     // Genres arrive in two shapes: TMDB sends `[{id, name}]`, while an item
@@ -118,7 +124,9 @@ class MediaItem {
       posterPath: json['poster_path'],
       backdropPath: json['backdrop_path'],
       logoPath: json['logo_path'],
-      voteAverage: (json['vote_average'] is num) ? (json['vote_average'] as num).toDouble() : 0.0,
+      voteAverage: (json['vote_average'] is num)
+          ? (json['vote_average'] as num).toDouble()
+          : 0.0,
       voteCount: json['vote_count'] ?? 0,
       releaseDate: rDate,
       mediaType: mType,

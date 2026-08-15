@@ -9,7 +9,10 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import '../models/media_item.dart';
 import '../providers/continue_watching_provider.dart';
+import '../services/froststream_service.dart';
+import '../services/tmdb_service.dart';
 import '../theme/sabuflix_theme.dart';
+import '../utils/app_route.dart';
 import '../utils/formatters.dart';
 import '../widgets/glass_container.dart';
 
@@ -43,21 +46,21 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _showControls = true;
   Timer? _hideTimer;
-  
+
   Player? _player;
   VideoController? _videoController;
-  
+
   bool _isPlaying = false;
   bool _isBuffering = false;
   double _currentPosition = 0;
   double _totalDuration = 0;
-  
+
   bool _showAudioMenu = false;
   bool _showSubtitleMenu = false;
 
   List<AudioTrack> _audioTracks = [];
   AudioTrack? _selectedAudioTrack;
-  
+
   List<SubtitleTrack> _subtitleTracks = [];
   SubtitleTrack? _selectedSubtitleTrack;
 
@@ -68,20 +71,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _seekedToStart = false;
   bool _resumeBannerVisible = false;
 
+  int? _nextEpisode;
+  String? _nextEpisodeTitle;
+  bool _isSkippingToNextEpisode = false;
+  bool _hasCompletedEpisode = false;
+
   @override
   void initState() {
     super.initState();
-    _continueWatching = Provider.of<ContinueWatchingProvider>(context, listen: false);
+    _continueWatching =
+        Provider.of<ContinueWatchingProvider>(context, listen: false);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+    SystemChrome.setPreferredOrientations(
+        [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     _initPlayer();
+    _loadNextEpisode();
     _startHideTimer();
-    _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
+    _progressTimer =
+        Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
   }
 
   /// Persists the playback position so the title shows up on the
   /// "Continuar Assistindo" shelf with the right resume point.
   void _saveProgress() {
+    if (_hasCompletedEpisode) return;
     if (_player == null) return;
     if (_totalDuration <= 0 || _currentPosition <= 0) return;
     _continueWatching?.record(
@@ -118,23 +131,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
       _player = Player();
       _videoController = VideoController(_player!);
-      
+
       _player!.stream.position.listen((Duration position) {
         if (!mounted) return;
         setState(() => _currentPosition = position.inSeconds.toDouble());
       });
-      
+
       _player!.stream.duration.listen((Duration duration) {
         if (!mounted) return;
         setState(() => _totalDuration = duration.inSeconds.toDouble());
         if (_totalDuration > 0) _seekToStartOnce();
       });
-      
+
       _player!.stream.playing.listen((bool playing) {
         if (!mounted) return;
         setState(() => _isPlaying = playing);
       });
-      
+
       _player!.stream.buffering.listen((bool buffering) {
         if (!mounted) return;
         setState(() => _isBuffering = buffering);
@@ -168,6 +181,106 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _isPlaying = true;
       _mockPlaybackTimer();
     }
+  }
+
+  /// Finds the next episode in the current season.  This is intentionally
+  /// loaded in the background so opening the player is never delayed.
+  Future<void> _loadNextEpisode() async {
+    final season = widget.season;
+    final episode = widget.episode;
+    if (widget.media.mediaType != 'tv' || season == null || episode == null) {
+      return;
+    }
+
+    final episodes =
+        await TMDBService().fetchSeasonEpisodes(widget.media.id, season);
+    int? nextNumber;
+    String? nextTitle;
+    for (final item in episodes) {
+      if (item is! Map) continue;
+      final number = (item['episode_number'] as num?)?.toInt();
+      if (number == null || number <= episode) continue;
+      if (nextNumber == null || number < nextNumber) {
+        nextNumber = number;
+        nextTitle = (item['name'] ?? 'Episódio $number').toString();
+      }
+    }
+
+    if (!mounted || nextNumber == null) return;
+    setState(() {
+      _nextEpisode = nextNumber;
+      _nextEpisodeTitle = nextTitle;
+    });
+  }
+
+  bool get _shouldOfferNextEpisode {
+    return _nextEpisode != null &&
+        _totalDuration > 0 &&
+        _currentPosition >= (_totalDuration - 30).clamp(0.0, double.infinity);
+  }
+
+  Future<void> _skipToNextEpisode() async {
+    final nextEpisode = _nextEpisode;
+    final season = widget.season;
+    final imdbId = widget.media.imdbId;
+    if (_isSkippingToNextEpisode ||
+        nextEpisode == null ||
+        season == null ||
+        imdbId == null ||
+        imdbId.isEmpty) {
+      return;
+    }
+
+    setState(() => _isSkippingToNextEpisode = true);
+    final streams = await FrostStreamService.fetchStreams(
+      imdbId: imdbId,
+      type: 'tv',
+      season: season,
+      episode: nextEpisode,
+    );
+    Map<String, dynamic>? stream;
+    for (final candidate in streams) {
+      if ((candidate['url'] ?? '').toString().isNotEmpty) {
+        stream = candidate;
+        break;
+      }
+    }
+
+    if (!mounted) return;
+    if (stream == null) {
+      setState(() => _isSkippingToNextEpisode = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Não foi possível carregar o próximo episódio.')),
+      );
+      return;
+    }
+
+    // Mark the current episode as complete before replacing this route.
+    _hasCompletedEpisode = true;
+    await _continueWatching?.record(
+      media: widget.media,
+      season: widget.season,
+      episode: widget.episode,
+      episodeTitle: widget.episodeTitle,
+      positionSeconds: _totalDuration.toInt(),
+      durationSeconds: _totalDuration.toInt(),
+      sourceUrl: widget.videoUrl,
+    );
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      glassRoute(
+        VideoPlayerScreen(
+          media: widget.media,
+          videoUrl: stream['url'].toString(),
+          season: season,
+          episode: nextEpisode,
+          episodeTitle: _nextEpisodeTitle,
+        ),
+      ),
+    );
   }
 
   void _mockPlaybackTimer() {
@@ -223,7 +336,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _player!.seek(Duration(seconds: newPos.toInt()));
     } else {
       setState(() {
-        _currentPosition = (_currentPosition + seconds).clamp(0.0, _totalDuration);
+        _currentPosition =
+            (_currentPosition + seconds).clamp(0.0, _totalDuration);
       });
     }
     _startHideTimer();
@@ -251,8 +365,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _openOfficialTrailer() async {
-    if (widget.media.trailerKey != null && widget.media.trailerKey!.isNotEmpty) {
-      final Uri url = Uri.parse('https://www.youtube.com/watch?v=${widget.media.trailerKey}');
+    if (widget.media.trailerKey != null &&
+        widget.media.trailerKey!.isNotEmpty) {
+      final Uri url = Uri.parse(
+          'https://www.youtube.com/watch?v=${widget.media.trailerKey}');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
@@ -297,7 +413,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               Center(
                 child: Video(
                   controller: _videoController!,
-                  controls: NoVideoControls, 
+                  controls: NoVideoControls,
                   fill: Colors.black,
                 ),
               )
@@ -306,12 +422,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 imageUrl: widget.media.fullBackdropPath,
                 fit: BoxFit.cover,
                 alignment: Alignment.center,
-                placeholder: (context, url) => Container(color: SabuflixTheme.background),
-                errorWidget: (context, url, err) => Container(color: SabuflixTheme.background),
+                placeholder: (context, url) =>
+                    Container(color: SabuflixTheme.background),
+                errorWidget: (context, url, err) =>
+                    Container(color: SabuflixTheme.background),
               ),
 
             if (_isBuffering && hasVideo)
-              const Center(child: CircularProgressIndicator(color: SabuflixTheme.accent)),
+              const Center(
+                  child:
+                      CircularProgressIndicator(color: SabuflixTheme.accent)),
 
             // Brief confirmation that playback jumped to where it stopped.
             Positioned(
@@ -327,10 +447,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       borderRadius: SabuflixTheme.radiusPill,
                       blur: 30,
                       fillOpacity: 0.5,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 10),
                       child: Text(
                         'Retomando de ${_formatDuration(widget.startAt.inSeconds.toDouble())}',
-                        style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                        style: SabuflixTheme.caption(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white),
                       ),
                     ),
                   ),
@@ -342,6 +466,36 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 color: Colors.black.withValues(alpha: _isPlaying ? 0.35 : 0.65),
+              ),
+
+            if (_shouldOfferNextEpisode)
+              Positioned(
+                right: 28,
+                bottom: 94,
+                child: FilledButton.icon(
+                  onPressed:
+                      _isSkippingToNextEpisode ? null : _skipToNextEpisode,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: SabuflixTheme.accent,
+                    foregroundColor: SabuflixTheme.textPrimary,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 14),
+                  ),
+                  icon: _isSkippingToNextEpisode
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: SabuflixTheme.textPrimary),
+                        )
+                      : const Icon(Icons.skip_next_rounded),
+                  label: Text(
+                    'Próximo episódio',
+                    style: SabuflixTheme.body(
+                        fontWeight: FontWeight.w700,
+                        color: SabuflixTheme.textPrimary),
+                  ),
+                ),
               ),
 
             if (_showControls)
@@ -361,7 +515,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           child: Row(
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 26),
+                                icon: const Icon(Icons.arrow_back_rounded,
+                                    color: Colors.white, size: 26),
                                 onPressed: () => Navigator.pop(context),
                               ),
                               const SizedBox(width: 10),
@@ -374,13 +529,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                       widget.media.title,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: SabuflixTheme.title(fontSize: 18, color: Colors.white),
+                                      style: SabuflixTheme.title(
+                                          fontSize: 18, color: Colors.white),
                                     ),
                                     Text(
                                       _headerSubtitle,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: SabuflixTheme.body(color: SabuflixTheme.textSecondary, fontSize: 12),
+                                      style: SabuflixTheme.body(
+                                          color: SabuflixTheme.textSecondary,
+                                          fontSize: 12),
                                     ),
                                   ],
                                 ),
@@ -388,7 +546,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             ],
                           ),
                         ),
-
                         Positioned(
                           top: 16,
                           right: 12,
@@ -398,17 +555,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 onPressed: _openOfficialTrailer,
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.white,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.12),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
+                                  backgroundColor: SabuflixTheme.surface
+                                      .withValues(alpha: 0.82),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 10),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: SabuflixTheme.radiusSm),
                                 ),
-                                icon: const Icon(Icons.smart_display_outlined, size: 18, color: Colors.white),
-                                label: Text('Trailer', style: SabuflixTheme.body(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                                icon: const Icon(Icons.smart_display_outlined,
+                                    size: 18, color: Colors.white),
+                                label: Text('Trailer',
+                                    style: SabuflixTheme.body(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white)),
                               ),
                               const SizedBox(width: 4),
                               if (_subtitleTracks.isNotEmpty)
                                 IconButton(
-                                  icon: const Icon(Icons.subtitles_outlined, color: Colors.white),
+                                  icon: const Icon(Icons.subtitles_outlined,
+                                      color: Colors.white),
                                   onPressed: () {
                                     setState(() {
                                       _showSubtitleMenu = !_showSubtitleMenu;
@@ -418,7 +584,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 ),
                               if (_audioTracks.length > 1)
                                 IconButton(
-                                  icon: const Icon(Icons.audiotrack_rounded, color: Colors.white),
+                                  icon: const Icon(Icons.audiotrack_rounded,
+                                      color: Colors.white),
                                   onPressed: () {
                                     setState(() {
                                       _showAudioMenu = !_showAudioMenu;
@@ -429,14 +596,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             ],
                           ),
                         ),
-
                         Center(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               IconButton(
                                 iconSize: 40,
-                                icon: const Icon(Icons.replay_10_rounded, color: Colors.white),
+                                icon: const Icon(Icons.replay_10_rounded,
+                                    color: Colors.white),
                                 onPressed: () => _seek(-10),
                               ),
                               const SizedBox(width: 28),
@@ -445,34 +612,32 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 height: 70,
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
-                                  color: SabuflixTheme.accent,
+                                  color: SabuflixTheme.surface
+                                      .withValues(alpha: 0.88),
                                   shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: SabuflixTheme.accent.withValues(alpha: 0.45),
-                                      blurRadius: 20,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
+                                  border: Border.all(
+                                      color: SabuflixTheme.borderStrong),
                                 ),
                                 child: IconButton(
                                   iconSize: 38,
-                                  icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white),
+                                  icon: Icon(
+                                      _isPlaying
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      color: SabuflixTheme.accentHover),
                                   onPressed: _playPause,
                                 ),
                               ),
                               const SizedBox(width: 28),
                               IconButton(
                                 iconSize: 40,
-                                icon: const Icon(Icons.forward_10_rounded, color: Colors.white),
+                                icon: const Icon(Icons.forward_10_rounded,
+                                    color: Colors.white),
                                 onPressed: () => _seek(10),
                               ),
                             ],
                           ),
                         ),
-
-
-
                         if (_showAudioMenu)
                           Positioned(
                             right: 56,
@@ -481,7 +646,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               width: 220,
                               tracks: _audioTracks,
                               selectedTrack: _selectedAudioTrack,
-                              titleBuilder: (t) => t.title ?? t.language ?? 'Áudio ${t.id}',
+                              titleBuilder: (t) =>
+                                  t.title ?? t.language ?? 'Áudio ${t.id}',
                               onSelect: (track) {
                                 _player?.setAudioTrack(track);
                                 setState(() {
@@ -491,7 +657,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               },
                             ),
                           ),
-
                         if (_showSubtitleMenu)
                           Positioned(
                             right: _audioTracks.length > 1 ? 96 : 56,
@@ -500,7 +665,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               width: 220,
                               tracks: _subtitleTracks,
                               selectedTrack: _selectedSubtitleTrack,
-                              titleBuilder: (t) => t.title ?? t.language ?? 'Legenda ${t.id}',
+                              titleBuilder: (t) =>
+                                  t.title ?? t.language ?? 'Legenda ${t.id}',
                               onSelect: (track) {
                                 _player?.setSubtitleTrack(track);
                                 setState(() {
@@ -510,7 +676,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               },
                             ),
                           ),
-
                         Positioned(
                           bottom: 20,
                           left: 20,
@@ -520,28 +685,46 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               SliderTheme(
                                 data: SliderThemeData(
                                   trackHeight: 4.0,
-                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                                  thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 7),
                                   activeTrackColor: SabuflixTheme.accent,
-                                  inactiveTrackColor: Colors.white.withValues(alpha: 0.25),
+                                  inactiveTrackColor:
+                                      Colors.white.withValues(alpha: 0.25),
                                   thumbColor: SabuflixTheme.accent,
-                                  overlayColor: SabuflixTheme.accent.withValues(alpha: 0.2),
+                                  overlayColor: SabuflixTheme.accent
+                                      .withValues(alpha: 0.2),
                                 ),
                                 child: Slider(
-                                  value: _currentPosition.clamp(0.0, _totalDuration > 0 ? _totalDuration : 1.0),
+                                  value: _currentPosition.clamp(
+                                      0.0,
+                                      _totalDuration > 0
+                                          ? _totalDuration
+                                          : 1.0),
                                   min: 0,
-                                  max: _totalDuration > 0 ? _totalDuration : 1.0,
+                                  max:
+                                      _totalDuration > 0 ? _totalDuration : 1.0,
                                   onChanged: (val) {
                                     _seekTo(val);
                                   },
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(_formatDuration(_currentPosition), style: SabuflixTheme.body(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
-                                    Text(_formatDuration(_totalDuration), style: SabuflixTheme.body(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                                    Text(_formatDuration(_currentPosition),
+                                        style: SabuflixTheme.body(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                    Text(_formatDuration(_totalDuration),
+                                        style: SabuflixTheme.body(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
@@ -594,18 +777,23 @@ class _TrackMenu<T> extends StatelessWidget {
             final isSelected = selectedTrack == track;
             return ListTile(
               dense: true,
-              shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
+              shape:
+                  RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
               title: Text(
                 titleBuilder(track),
                 style: SabuflixTheme.body(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? Colors.white : SabuflixTheme.textSecondary,
+                  color:
+                      isSelected ? Colors.white : SabuflixTheme.textSecondary,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: isSelected ? const Icon(Icons.check_rounded, color: SabuflixTheme.accent, size: 18) : null,
+              trailing: isSelected
+                  ? const Icon(Icons.check_rounded,
+                      color: SabuflixTheme.accent, size: 18)
+                  : null,
               onTap: () => onSelect(track),
             );
           },

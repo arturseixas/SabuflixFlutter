@@ -57,7 +57,8 @@ class _AppLifecycleGate extends StatefulWidget {
   State<_AppLifecycleGate> createState() => _AppLifecycleGateState();
 }
 
-class _AppLifecycleGateState extends State<_AppLifecycleGate> with WidgetsBindingObserver {
+class _AppLifecycleGateState extends State<_AppLifecycleGate>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();

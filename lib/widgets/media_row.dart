@@ -21,14 +21,14 @@ class MediaRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 14),
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 15),
           child: Text(
             title,
-            style: SabuflixTheme.title(fontSize: 19, fontWeight: FontWeight.w700),
+            style: SabuflixTheme.headline(fontSize: 22),
           ),
         ),
         SizedBox(
-          height: 254,
+          height: 274,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -36,9 +36,10 @@ class MediaRow extends StatelessWidget {
             itemCount: mediaItems.length,
             itemBuilder: (context, index) {
               final item = mediaItems[index];
+              final width = index == 0 ? 168.0 : 148.0;
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: MediaCard(media: item),
+                child: MediaCard(media: item, width: width),
               );
             },
           ),

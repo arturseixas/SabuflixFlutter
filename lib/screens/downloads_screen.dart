@@ -45,7 +45,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     child: SizedBox(
                       width: 26,
                       height: 26,
-                      child: CircularProgressIndicator(color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
+                      child: CircularProgressIndicator(
+                          color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
                     ),
                   );
                 }
@@ -60,7 +61,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _Header(downloads: downloads, centered: isMobile),
+                    _Header(downloads: downloads, centered: false),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
                       child: SabuSegmentedControl(
@@ -108,7 +109,9 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stalled = downloads.items.any(
-      (item) => item.status == DownloadStatus.paused || item.status == DownloadStatus.failed,
+      (item) =>
+          item.status == DownloadStatus.paused ||
+          item.status == DownloadStatus.failed,
     );
 
     final pieces = <String>[
@@ -122,7 +125,8 @@ class _Header extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       child: Column(
-        crossAxisAlignment: centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
         children: [
           Text(
             'Downloads',
@@ -133,7 +137,8 @@ class _Header extends StatelessWidget {
           Text(
             pieces.join(' · '),
             textAlign: centered ? TextAlign.center : TextAlign.start,
-            style: SabuflixTheme.caption(fontSize: 13, color: SabuflixTheme.textSecondary),
+            style: SabuflixTheme.caption(
+                fontSize: 13, color: SabuflixTheme.textSecondary),
           ),
           if (stalled) ...[
             const SizedBox(height: 14),
@@ -144,13 +149,17 @@ class _Header extends StatelessWidget {
                 style: TextButton.styleFrom(
                   foregroundColor: SabuflixTheme.accent,
                   backgroundColor: SabuflixTheme.accent.withValues(alpha: 0.14),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: const StadiumBorder(),
                 ),
                 icon: const Icon(Icons.play_arrow_rounded, size: 18),
                 label: Text(
                   'Retomar downloads',
-                  style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w700, color: SabuflixTheme.accent),
+                  style: SabuflixTheme.caption(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: SabuflixTheme.accent),
                 ),
               ),
             ),
@@ -165,7 +174,8 @@ class _MoviesList extends StatelessWidget {
   final List<DownloadItem> movies;
   final double bottomInset;
 
-  const _MoviesList({Key? key, required this.movies, required this.bottomInset}) : super(key: key);
+  const _MoviesList({Key? key, required this.movies, required this.bottomInset})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +202,8 @@ class _SeriesList extends StatelessWidget {
   final List<SeriesDownloadGroup> groups;
   final double bottomInset;
 
-  const _SeriesList({Key? key, required this.groups, required this.bottomInset}) : super(key: key);
+  const _SeriesList({Key? key, required this.groups, required this.bottomInset})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -200,7 +211,8 @@ class _SeriesList extends StatelessWidget {
       return _EmptySection(
         icon: Icons.live_tv_rounded,
         title: 'Nenhuma série baixada',
-        message: 'Baixe episódios pela tela da série — eles ficam agrupados aqui.',
+        message:
+            'Baixe episódios pela tela da série. Eles ficam agrupados aqui.',
         bottomInset: bottomInset,
       );
     }
@@ -225,7 +237,7 @@ class _SeriesTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.05),
+      color: SabuflixTheme.surface,
       borderRadius: SabuflixTheme.radiusLg,
       child: InkWell(
         borderRadius: SabuflixTheme.radiusLg,
@@ -233,7 +245,11 @@ class _SeriesTile extends StatelessWidget {
           context,
           glassRoute(SeriesDownloadsScreen(mediaId: group.series.id)),
         ),
-        child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: SabuflixTheme.radiusLg,
+            border: Border.all(color: SabuflixTheme.border),
+          ),
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
@@ -244,12 +260,14 @@ class _SeriesTile extends StatelessWidget {
                   width: 46,
                   height: 68,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(color: SabuflixTheme.surface, width: 46, height: 68),
+                  placeholder: (context, url) => Container(
+                      color: SabuflixTheme.surface, width: 46, height: 68),
                   errorWidget: (context, url, error) => Container(
                     color: SabuflixTheme.surface,
                     width: 46,
                     height: 68,
-                    child: const Icon(Icons.live_tv_rounded, color: SabuflixTheme.textMuted, size: 18),
+                    child: const Icon(Icons.live_tv_rounded,
+                        color: SabuflixTheme.textMuted, size: 18),
                   ),
                 ),
               ),
@@ -270,12 +288,14 @@ class _SeriesTile extends StatelessWidget {
                       group.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: SabuflixTheme.caption(fontSize: 12, color: SabuflixTheme.textSecondary),
+                      style: SabuflixTheme.caption(
+                          fontSize: 12, color: SabuflixTheme.textSecondary),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: SabuflixTheme.textMuted, size: 22),
+              const Icon(Icons.chevron_right_rounded,
+                  color: SabuflixTheme.textMuted, size: 22),
               const SizedBox(width: 4),
             ],
           ),
@@ -304,10 +324,13 @@ class _EmptyLibrary extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.06),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.download_rounded, size: 34, color: SabuflixTheme.textSecondary),
+            child: const Icon(Icons.download_rounded,
+                size: 34, color: SabuflixTheme.textSecondary),
           ),
           const SizedBox(height: 22),
-          Text('Downloads', textAlign: TextAlign.center, style: SabuflixTheme.display(fontSize: 30)),
+          Text('Downloads',
+              textAlign: TextAlign.center,
+              style: SabuflixTheme.display(fontSize: 30)),
           const SizedBox(height: 10),
           Text(
             'Baixe filmes e episódios para assistir sem internet. Eles ficam guardados aqui, separados por filmes e séries.',
@@ -342,9 +365,13 @@ class _EmptySection extends StatelessWidget {
         children: [
           Icon(icon, size: 42, color: SabuflixTheme.textMuted),
           const SizedBox(height: 16),
-          Text(title, textAlign: TextAlign.center, style: SabuflixTheme.title(fontSize: 17)),
+          Text(title,
+              textAlign: TextAlign.center,
+              style: SabuflixTheme.title(fontSize: 17)),
           const SizedBox(height: 8),
-          Text(message, textAlign: TextAlign.center, style: SabuflixTheme.body(fontSize: 14)),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: SabuflixTheme.body(fontSize: 14)),
         ],
       ),
     );
