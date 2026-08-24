@@ -16,7 +16,8 @@ class DownloadTile extends StatelessWidget {
   /// tag instead of repeating the show's name.
   final bool showEpisodeTag;
 
-  const DownloadTile({Key? key, required this.item, this.showEpisodeTag = false}) : super(key: key);
+  const DownloadTile(
+      {super.key, required this.item, this.showEpisodeTag = false});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +28,9 @@ class DownloadTile extends StatelessWidget {
       borderRadius: SabuflixTheme.radiusLg,
       child: InkWell(
         borderRadius: SabuflixTheme.radiusLg,
-        onTap: item.isCompleted ? () => playDownload(context, item) : () => _toggle(downloads),
+        onTap: item.isCompleted
+            ? () => playDownload(context, item)
+            : () => _toggle(downloads),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Row(
@@ -40,12 +43,14 @@ class DownloadTile extends StatelessWidget {
                   width: 46,
                   height: 68,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(color: SabuflixTheme.surface, width: 46, height: 68),
+                  placeholder: (context, url) => Container(
+                      color: SabuflixTheme.surface, width: 46, height: 68),
                   errorWidget: (context, url, error) => Container(
                     color: SabuflixTheme.surface,
                     width: 46,
                     height: 68,
-                    child: const Icon(Icons.movie_outlined, color: SabuflixTheme.textMuted, size: 18),
+                    child: const Icon(Icons.movie_outlined,
+                        color: SabuflixTheme.textMuted, size: 18),
                   ),
                 ),
               ),
@@ -78,7 +83,8 @@ class DownloadTile extends StatelessWidget {
                     if (!item.isCompleted) ...[
                       const SizedBox(height: 8),
                       ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(3)),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(3)),
                         child: LinearProgressIndicator(
                           value: item.progress > 0 ? item.progress : null,
                           minHeight: 3,
@@ -98,7 +104,9 @@ class DownloadTile extends StatelessWidget {
               _ActionButton(
                 icon: _actionIcon,
                 highlighted: item.isCompleted,
-                onTap: item.isCompleted ? () => playDownload(context, item) : () => _toggle(downloads),
+                onTap: item.isCompleted
+                    ? () => playDownload(context, item)
+                    : () => _toggle(downloads),
               ),
               _MoreButton(item: item),
             ],
@@ -110,7 +118,9 @@ class DownloadTile extends StatelessWidget {
 
   String get _metaLine {
     final quality = item.quality.trim();
-    if (item.isCompleted && quality.isNotEmpty) return '$quality · ${item.sizeLabel}';
+    if (item.isCompleted && quality.isNotEmpty) {
+      return '$quality · ${item.sizeLabel}';
+    }
     return item.statusLabel;
   }
 
@@ -149,12 +159,15 @@ class _ActionButton extends StatelessWidget {
   final bool highlighted;
   final VoidCallback onTap;
 
-  const _ActionButton({required this.icon, required this.highlighted, required this.onTap});
+  const _ActionButton(
+      {required this.icon, required this.highlighted, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: highlighted ? SabuflixTheme.accent : Colors.white.withValues(alpha: 0.10),
+      color: highlighted
+          ? SabuflixTheme.accent
+          : Colors.white.withValues(alpha: 0.10),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -162,7 +175,9 @@ class _ActionButton extends StatelessWidget {
         child: SizedBox(
           width: 36,
           height: 36,
-          child: Icon(icon, size: 20, color: highlighted ? Colors.white : SabuflixTheme.textPrimary),
+          child: Icon(icon,
+              size: 20,
+              color: highlighted ? Colors.white : SabuflixTheme.textPrimary),
         ),
       ),
     );
@@ -177,7 +192,8 @@ class _MoreButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_horiz_rounded, color: SabuflixTheme.textSecondary, size: 20),
+      icon: const Icon(Icons.more_horiz_rounded,
+          color: SabuflixTheme.textSecondary, size: 20),
       color: SabuflixTheme.elevated,
       shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
       onSelected: (value) async {
@@ -186,7 +202,8 @@ class _MoreButton extends StatelessWidget {
         final confirmed = await confirmDestructive(
           context,
           title: 'Excluir download',
-          message: 'O arquivo de "${item.displayTitle}" será apagado do aparelho.',
+          message:
+              'O arquivo de "${item.displayTitle}" será apagado do aparelho.',
         );
         if (!confirmed) return;
         await downloads.remove(item.id);
@@ -196,7 +213,8 @@ class _MoreButton extends StatelessWidget {
           value: 'delete',
           child: Text(
             'Excluir do aparelho',
-            style: SabuflixTheme.body(fontSize: 14, color: SabuflixTheme.textPrimary),
+            style: SabuflixTheme.body(
+                fontSize: 14, color: SabuflixTheme.textPrimary),
           ),
         ),
       ],

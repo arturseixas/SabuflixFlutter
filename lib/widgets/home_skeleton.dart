@@ -6,7 +6,7 @@ import '../theme/sabuflix_theme.dart';
 /// Placeholder that mirrors the home layout while the catalogue loads, so the
 /// screen settles into place instead of snapping in from a spinner.
 class HomeSkeleton extends StatelessWidget {
-  const HomeSkeleton({Key? key}) : super(key: key);
+  const HomeSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {

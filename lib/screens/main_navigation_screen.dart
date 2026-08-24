@@ -6,43 +6,43 @@ import '../widgets/glass_container.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'categories_screen.dart';
-import 'downloads_screen.dart';
-import 'my_list_screen.dart';
-import 'playlists_screen.dart';
+import 'library_screen.dart';
 import 'profile_selection_screen.dart';
+import 'settings_screen.dart';
 import '../providers/downloads_provider.dart';
 import '../providers/profile_provider.dart';
 import 'package:provider/provider.dart';
 
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({Key? key}) : super(key: key);
+  const MainNavigationScreen({super.key});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-/// Index of the Downloads tab inside [_MainNavigationScreenState._destinations].
-const int _downloadsIndex = 3;
+/// Index of the Library tab, which owns the downloads status badge.
+const int _libraryIndex = 3;
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
   static const List<_NavDestination> _destinations = [
     _NavDestination(Icons.home, Icons.home_outlined, 'Início'),
-    _NavDestination(Icons.search, Icons.search, 'Pesquisar', shortLabel: 'Buscar'),
-    _NavDestination(Icons.category, Icons.category_outlined, 'Categorias', shortLabel: 'Gêneros'),
-    _NavDestination(Icons.download_rounded, Icons.download_outlined, 'Downloads'),
-    _NavDestination(Icons.bookmark, Icons.bookmark_border, 'Minha Lista', shortLabel: 'Lista'),
-    _NavDestination(Icons.featured_play_list, Icons.featured_play_list_outlined, 'Playlists'),
+    _NavDestination(Icons.search, Icons.search, 'Pesquisar',
+        shortLabel: 'Buscar'),
+    _NavDestination(Icons.explore_rounded, Icons.explore_outlined, 'Descobrir'),
+    _NavDestination(
+        Icons.video_library_rounded, Icons.video_library_outlined, 'Biblioteca',
+        shortLabel: 'Biblioteca'),
+    _NavDestination(Icons.settings_rounded, Icons.settings_outlined, 'Ajustes'),
   ];
 
   final List<Widget> _screens = const [
     HomeScreen(),
     SearchScreen(),
     CategoriesScreen(),
-    DownloadsScreen(),
-    MyListScreen(),
-    PlaylistsScreen(),
+    LibraryScreen(),
+    SettingsScreen(),
   ];
 
   @override
@@ -52,11 +52,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     // Only rebuilds the chrome when the number of pending downloads changes,
     // not on every progress tick.
-    final activeDownloads = context.select<DownloadsProvider, int>((provider) => provider.activeCount);
+    final activeDownloads = context
+        .select<DownloadsProvider, int>((provider) => provider.activeCount);
 
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
-      body: isDesktop ? _buildDesktopLayout(activeDownloads) : _buildMobileLayout(context, activeDownloads),
+      body: isDesktop
+          ? _buildDesktopLayout(activeDownloads)
+          : _buildMobileLayout(context, activeDownloads),
     );
   }
 
@@ -71,7 +74,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               padding: const EdgeInsets.symmetric(vertical: 28),
               decoration: BoxDecoration(
                 color: SabuflixTheme.surface.withValues(alpha: 0.6),
-                border: const Border(right: BorderSide(color: SabuflixTheme.border, width: 0.6)),
+                border: const Border(
+                    right: BorderSide(color: SabuflixTheme.border, width: 0.6)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,47 +84,64 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 28),
                     child: SabuflixWordmark(fontSize: 19),
                   ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Text('SUA CENTRAL DE MÍDIA',
+                        style: SabuflixTheme.label(fontSize: 9)),
+                  ),
+                  const SizedBox(height: 24),
                   for (int i = 0; i < _destinations.length; i++)
                     _buildNavItem(i, _destinations[i], activeDownloads),
                   const Spacer(),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Consumer<ProfileProvider>(
-                      builder: (context, profileProvider, child) {
-                        final profile = profileProvider.currentProfile;
-                        if (profile == null) return const SizedBox.shrink();
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileSelectionScreen()));
-                          },
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 30,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: Color(profile.colorValue),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.person, size: 20, color: Colors.white),
+                        builder: (context, profileProvider, child) {
+                      final profile = profileProvider.currentProfile;
+                      if (profile == null) return const SizedBox.shrink();
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ProfileSelectionScreen()));
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: Color(profile.colorValue),
+                                shape: BoxShape.circle,
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(profile.name, style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w600, color: SabuflixTheme.textPrimary)),
-                                    Text('Trocar Perfil', style: SabuflixTheme.caption(fontSize: 12, color: SabuflixTheme.accent)),
-                                  ],
-                                ),
+                              child: const Icon(Icons.person,
+                                  size: 20, color: Colors.white),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(profile.name,
+                                      style: SabuflixTheme.caption(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: SabuflixTheme.textPrimary)),
+                                  Text('Trocar Perfil',
+                                      style: SabuflixTheme.caption(
+                                          fontSize: 12,
+                                          color: SabuflixTheme.accent)),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
-                      }
-                    ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ),
                 ],
               ),
@@ -166,7 +187,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     for (int i = 0; i < _destinations.length; i++)
-                      _buildMobileDockItem(i, _destinations[i], activeDownloads),
+                      _buildMobileDockItem(
+                          i, _destinations[i], activeDownloads),
                   ],
                 ),
               ),
@@ -177,7 +199,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, _NavDestination destination, int activeDownloads) {
+  Widget _buildNavItem(
+      int index, _NavDestination destination, int activeDownloads) {
     final isSelected = _currentIndex == index;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -190,9 +213,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             duration: SabuflixTheme.durationFast,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(
-              color: isSelected ? SabuflixTheme.accent.withValues(alpha: 0.18) : Colors.transparent,
+              color: isSelected
+                  ? SabuflixTheme.accent.withValues(alpha: 0.18)
+                  : Colors.transparent,
               borderRadius: SabuflixTheme.radiusPill,
-              border: isSelected ? Border.all(color: SabuflixTheme.accent.withValues(alpha: 0.4), width: 1) : null,
+              border: isSelected
+                  ? Border.all(
+                      color: SabuflixTheme.accent.withValues(alpha: 0.4),
+                      width: 1)
+                  : null,
             ),
             child: Row(
               children: [
@@ -200,7 +229,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   destination: destination,
                   isSelected: isSelected,
                   size: 19,
-                  showBadge: index == _downloadsIndex && activeDownloads > 0,
+                  showBadge: index == _libraryIndex && activeDownloads > 0,
                 ),
                 const SizedBox(width: 14),
                 Text(
@@ -208,7 +237,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   style: SabuflixTheme.body(
                     fontSize: 14,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? SabuflixTheme.accent : SabuflixTheme.textMuted,
+                    color: isSelected
+                        ? SabuflixTheme.accent
+                        : SabuflixTheme.textMuted,
                   ),
                 ),
               ],
@@ -222,7 +253,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   /// Dock item in the iOS idiom: only the active tab spells out its name, the
   /// rest stay as icons. Six destinations then fit a narrow phone without the
   /// 9pt labels that used to overflow, and the label never has to be truncated.
-  Widget _buildMobileDockItem(int index, _NavDestination destination, int activeDownloads) {
+  Widget _buildMobileDockItem(
+      int index, _NavDestination destination, int activeDownloads) {
     final isSelected = _currentIndex == index;
 
     final button = Material(
@@ -233,11 +265,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         child: AnimatedContainer(
           duration: SabuflixTheme.durationFast,
           curve: SabuflixTheme.curveStandard,
-          padding: EdgeInsets.symmetric(vertical: 10, horizontal: isSelected ? 13 : 9),
+          padding: EdgeInsets.symmetric(
+              vertical: 10, horizontal: isSelected ? 13 : 9),
           decoration: BoxDecoration(
-            color: isSelected ? SabuflixTheme.accent.withValues(alpha: 0.22) : Colors.transparent,
+            color: isSelected
+                ? SabuflixTheme.accent.withValues(alpha: 0.22)
+                : Colors.transparent,
             borderRadius: SabuflixTheme.radiusPill,
-            border: isSelected ? Border.all(color: SabuflixTheme.accent.withValues(alpha: 0.4), width: 1) : null,
+            border: isSelected
+                ? Border.all(
+                    color: SabuflixTheme.accent.withValues(alpha: 0.4),
+                    width: 1)
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -246,7 +285,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 destination: destination,
                 isSelected: isSelected,
                 size: 21,
-                showBadge: index == _downloadsIndex && activeDownloads > 0,
+                showBadge: index == _libraryIndex && activeDownloads > 0,
               ),
               if (isSelected) ...[
                 const SizedBox(width: 6),
@@ -331,9 +370,8 @@ class _NavDestination {
   /// row with five other icons.
   final String? shortLabel;
 
-  const _NavDestination(this.filledIcon, this.outlineIcon, this.label, {this.shortLabel});
+  const _NavDestination(this.filledIcon, this.outlineIcon, this.label,
+      {this.shortLabel});
 
   String get dockLabel => shortLabel ?? label;
 }
-
-

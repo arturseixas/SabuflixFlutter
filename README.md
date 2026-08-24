@@ -1,17 +1,33 @@
-# sabuflix
+# Sabuflix
 
-A new Flutter project.
+Cliente oficial e multiplataforma do Sabuflix, construído em Flutter. O app reúne descoberta de filmes e séries, perfis locais, progresso de reprodução, Minha Lista, playlists, histórico e downloads.
 
-## Getting Started
+## Desenvolvimento
 
-This project is a starting point for a Flutter application.
+Requisitos:
 
-A few resources to get you started if this is your first Flutter project:
+- Flutter estável com suporte a Web
+- Dart 3
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter pub get
+flutter run -d chrome
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Para gerar a versão web de produção:
+
+```bash
+flutter build web --release
+```
+
+Os arquivos prontos para publicação ficam em `build/web`.
+
+## Serviços
+
+Os metadados usam a API gratuita do [The Movie Database (TMDB)](https://www.themoviedb.org/). Uma chave pode ser fornecida no build sem alterar o código:
+
+```bash
+flutter build web --release --dart-define=TMDB_API_KEY=sua_chave
+```
+
+O Sabuflix é um cliente de mídia e não hospeda nem distribui conteúdo. Use somente fontes e mídias que você tem autorização para acessar.

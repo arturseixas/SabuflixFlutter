@@ -10,12 +10,12 @@ class SabuSegmentedControl extends StatelessWidget {
   final double height;
 
   const SabuSegmentedControl({
-    Key? key,
+    super.key,
     required this.segments,
     required this.selectedIndex,
     required this.onChanged,
     this.height = 38,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,9 @@ class SabuSegmentedControl extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.16),
                     borderRadius: SabuflixTheme.radiusPill,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.16), width: 0.8),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        width: 0.8),
                   ),
                 ),
               ),
@@ -60,10 +62,15 @@ class SabuSegmentedControl extends StatelessWidget {
                             duration: SabuflixTheme.durationFast,
                             style: SabuflixTheme.caption(
                               fontSize: 13,
-                              fontWeight: i == selectedIndex ? FontWeight.w800 : FontWeight.w600,
-                              color: i == selectedIndex ? SabuflixTheme.textPrimary : SabuflixTheme.textSecondary,
+                              fontWeight: i == selectedIndex
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              color: i == selectedIndex
+                                  ? SabuflixTheme.textPrimary
+                                  : SabuflixTheme.textSecondary,
                             ),
-                            child: Text(segments[i], maxLines: 1, overflow: TextOverflow.ellipsis),
+                            child: Text(segments[i],
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
                         ),
                       ),

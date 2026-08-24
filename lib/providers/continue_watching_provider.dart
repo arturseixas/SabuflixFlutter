@@ -49,6 +49,7 @@ class ContinueWatchingProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('$_keyPrefix$key');
+    if (key != _profileKey) return;
     final restored = <WatchProgress>[];
     if (raw != null && raw.isNotEmpty) {
       try {
@@ -57,7 +58,8 @@ class ContinueWatchingProvider extends ChangeNotifier {
           for (final entry in decoded) {
             // Skip only the broken record, never the whole shelf.
             try {
-              restored.add(WatchProgress.fromJson(Map<String, dynamic>.from(entry as Map)));
+              restored.add(WatchProgress.fromJson(
+                  Map<String, dynamic>.from(entry as Map)));
             } catch (e) {
               debugPrint('Skipping unreadable watch progress: $e');
             }
@@ -69,6 +71,7 @@ class ContinueWatchingProvider extends ChangeNotifier {
     }
 
     restored.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    if (key != _profileKey) return;
     _entries = restored;
     _isLoading = false;
     _hydrated = true;
@@ -131,7 +134,8 @@ class ContinueWatchingProvider extends ChangeNotifier {
   Future<void> _persist() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final encoded = json.encode(_entries.map((entry) => entry.toJson()).toList());
+      final encoded =
+          json.encode(_entries.map((entry) => entry.toJson()).toList());
       await prefs.setString('$_keyPrefix$_profileKey', encoded);
     } catch (e) {
       debugPrint('Error saving watch progress: $e');

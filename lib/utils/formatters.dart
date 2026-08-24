@@ -1,5 +1,6 @@
 /// Small pt-BR formatting helpers shared by the downloads and
 /// continue-watching surfaces.
+library;
 
 /// `1536000` -> `1,5 MB`. Uses a comma as the decimal separator.
 String formatBytes(int bytes) {
@@ -11,7 +12,9 @@ String formatBytes(int bytes) {
     value /= 1024;
     unit++;
   }
-  final text = (unit <= 1 || value >= 100) ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+  final text = (unit <= 1 || value >= 100)
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
   return '${text.replaceAll('.', ',')} ${units[unit]}';
 }
 

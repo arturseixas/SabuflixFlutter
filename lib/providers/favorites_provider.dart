@@ -10,7 +10,7 @@ class FavoritesProvider extends ChangeNotifier {
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
-  
+
   String? _currentProfileId;
 
   FavoritesProvider() {
@@ -22,7 +22,9 @@ class FavoritesProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    _favorites = await _favoritesService.getFavorites(_currentProfileId);
+    final favorites = await _favoritesService.getFavorites(profileId);
+    if (_currentProfileId != profileId) return;
+    _favorites = favorites;
 
     _isLoading = false;
     notifyListeners();

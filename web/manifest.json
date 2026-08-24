@@ -1,12 +1,14 @@
 {
-    "name": "sabuflix",
-    "short_name": "sabuflix",
+    "name": "Sabuflix",
+    "short_name": "Sabuflix",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "description": "Sua central oficial para descobrir, organizar e assistir mídia.",
+    "lang": "pt-BR",
+    "orientation": "any",
+    "categories": ["entertainment", "video"],
     "prefer_related_applications": false,
     "icons": [
         {

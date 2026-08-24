@@ -7,7 +7,7 @@ import '../widgets/media_card.dart';
 import '../models/playlist.dart';
 
 class PlaylistsScreen extends StatelessWidget {
-  const PlaylistsScreen({Key? key}) : super(key: key);
+  const PlaylistsScreen({super.key});
 
   void _showCreatePlaylistDialog(BuildContext context) {
     final TextEditingController controller = TextEditingController();
@@ -22,14 +22,16 @@ class PlaylistsScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Nova Playlist', style: SabuflixTheme.headline(fontSize: 22)),
+              Text('Nova Playlist',
+                  style: SabuflixTheme.headline(fontSize: 22)),
               const SizedBox(height: 24),
               TextField(
                 controller: controller,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Nome da Playlist',
-                  labelStyle: const TextStyle(color: SabuflixTheme.textSecondary),
+                  labelStyle:
+                      const TextStyle(color: SabuflixTheme.textSecondary),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: SabuflixTheme.radiusSm,
                     borderSide: const BorderSide(color: SabuflixTheme.border),
@@ -46,18 +48,22 @@ class PlaylistsScreen extends StatelessWidget {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar', style: TextStyle(color: SabuflixTheme.textSecondary)),
+                    child: const Text('Cancelar',
+                        style: TextStyle(color: SabuflixTheme.textSecondary)),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () {
                       if (controller.text.trim().isNotEmpty) {
-                        Provider.of<PlaylistProvider>(context, listen: false).createPlaylist(controller.text.trim());
+                        Provider.of<PlaylistProvider>(context, listen: false)
+                            .createPlaylist(controller.text.trim());
                         Navigator.pop(context);
                       }
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: SabuflixTheme.accent),
-                    child: const Text('Criar', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: SabuflixTheme.accent),
+                    child: const Text('Criar',
+                        style: TextStyle(color: Colors.white)),
                   ),
                 ],
               ),
@@ -73,7 +79,8 @@ class PlaylistsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
       appBar: AppBar(
-        title: Text('Minhas Playlists', style: SabuflixTheme.headline(fontSize: 20)),
+        title: Text('Minhas Playlists',
+            style: SabuflixTheme.headline(fontSize: 20)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -86,27 +93,35 @@ class PlaylistsScreen extends StatelessWidget {
       body: Consumer<PlaylistProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator(color: SabuflixTheme.accent));
+            return const Center(
+                child: CircularProgressIndicator(color: SabuflixTheme.accent));
           }
-          
+
           if (provider.playlists.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.featured_play_list_outlined, size: 80, color: SabuflixTheme.textMuted.withValues(alpha: 0.5)),
+                  Icon(Icons.featured_play_list_outlined,
+                      size: 80,
+                      color: SabuflixTheme.textMuted.withValues(alpha: 0.5)),
                   const SizedBox(height: 24),
-                  Text('Nenhuma playlist criada', style: SabuflixTheme.headline(fontSize: 20, color: SabuflixTheme.textSecondary)),
+                  Text('Nenhuma playlist criada',
+                      style: SabuflixTheme.headline(
+                          fontSize: 20, color: SabuflixTheme.textSecondary)),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () => _showCreatePlaylistDialog(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: SabuflixTheme.accent,
                       shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                     ),
                     icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text('Criar Playlist', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    label: const Text('Criar Playlist',
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -149,9 +164,11 @@ class _PlaylistCard extends StatelessWidget {
             children: [
               Text(playlist.name, style: SabuflixTheme.headline(fontSize: 20)),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                icon: const Icon(Icons.delete_outline,
+                    color: Colors.redAccent, size: 20),
                 onPressed: () {
-                  Provider.of<PlaylistProvider>(context, listen: false).deletePlaylist(playlist.id);
+                  Provider.of<PlaylistProvider>(context, listen: false)
+                      .deletePlaylist(playlist.id);
                 },
               ),
             ],
@@ -166,7 +183,8 @@ class _PlaylistCard extends StatelessWidget {
                 borderRadius: SabuflixTheme.radiusMd,
               ),
               alignment: Alignment.center,
-              child: Text('Playlist vazia', style: SabuflixTheme.body(color: SabuflixTheme.textMuted)),
+              child: Text('Playlist vazia',
+                  style: SabuflixTheme.body(color: SabuflixTheme.textMuted)),
             )
           else
             SizedBox(
@@ -189,8 +207,10 @@ class _PlaylistCard extends StatelessWidget {
                           right: 4,
                           child: GestureDetector(
                             onTap: () {
-                              Provider.of<PlaylistProvider>(context, listen: false)
-                                  .removeMediaFromPlaylist(playlist.id, media.id);
+                              Provider.of<PlaylistProvider>(context,
+                                      listen: false)
+                                  .removeMediaFromPlaylist(
+                                      playlist.id, media.id);
                             },
                             child: Container(
                               padding: const EdgeInsets.all(4),
@@ -198,7 +218,8 @@ class _PlaylistCard extends StatelessWidget {
                                 color: Colors.black.withValues(alpha: 0.7),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close, color: Colors.white, size: 14),
+                              child: const Icon(Icons.close,
+                                  color: Colors.white, size: 14),
                             ),
                           ),
                         ),

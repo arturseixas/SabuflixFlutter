@@ -5,7 +5,7 @@ import '../theme/sabuflix_theme.dart';
 class SabuflixWordmark extends StatelessWidget {
   final double fontSize;
 
-  const SabuflixWordmark({Key? key, this.fontSize = 20}) : super(key: key);
+  const SabuflixWordmark({super.key, this.fontSize = 20});
 
   @override
   Widget build(BuildContext context) {

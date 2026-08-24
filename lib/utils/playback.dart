@@ -24,13 +24,17 @@ Future<void> playDownload(BuildContext context, DownloadItem item) async {
     await downloads.refreshFromDisk();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('O arquivo não está mais no aparelho. Baixe novamente.')),
+      const SnackBar(
+          content:
+              Text('O arquivo não está mais no aparelho. Baixe novamente.')),
     );
     return;
   }
 
   final saved = continueWatching.forMedia(item.media.id);
-  final sameEpisode = saved != null && saved.season == item.season && saved.episode == item.episode;
+  final sameEpisode = saved != null &&
+      saved.season == item.season &&
+      saved.episode == item.episode;
 
   Navigator.push(
     context,
@@ -54,7 +58,8 @@ Future<void> playDownload(BuildContext context, DownloadItem item) async {
 /// neither is available any more.
 Future<void> resumeWatching(BuildContext context, WatchProgress entry) async {
   final downloads = context.read<DownloadsProvider>();
-  final download = downloads.find(entry.media.id, season: entry.season, episode: entry.episode);
+  final download = downloads.find(entry.media.id,
+      season: entry.season, episode: entry.episode);
 
   if (download != null && download.isCompleted) {
     await playDownload(context, download);
@@ -101,13 +106,18 @@ Future<bool> confirmDestructive(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: Text('Cancelar', style: SabuflixTheme.body(fontSize: 14, fontWeight: FontWeight.w700)),
+          child: Text('Cancelar',
+              style: SabuflixTheme.body(
+                  fontSize: 14, fontWeight: FontWeight.w700)),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
           child: Text(
             confirmLabel,
-            style: SabuflixTheme.body(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFFFF453A)),
+            style: SabuflixTheme.body(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFFF453A)),
           ),
         ),
       ],

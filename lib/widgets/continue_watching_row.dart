@@ -4,19 +4,21 @@ import 'package:provider/provider.dart';
 
 import '../models/watch_progress.dart';
 import '../providers/continue_watching_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/playback.dart';
 
 /// The "Continuar Assistindo" shelf: wide 16:9 cards with a progress line,
 /// the way Apple TV surfaces half-watched titles.
 class ContinueWatchingRow extends StatelessWidget {
-  const ContinueWatchingRow({Key? key}) : super(key: key);
+  const ContinueWatchingRow({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<ContinueWatchingProvider>(
       builder: (context, provider, child) {
-        final entries = provider.entries;
+        final entries =
+            context.watch<SettingsProvider>().sortedProgress(provider.entries);
         if (entries.isEmpty) return const SizedBox.shrink();
 
         final isMobile = MediaQuery.of(context).size.width < 800;
@@ -30,7 +32,8 @@ class ContinueWatchingRow extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 14),
               child: Text(
                 'Continuar Assistindo',
-                style: SabuflixTheme.title(fontSize: 19, fontWeight: FontWeight.w800),
+                style: SabuflixTheme.title(
+                    fontSize: 19, fontWeight: FontWeight.w800),
               ),
             ),
             SizedBox(
@@ -43,7 +46,8 @@ class ContinueWatchingRow extends StatelessWidget {
                 itemBuilder: (context, index) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: _ContinueCard(entry: entries[index], width: cardWidth),
+                    child:
+                        _ContinueCard(entry: entries[index], width: cardWidth),
                   );
                 },
               ),
@@ -81,8 +85,10 @@ class _ContinueCard extends StatelessWidget {
                     CachedNetworkImage(
                       imageUrl: entry.media.fullBackdropPath,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: SabuflixTheme.surface),
-                      errorWidget: (context, url, error) => Container(color: SabuflixTheme.surface),
+                      placeholder: (context, url) =>
+                          Container(color: SabuflixTheme.surface),
+                      errorWidget: (context, url, error) =>
+                          Container(color: SabuflixTheme.surface),
                     ),
                     Container(
                       decoration: BoxDecoration(
@@ -104,9 +110,12 @@ class _ContinueCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.42),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              width: 1),
                         ),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
+                        child: const Icon(Icons.play_arrow_rounded,
+                            color: Colors.white, size: 26),
                       ),
                     ),
                     Positioned(
@@ -119,16 +128,22 @@ class _ContinueCard extends StatelessWidget {
                         children: [
                           Text(
                             entry.remainingLabel,
-                            style: SabuflixTheme.caption(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                            style: SabuflixTheme.caption(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white),
                           ),
                           const SizedBox(height: 6),
                           ClipRRect(
-                            borderRadius: const BorderRadius.all(Radius.circular(2)),
+                            borderRadius:
+                                const BorderRadius.all(Radius.circular(2)),
                             child: LinearProgressIndicator(
                               value: entry.progress,
                               minHeight: 3,
-                              backgroundColor: Colors.white.withValues(alpha: 0.3),
-                              valueColor: const AlwaysStoppedAnimation<Color>(SabuflixTheme.accent),
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.3),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                  SabuflixTheme.accent),
                             ),
                           ),
                         ],
@@ -149,14 +164,18 @@ class _ContinueCard extends StatelessWidget {
             entry.media.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: SabuflixTheme.caption(fontSize: 13, fontWeight: FontWeight.w700, color: SabuflixTheme.textPrimary),
+            style: SabuflixTheme.caption(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: SabuflixTheme.textPrimary),
           ),
           const SizedBox(height: 2),
           Text(
             entry.subtitleLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: SabuflixTheme.caption(fontSize: 11, color: SabuflixTheme.textMuted),
+            style: SabuflixTheme.caption(
+                fontSize: 11, color: SabuflixTheme.textMuted),
           ),
         ],
       ),

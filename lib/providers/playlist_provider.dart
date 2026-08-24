@@ -12,7 +12,8 @@ class PlaylistProvider extends ChangeNotifier {
   List<Playlist> get playlists => _playlists;
   bool get isLoading => _isLoading;
 
-  String _getPrefsKey() => 'sabuflix_playlists_${_currentProfileId ?? "default"}';
+  String _getPrefsKey() =>
+      'sabuflix_playlists_${_currentProfileId ?? "default"}';
 
   Future<void> loadForProfile(String profileId) async {
     _currentProfileId = profileId;
@@ -73,7 +74,8 @@ class PlaylistProvider extends ChangeNotifier {
     final index = _playlists.indexWhere((p) => p.id == playlistId);
     if (index != -1) {
       final playlist = _playlists[index];
-      final updatedItems = playlist.items.where((item) => item.id != mediaId).toList();
+      final updatedItems =
+          playlist.items.where((item) => item.id != mediaId).toList();
       _playlists[index] = playlist.copyWith(items: updatedItems);
       await _savePlaylists();
       notifyListeners();

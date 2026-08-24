@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';
@@ -9,6 +11,8 @@ import 'providers/favorites_provider.dart';
 import 'providers/search_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/playlist_provider.dart';
+import 'providers/settings_provider.dart';
+import 'providers/watched_provider.dart';
 import 'screens/profile_selection_screen.dart';
 
 void main() {
@@ -18,12 +22,13 @@ void main() {
 }
 
 class SabuflixApp extends StatelessWidget {
-  const SabuflixApp({Key? key}) : super(key: key);
+  const SabuflixApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => PlaylistProvider()),
         ChangeNotifierProvider(create: (_) => CatalogProvider()),
@@ -31,15 +36,30 @@ class SabuflixApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SearchProvider()),
         ChangeNotifierProvider(create: (_) => DownloadsProvider()),
         ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
+        ChangeNotifierProvider(create: (_) => WatchedProvider()),
       ],
       child: MaterialApp(
-        title: 'Sabuflix - Streaming Platform',
+        title: 'Sabuflix',
         debugShowCheckedModeBanner: false,
         theme: SabuflixTheme.themeData,
+        themeMode: ThemeMode.dark,
+        scrollBehavior: const _SabuflixScrollBehavior(),
         home: const _AppLifecycleGate(child: ProfileSelectionScreen()),
       ),
     );
   }
+}
+
+class _SabuflixScrollBehavior extends MaterialScrollBehavior {
+  const _SabuflixScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
 }
 
 /// Re-syncs the offline library whenever the app comes back to the foreground.
@@ -57,7 +77,8 @@ class _AppLifecycleGate extends StatefulWidget {
   State<_AppLifecycleGate> createState() => _AppLifecycleGateState();
 }
 
-class _AppLifecycleGateState extends State<_AppLifecycleGate> with WidgetsBindingObserver {
+class _AppLifecycleGateState extends State<_AppLifecycleGate>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();

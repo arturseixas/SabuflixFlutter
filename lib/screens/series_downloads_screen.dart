@@ -15,7 +15,7 @@ import '../widgets/download_tile.dart';
 class SeriesDownloadsScreen extends StatelessWidget {
   final int mediaId;
 
-  const SeriesDownloadsScreen({Key? key, required this.mediaId}) : super(key: key);
+  const SeriesDownloadsScreen({super.key, required this.mediaId});
 
   @override
   Widget build(BuildContext context) {
@@ -45,12 +45,14 @@ class SeriesDownloadsScreen extends StatelessWidget {
                 actions: [
                   IconButton(
                     tooltip: 'Excluir todos os episódios',
-                    icon: const Icon(Icons.delete_outline_rounded, color: SabuflixTheme.textSecondary),
+                    icon: const Icon(Icons.delete_outline_rounded,
+                        color: SabuflixTheme.textSecondary),
                     onPressed: () async {
                       final confirmed = await confirmDestructive(
                         context,
                         title: 'Excluir downloads',
-                        message: 'Todos os ${group.episodes.length} episódios baixados de "${group.series.title}" '
+                        message:
+                            'Todos os ${group.episodes.length} episódios baixados de "${group.series.title}" '
                             'serão apagados do aparelho.',
                         confirmLabel: 'Excluir tudo',
                       );
@@ -75,8 +77,10 @@ class SeriesDownloadsScreen extends StatelessWidget {
                         imageUrl: group.series.fullBackdropPath,
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
-                        placeholder: (context, url) => Container(color: SabuflixTheme.surface),
-                        errorWidget: (context, url, error) => Container(color: SabuflixTheme.surface),
+                        placeholder: (context, url) =>
+                            Container(color: SabuflixTheme.surface),
+                        errorWidget: (context, url, error) =>
+                            Container(color: SabuflixTheme.surface),
                       ),
                       Container(
                         decoration: BoxDecoration(
@@ -103,7 +107,8 @@ class SeriesDownloadsScreen extends StatelessWidget {
                     child: Text(
                       '${group.episodes.length} ${group.episodes.length == 1 ? 'episódio' : 'episódios'}'
                       ' · ${formatBytes(group.totalBytes)}',
-                      style: SabuflixTheme.caption(fontSize: 13, color: SabuflixTheme.textSecondary),
+                      style: SabuflixTheme.caption(
+                          fontSize: 13, color: SabuflixTheme.textSecondary),
                     ),
                   ),
                 ),
@@ -114,7 +119,8 @@ class SeriesDownloadsScreen extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
                     child: Text(
                       'TEMPORADA $season',
-                      style: SabuflixTheme.label(fontSize: 11, color: SabuflixTheme.textMuted),
+                      style: SabuflixTheme.label(
+                          fontSize: 11, color: SabuflixTheme.textMuted),
                     ),
                   ),
                 ),
@@ -125,7 +131,8 @@ class SeriesDownloadsScreen extends StatelessWidget {
                     final episodes = group.episodesOfSeason(season);
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: DownloadTile(item: episodes[index], showEpisodeTag: true),
+                      child: DownloadTile(
+                          item: episodes[index], showEpisodeTag: true),
                     );
                   },
                 ),

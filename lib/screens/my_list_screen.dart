@@ -5,7 +5,7 @@ import '../theme/sabuflix_theme.dart';
 import '../widgets/media_card.dart';
 
 class MyListScreen extends StatelessWidget {
-  const MyListScreen({Key? key}) : super(key: key);
+  const MyListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +22,9 @@ class MyListScreen extends StatelessWidget {
         backgroundColor: SabuflixTheme.background,
         title: Row(
           children: [
-            Text('Minha Lista', style: SabuflixTheme.title(fontSize: 20, fontWeight: FontWeight.w700)),
+            Text('Minha Lista',
+                style: SabuflixTheme.title(
+                    fontSize: 20, fontWeight: FontWeight.w700)),
             if (favorites.isNotEmpty) ...[
               const SizedBox(width: 10),
               Container(
@@ -34,7 +36,8 @@ class MyListScreen extends StatelessWidget {
                 ),
                 child: Text(
                   '${favorites.length}',
-                  style: SabuflixTheme.label(fontSize: 12, color: SabuflixTheme.textSecondary),
+                  style: SabuflixTheme.label(
+                      fontSize: 12, color: SabuflixTheme.textSecondary),
                 ),
               ),
             ],
@@ -46,7 +49,8 @@ class MyListScreen extends StatelessWidget {
               child: SizedBox(
                 width: 26,
                 height: 26,
-                child: CircularProgressIndicator(color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
+                child: CircularProgressIndicator(
+                    color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
               ),
             )
           : favorites.isEmpty
@@ -56,7 +60,8 @@ class MyListScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.bookmark_border_rounded, size: 52, color: SabuflixTheme.textMuted),
+                        const Icon(Icons.bookmark_border_rounded,
+                            size: 52, color: SabuflixTheme.textMuted),
                         const SizedBox(height: 18),
                         Text(
                           'Sua lista está vazia',

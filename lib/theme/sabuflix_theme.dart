@@ -151,11 +151,16 @@ class SabuflixTheme {
   }
 
   // --- Reusable shapes & motion ------------------------------------------
-  static BorderRadius get radiusSm => const BorderRadius.all(Radius.circular(10));
-  static BorderRadius get radiusMd => const BorderRadius.all(Radius.circular(14));
-  static BorderRadius get radiusLg => const BorderRadius.all(Radius.circular(20));
-  static BorderRadius get radiusXl => const BorderRadius.all(Radius.circular(28));
-  static BorderRadius get radiusPill => const BorderRadius.all(Radius.circular(999));
+  static BorderRadius get radiusSm =>
+      const BorderRadius.all(Radius.circular(10));
+  static BorderRadius get radiusMd =>
+      const BorderRadius.all(Radius.circular(14));
+  static BorderRadius get radiusLg =>
+      const BorderRadius.all(Radius.circular(20));
+  static BorderRadius get radiusXl =>
+      const BorderRadius.all(Radius.circular(28));
+  static BorderRadius get radiusPill =>
+      const BorderRadius.all(Radius.circular(999));
 
   static const Duration durationFast = Duration(milliseconds: 220);
   static const Duration durationMed = Duration(milliseconds: 380);
@@ -181,7 +186,8 @@ class SabuflixTheme {
 
   /// Hairline used on the top/light edge of glass panels to fake a
   /// specular highlight, matched by a darker line on the bottom edge.
-  static Border get glassBorder => Border.all(color: Colors.white.withValues(alpha: 0.14), width: 0.6);
+  static Border get glassBorder =>
+      Border.all(color: Colors.white.withValues(alpha: 0.14), width: 0.6);
 
   // --- Theme data ----------------------------------------------------
   static ThemeData get themeData {
@@ -199,10 +205,14 @@ class SabuflixTheme {
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       dividerColor: border,
-      textTheme: GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme).copyWith(
+      textTheme:
+          GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme).copyWith(
         bodyLarge: GoogleFonts.manrope(color: textPrimary),
         bodyMedium: GoogleFonts.manrope(color: textSecondary),
-        titleLarge: GoogleFonts.manrope(color: textPrimary, fontWeight: FontWeight.w800, letterSpacing: -0.6),
+        titleLarge: GoogleFonts.manrope(
+            color: textPrimary,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.6),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -223,7 +233,8 @@ class SabuflixTheme {
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(980)),
           ),
-          textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.4),
+          textStyle: GoogleFonts.manrope(
+              fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.4),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -234,21 +245,24 @@ class SabuflixTheme {
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(980)),
           ),
-          textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.4),
+          textStyle: GoogleFonts.manrope(
+              fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.4),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: textSecondary,
           splashFactory: NoSplash.splashFactory,
-          textStyle: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.4),
+          textStyle: GoogleFonts.manrope(
+              fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.4),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.08),
         hintStyle: body(color: textMuted),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: radiusMd,
           borderSide: BorderSide.none,
@@ -265,8 +279,10 @@ class SabuflixTheme {
       chipTheme: ChipThemeData(
         backgroundColor: Colors.white.withValues(alpha: 0.08),
         selectedColor: textPrimary,
-        labelStyle: GoogleFonts.manrope(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
-        secondaryLabelStyle: GoogleFonts.manrope(color: background, fontSize: 13, fontWeight: FontWeight.w600),
+        labelStyle: GoogleFonts.manrope(
+            color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+        secondaryLabelStyle: GoogleFonts.manrope(
+            color: background, fontSize: 13, fontWeight: FontWeight.w600),
         side: BorderSide.none,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         shape: const RoundedRectangleBorder(
@@ -291,10 +307,12 @@ class SabuflixTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: elevated,
-        contentTextStyle: GoogleFonts.manrope(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+        contentTextStyle: GoogleFonts.manrope(
+            color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
         shape: RoundedRectangleBorder(borderRadius: radiusMd),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(color: textPrimary),
+      progressIndicatorTheme:
+          const ProgressIndicatorThemeData(color: textPrimary),
     );
     return base;
   }
