@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../models/media_item.dart';
 import '../providers/continue_watching_provider.dart';
 import '../providers/watched_provider.dart';
+import '../services/native_pip_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/glass_container.dart';
@@ -70,6 +72,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Timer? _progressTimer;
   bool _seekedToStart = false;
   bool _resumeBannerVisible = false;
+  bool _pipSupported = false;
+  bool _isInPip = false;
 
   @override
   void initState() {
@@ -81,9 +85,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     SystemChrome.setPreferredOrientations(
         [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     _initPlayer();
+    _initPip();
     _startHideTimer();
     _progressTimer =
         Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
+  }
+
+  Future<void> _initPip() async {
+    final pip = NativePipService.instance;
+    pip.onPipChanged = (active) {
+      if (!mounted) return;
+      setState(() {
+        _isInPip = active;
+        if (active) _showControls = false;
+      });
+    };
+    final supported = await pip.isSupported();
+    if (mounted) setState(() => _pipSupported = supported);
+  }
+
+  Future<void> _togglePip() async {
+    final pip = NativePipService.instance;
+    if (pip.isActive) {
+      await pip.exit();
+    } else {
+      setState(() => _showControls = false);
+      await pip.enter();
+    }
   }
 
   /// Persists the playback position so the title shows up on the
@@ -214,6 +242,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _toggleControls() {
+    if (_isInPip && defaultTargetPlatform == TargetPlatform.android) return;
     setState(() {
       _showControls = !_showControls;
     });
@@ -283,6 +312,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _saveProgress();
     _progressTimer?.cancel();
     _hideTimer?.cancel();
+    NativePipService.instance.onPipChanged = null;
+    NativePipService.instance.exit();
     _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -422,6 +453,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           right: 12,
                           child: Row(
                             children: [
+                              if (_pipSupported)
+                                IconButton(
+                                  tooltip: _isInPip
+                                      ? 'Sair do Picture-in-Picture'
+                                      : 'Picture-in-Picture',
+                                  icon: Icon(
+                                    _isInPip
+                                        ? Icons.picture_in_picture_alt_rounded
+                                        : Icons.picture_in_picture_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: _togglePip,
+                                ),
                               TextButton.icon(
                                 onPressed: _openOfficialTrailer,
                                 style: TextButton.styleFrom(
