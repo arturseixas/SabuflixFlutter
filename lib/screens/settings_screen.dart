@@ -227,7 +227,7 @@ class SettingsScreen extends StatelessWidget {
     showAboutDialog(
       context: context,
       applicationName: 'Sabuflix',
-      applicationVersion: '1.1.0',
+      applicationVersion: '1.1.1',
       applicationLegalese:
           '© 2026 Sabuflix\n\nEste produto usa a API do TMDB, mas não é endossado ou certificado pelo TMDB.',
       children: [

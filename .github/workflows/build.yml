@@ -79,7 +79,7 @@ jobs:
         run: flutter config --enable-windows-desktop
 
       - name: Build Windows Release
-        run: flutter build windows --release
+        run: flutter build windows --release --dart-define=PENGUPLAY_MANIFEST_URL=${{ secrets.PENGUPLAY_MANIFEST_URL }}
 
       - name: Install Packaging Tools (Inno Setup & 7-Zip)
         run: |
@@ -139,7 +139,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Android Release APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --dart-define=PENGUPLAY_MANIFEST_URL=${{ secrets.PENGUPLAY_MANIFEST_URL }}
 
       - name: Prepare Android APK Artifact
         run: |

@@ -3,7 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class FrostStreamService {
-  static const List<({String name, String brand, String baseUrl})> _sources = [
+  static const _penguPlayManifestUrl = String.fromEnvironment(
+    'PENGUPLAY_MANIFEST_URL',
+  );
+
+  static final List<({String name, String brand, String baseUrl})> _sources = [
     (
       name: 'FrostStream',
       brand: 'Sabuflix Direct',
@@ -14,7 +18,25 @@ class FrostStreamService {
       brand: 'Sabuflix Cinema',
       baseUrl: 'https://bestcine.alwaysdata.net',
     ),
+    if (_penguPlayManifestUrl.isNotEmpty)
+      (
+        name: 'PenguPlay',
+        brand: 'Sabuflix Pengu',
+        baseUrl: addonBaseUrl(_penguPlayManifestUrl),
+      ),
   ];
+
+  /// Returns an add-on base URL from its Stremio manifest URL.
+  ///
+  /// Keeping the manifest, including any access token, in a `dart-define`
+  /// avoids committing credentials to the repository.
+  static String addonBaseUrl(String manifestUrl) {
+    const manifestSuffix = '/manifest.json';
+    final baseUrl = manifestUrl.endsWith(manifestSuffix)
+        ? manifestUrl.substring(0, manifestUrl.length - manifestSuffix.length)
+        : manifestUrl;
+    return baseUrl.replaceFirst(RegExp(r'/$'), '');
+  }
 
   static Future<List<Map<String, dynamic>>> fetchStreams({
     required String imdbId,

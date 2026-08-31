@@ -126,7 +126,7 @@ class ProfileSelectionScreen extends StatelessWidget {
             child: SafeArea(
               top: false,
               child: Text(
-                'SUA CENTRAL DE MÍDIA  •  VERSÃO 1.1.0',
+                'SUA CENTRAL DE MÍDIA  •  VERSÃO 1.1.1',
                 textAlign: TextAlign.center,
                 style: SabuflixTheme.label(fontSize: 9),
               ),
