@@ -26,20 +26,23 @@ class ProfileProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
 
-    // Load profiles
-    final String? profilesJson = prefs.getString(_profilesKey);
-    if (profilesJson != null) {
-      final List<dynamic> decoded = json.decode(profilesJson);
-      _profiles = decoded.map((p) => Profile.fromJson(p)).toList();
-    } else {
-      // Create default profile if none exists
-      final defaultProfile = Profile(
-        id: 'default',
-        name: 'Principal',
-        avatarUrl: 'https://i.pravatar.cc/150?u=principal',
-        maxAgeRating: '18',
-      );
-      _profiles = [defaultProfile];
+    final raw = prefs.getString(_profilesKey);
+    if (raw != null) {
+      try {
+        final decoded = json.decode(raw) as List;
+        _profiles = decoded
+            .map((p) => Profile.fromJson(Map<String, dynamic>.from(p as Map)))
+            .toList();
+      } catch (_) {
+        await prefs.setString('${_profilesKey}_recovery', raw);
+        _profiles = [];
+      }
+    }
+    if (_profiles.isEmpty) {
+      _profiles = [
+        Profile(
+            id: 'default', name: 'Principal', avatarUrl: '', maxAgeRating: '18')
+      ];
       await _saveProfiles(prefs);
     }
 
@@ -62,6 +65,10 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<void> addProfile(Profile profile) async {
+    if (_profiles.length >= 5 || _profiles.any((p) => p.id == profile.id)) {
+      return;
+    }
+    if (profile.name.trim().isEmpty) return;
     _profiles.add(profile);
     final prefs = await SharedPreferences.getInstance();
     await _saveProfiles(prefs);
@@ -82,6 +89,7 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<void> deleteProfile(String id) async {
+    if (_profiles.length <= 1) return;
     _profiles.removeWhere((p) => p.id == id);
     if (_currentProfile?.id == id) {
       _currentProfile = _profiles.isNotEmpty ? _profiles.first : null;

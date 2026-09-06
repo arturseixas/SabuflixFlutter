@@ -30,6 +30,16 @@ class _ActiveTask {
 /// resume so an interrupted transfer picks up where it stopped instead of
 /// starting over.
 class DownloadService {
+  DownloadService(
+      {Future<Directory> Function()? documentsDirectory,
+      http.Client Function()? clientFactory})
+      : _documentsDirectory =
+            documentsDirectory ?? getApplicationDocumentsDirectory,
+        _clientFactory = clientFactory ?? http.Client.new;
+  final Future<Directory> Function() _documentsDirectory;
+  final http.Client Function() _clientFactory;
+  final Map<String, http.Client> _pendingClients = {};
+
   static const String _userAgent = 'Sabuflix/1.0';
 
   /// Flush to disk every few megabytes and hold the socket while we do, so a
@@ -38,12 +48,16 @@ class DownloadService {
 
   final Map<String, _ActiveTask> _active = {};
 
-  bool isRunning(String id) => _active.containsKey(id);
+  bool isRunning(String id) =>
+      _active.containsKey(id) || _pendingClients.containsKey(id);
 
   /// Per-profile folder inside the app's own documents directory. Nothing here
   /// needs storage permissions, and it is removed when the app is uninstalled.
   Future<Directory> folderFor(String profileKey) async {
-    final base = await getApplicationDocumentsDirectory();
+    if (!RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(profileKey)) {
+      throw const FileSystemException('Perfil de download inválido');
+    }
+    final base = await _documentsDirectory();
     final separator = Platform.pathSeparator;
     final directory = Directory(
         '${base.path}${separator}sabuflix_downloads$separator$profileKey');
@@ -54,6 +68,12 @@ class DownloadService {
   }
 
   Future<File> fileFor(String profileKey, String fileName) async {
+    if (fileName.isEmpty ||
+        fileName.contains('/') ||
+        fileName.contains('\\') ||
+        fileName == '..') {
+      throw const FileSystemException('Nome de arquivo inválido');
+    }
     final directory = await folderFor(profileKey);
     return File('${directory.path}${Platform.pathSeparator}$fileName');
   }
@@ -102,23 +122,38 @@ class DownloadService {
     final file = await fileFor(profileKey, item.fileName);
     var received = (await file.exists()) ? await file.length() : 0;
 
-    final client = http.Client();
+    final client = _clientFactory();
+    _pendingClients[item.id] = client;
     http.StreamedResponse response;
     try {
       final request = http.Request('GET', Uri.parse(item.url));
       request.headers['user-agent'] = _userAgent;
       request.headers['accept'] = '*/*';
       if (received > 0) request.headers['range'] = 'bytes=$received-';
-      response = await client.send(request);
+      response =
+          await client.send(request).timeout(const Duration(seconds: 20));
     } catch (_) {
       client.close();
+      if (_pendingClients.remove(item.id) == null) {
+        throw const DownloadCancelled();
+      }
       rethrow;
+    }
+    if (_pendingClients.remove(item.id) == null) {
+      client.close();
+      throw const DownloadCancelled();
     }
 
     // 416 means the server has nothing past what we already hold: the file is
     // already complete on disk.
     if (response.statusCode == 416) {
       client.close();
+      final total = int.tryParse(
+          (response.headers['content-range'] ?? '').split('/').last);
+      if (received <= 0 || total != received) {
+        throw const HttpException(
+            'Download incompleto. Remova e baixe novamente.');
+      }
       onProgress(received, received);
       return;
     }
@@ -127,24 +162,47 @@ class DownloadService {
       throw HttpException('O servidor respondeu ${response.statusCode}.');
     }
 
+    final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+    if (contentType.contains('text/html') ||
+        contentType.contains('mpegurl') ||
+        contentType.contains('dash+xml')) {
+      client.close();
+      throw const HttpException(
+          'Esta fonte não permite download direto. Escolha outra fonte.');
+    }
+    if (response.statusCode == 206) {
+      final match = RegExp(r'^bytes (\d+)-(\d+)/(\d+|\*)$')
+          .firstMatch(response.headers['content-range'] ?? '');
+      if (match == null || int.tryParse(match.group(1)!) != received) {
+        client.close();
+        throw const HttpException(
+            'O servidor retornou uma parte inválida do arquivo.');
+      }
+    }
+
     // A server that ignores our Range header restarts the body from zero, so
     // the partial file has to be overwritten rather than appended to.
     final append = response.statusCode == 206 && received > 0;
     if (!append) received = 0;
 
-    var total = _totalBytesFrom(response, append ? received : 0);
+    final total = _totalBytesFrom(response, append ? received : 0);
     final sink = file.openWrite(
         mode: append ? FileMode.writeOnlyAppend : FileMode.writeOnly);
     final task = _ActiveTask(client, sink);
     _active[item.id] = task;
+    sink.done.then<void>((_) {}, onError: (Object error, StackTrace stack) {
+      if (!task.completer.isCompleted) {
+        task.completer.completeError(error, stack);
+      }
+    });
 
     var sinceFlush = 0;
-    task.subscription = response.stream.listen(
+    task.subscription =
+        response.stream.timeout(const Duration(seconds: 30)).listen(
       (chunk) {
         sink.add(chunk);
         received += chunk.length;
         sinceFlush += chunk.length;
-        if (total > 0 && received > total) total = received;
         onProgress(received, total);
         if (sinceFlush >= _flushEvery) {
           sinceFlush = 0;
@@ -162,6 +220,7 @@ class DownloadService {
 
     try {
       await task.completer.future;
+      if (!task.cancelled) await sink.flush();
     } finally {
       _active.remove(item.id);
       try {
@@ -178,11 +237,16 @@ class DownloadService {
     }
 
     if (task.cancelled) throw const DownloadCancelled();
+    if (received == 0 || (total > 0 && received != total)) {
+      throw const HttpException(
+          'O download foi interrompido antes de terminar.');
+    }
     onProgress(received, total > 0 ? total : received);
   }
 
   /// Stops an in-flight transfer. The partial file is kept so it can resume.
   Future<void> stop(String id) async {
+    _pendingClients.remove(id)?.close();
     final task = _active.remove(id);
     if (task == null) return;
     task.cancelled = true;
@@ -213,7 +277,7 @@ class DownloadService {
   }
 
   Future<void> stopAll() async {
-    for (final id in _active.keys.toList()) {
+    for (final id in {..._active.keys, ..._pendingClients.keys}.toList()) {
       await stop(id);
     }
   }

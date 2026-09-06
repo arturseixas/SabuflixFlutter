@@ -28,6 +28,7 @@ class MediaCard extends StatefulWidget {
 
 class _MediaCardState extends State<MediaCard> {
   bool _isHovered = false;
+  bool _isFocused = false;
 
   void _showActions() {
     showModalBottomSheet<void>(
@@ -38,8 +39,10 @@ class _MediaCardState extends State<MediaCard> {
         return SafeArea(
           child: Consumer2<WatchedProvider, FavoritesProvider>(
             builder: (context, watched, favorites, child) {
-              final isWatched = watched.isWatched(widget.media.id);
-              final isFavorite = favorites.isFavorite(widget.media.id);
+              final isWatched = watched.isWatched(widget.media.id,
+                  mediaType: widget.media.mediaType);
+              final isFavorite = favorites.isFavorite(widget.media.id,
+                  mediaType: widget.media.mediaType);
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -57,7 +60,8 @@ class _MediaCardState extends State<MediaCard> {
                         await this
                             .context
                             .read<ContinueWatchingProvider>()
-                            .remove(widget.media.id);
+                            .remove(widget.media.id,
+                                mediaType: widget.media.mediaType);
                       }
                     },
                   ),
@@ -94,8 +98,10 @@ class _MediaCardState extends State<MediaCard> {
 
   @override
   Widget build(BuildContext context) {
-    final compact = context.watch<SettingsProvider>().compactPosters;
-    final watched = context.watch<WatchedProvider>().isWatched(widget.media.id);
+    final compact =
+        context.select<SettingsProvider, bool>((p) => p.compactPosters);
+    final watched = context.select<WatchedProvider, bool>(
+        (p) => p.isWatched(widget.media.id, mediaType: widget.media.mediaType));
 
     return Semantics(
       button: true,
@@ -104,84 +110,97 @@ class _MediaCardState extends State<MediaCard> {
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () {
-            Navigator.push(
-                context, glassRoute(MediaDetailsScreen(media: widget.media)));
-          },
-          onLongPress: _showActions,
-          onSecondaryTap: _showActions,
-          child: SizedBox(
-            width: widget.width,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: AnimatedScale(
-                    scale: _isHovered ? 1.045 : 1.0,
-                    duration: SabuflixTheme.durationFast,
-                    curve: SabuflixTheme.curveSpring,
-                    child: AnimatedContainer(
-                      duration: SabuflixTheme.durationFast,
-                      decoration: BoxDecoration(
-                        borderRadius: SabuflixTheme.radiusLg,
-                        boxShadow: _isHovered
-                            ? SabuflixTheme.shadowMd
-                            : SabuflixTheme.shadowSm,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: SabuflixTheme.radiusLg,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            CachedNetworkImage(
-                              imageUrl: widget.media.fullPosterPath,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) =>
-                                  Container(color: SabuflixTheme.surface),
-                              errorWidget: (context, url, error) => Container(
-                                color: SabuflixTheme.surface,
-                                child: const Icon(Icons.image_outlined,
-                                    color: SabuflixTheme.textMuted, size: 28),
-                              ),
-                            ),
-                            if (watched)
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.68),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.3)),
-                                  ),
-                                  child: const Icon(Icons.check_rounded,
-                                      color: Colors.white, size: 17),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: SabuflixTheme.radiusMd,
+            onFocusChange: (focused) => setState(() => _isFocused = focused),
+            onTap: () {
+              Navigator.push(
+                  context, glassRoute(MediaDetailsScreen(media: widget.media)));
+            },
+            onLongPress: _showActions,
+            onSecondaryTap: _showActions,
+            child: SizedBox(
+              width: widget.width,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: AnimatedScale(
+                      scale: (_isHovered || _isFocused) ? 1.025 : 1.0,
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : SabuflixTheme.durationFast,
+                      curve: SabuflixTheme.curveSpring,
+                      child: AnimatedContainer(
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : SabuflixTheme.durationFast,
+                        decoration: BoxDecoration(
+                          borderRadius: SabuflixTheme.radiusMd,
+                          border: _isFocused
+                              ? Border.all(color: Colors.white, width: 3)
+                              : null,
+                          boxShadow: _isHovered
+                              ? SabuflixTheme.shadowMd
+                              : SabuflixTheme.shadowSm,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: SabuflixTheme.radiusMd,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CachedNetworkImage(
+                                imageUrl: widget.media.fullPosterPath,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    Container(color: SabuflixTheme.surface),
+                                errorWidget: (context, url, error) => Container(
+                                  color: SabuflixTheme.surface,
+                                  child: const Icon(Icons.image_outlined,
+                                      color: SabuflixTheme.textMuted, size: 28),
                                 ),
                               ),
-                          ],
+                              if (watched)
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.68),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.3)),
+                                    ),
+                                    child: const Icon(Icons.check_rounded,
+                                        color: Colors.white, size: 17),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                if (!compact) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.media.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: SabuflixTheme.caption(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: SabuflixTheme.textPrimary),
-                  ),
+                  if (!compact) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.media.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SabuflixTheme.caption(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: SabuflixTheme.textPrimary),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

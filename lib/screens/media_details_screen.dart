@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
@@ -31,6 +32,9 @@ class MediaDetailsScreen extends StatefulWidget {
 
 class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
   final TMDBService _tmdbService = TMDBService();
+  bool _loadingDetails = true;
+  bool _loadingEpisodes = false;
+  String? _detailsError;
   MediaItem? _detailedMedia;
   List<CastMember> _cast = [];
   List<MediaItem> _similar = [];
@@ -45,18 +49,25 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
   }
 
   Future<void> _loadData() async {
+    setState(() {
+      _loadingDetails = true;
+      _detailsError = null;
+    });
     try {
-      final details = await _tmdbService.fetchMediaDetails(
-          widget.media.id, widget.media.mediaType);
-      final castList =
-          await _tmdbService.fetchCast(widget.media.id, widget.media.mediaType);
-      final similarList = await _tmdbService.fetchSimilar(
-          widget.media.id, widget.media.mediaType);
+      final results = await Future.wait([
+        _tmdbService.fetchMediaDetails(widget.media.id, widget.media.mediaType),
+        _tmdbService.fetchCast(widget.media.id, widget.media.mediaType),
+        _tmdbService.fetchSimilar(widget.media.id, widget.media.mediaType),
+      ]);
+      final details = results[0] as MediaItem?;
+      final castList = results[1] as List<CastMember>;
+      final similarList = results[2] as List<MediaItem>;
+      if (details == null) throw StateError('Detalhes indisponíveis');
 
       List<dynamic> episodes = [];
       int sNum = 1;
       List<int> availableSeasons = [];
-      if (widget.media.mediaType == 'tv' && details != null) {
+      if (widget.media.mediaType == 'tv') {
         if (details.seasons != null && details.seasons!.isNotEmpty) {
           final validSeasons =
               details.seasons!.where((s) => s['season_number'] > 0).toList();
@@ -73,7 +84,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
 
       if (!mounted) return;
       setState(() {
-        _detailedMedia = details ?? widget.media;
+        _detailedMedia = details;
         _cast = castList;
         _similar = similarList;
         _episodes = episodes;
@@ -82,26 +93,34 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _detailedMedia = widget.media);
+      setState(() {
+        _detailedMedia = widget.media;
+        _detailsError = 'Não foi possível atualizar os detalhes.';
+      });
+    } finally {
+      if (mounted) setState(() => _loadingDetails = false);
     }
   }
 
   Future<void> _onSeasonChanged(int season) async {
     setState(() {
       _seasonNumber = season;
+      _loadingEpisodes = true;
       _episodes = [];
     });
     try {
       final episodes =
           await _tmdbService.fetchSeasonEpisodes(widget.media.id, season);
-      if (!mounted) return;
+      if (!mounted || _seasonNumber != season) return;
       setState(() {
         _episodes = episodes;
+        _loadingEpisodes = false;
       });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Erro ao carregar episódios.')));
+      if (_seasonNumber == season) setState(() => _loadingEpisodes = false);
     }
   }
 
@@ -117,12 +136,19 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     final imdbId = media.imdbId;
     if (imdbId == null || imdbId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('ID do IMDB não encontrado para buscar as fontes.')));
+          content: Text(
+              'Este título ainda não tem fontes disponíveis. Tente novamente mais tarde.')));
       return;
     }
 
+    final sources = FrostStreamService.fetchStreams(
+        imdbId: imdbId,
+        type: media.mediaType,
+        season: season,
+        episode: episode);
     showModalBottomSheet(
         context: context,
+        useSafeArea: true,
         backgroundColor: Colors.transparent,
         builder: (ctx) {
           return GlassContainer(
@@ -131,12 +157,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
             blur: 40,
             fillOpacity: 0.4,
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: FrostStreamService.fetchStreams(
-                imdbId: imdbId,
-                type: media.mediaType,
-                season: season,
-                episode: episode,
-              ),
+              future: sources,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -288,7 +309,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
       SnackBar(
         content: Text(
           added
-              ? 'Download iniciado. Acompanhe na aba Downloads.'
+              ? 'Download iniciado. Acompanhe na Biblioteca.'
               : 'Este item já está na sua lista de downloads.',
         ),
       ),
@@ -401,10 +422,13 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     final favoritesProvider = Provider.of<FavoritesProvider>(context);
     final watchedProvider = context.watch<WatchedProvider>();
     final profileProvider = Provider.of<ProfileProvider>(context);
-    final savedProgress =
-        context.watch<ContinueWatchingProvider>().forMedia(media.id);
-    final isFav = favoritesProvider.isFavorite(media.id);
-    final isWatched = watchedProvider.isWatched(media.id);
+    final savedProgress = context
+        .watch<ContinueWatchingProvider>()
+        .forMedia(media.id, mediaType: media.mediaType);
+    final isFav =
+        favoritesProvider.isFavorite(media.id, mediaType: media.mediaType);
+    final isWatched =
+        watchedProvider.isWatched(media.id, mediaType: media.mediaType);
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 600;
 
@@ -418,6 +442,18 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
+          if (_loadingDetails)
+            const SliverToBoxAdapter(
+                child: LinearProgressIndicator(minHeight: 2)),
+          if (_detailsError != null)
+            SliverToBoxAdapter(
+                child: SafeArea(
+                    bottom: false,
+                    child: ListTile(
+                        title: Text(_detailsError!),
+                        trailing: TextButton(
+                            onPressed: _loadData,
+                            child: const Text('Tentar novamente'))))),
           SliverAppBar(
             expandedHeight: 400,
             pinned: true,
@@ -526,7 +562,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                           if (!isWatched && context.mounted) {
                             await context
                                 .read<ContinueWatchingProvider>()
-                                .remove(media.id);
+                                .remove(media.id, mediaType: media.mediaType);
                           }
                         },
                         icon: Icon(
@@ -637,16 +673,18 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                             ],
                           ),
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              if (savedProgress != null) {
-                                resumeWatching(context, savedProgress);
-                              } else if (media.mediaType == 'tv') {
-                                _showStreamSelector(
-                                    season: _seasonNumber, episode: 1);
-                              } else {
-                                _showStreamSelector();
-                              }
-                            },
+                            onPressed: _loadingDetails || _detailsError != null
+                                ? null
+                                : () {
+                                    if (savedProgress != null) {
+                                      resumeWatching(context, savedProgress);
+                                    } else if (media.mediaType == 'tv') {
+                                      _showStreamSelector(
+                                          season: _seasonNumber, episode: 1);
+                                    } else {
+                                      _showStreamSelector();
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
@@ -669,21 +707,23 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                             ),
                           ),
                         ),
-                        _DownloadActionButton(
-                          mediaId: media.id,
-                          season:
-                              media.mediaType == 'tv' ? _seasonNumber : null,
-                          episode: media.mediaType == 'tv' ? 1 : null,
-                          onStart: () => _showStreamSelector(
-                            forDownload: true,
+                        if (!kIsWeb)
+                          _DownloadActionButton(
+                            mediaId: media.id,
                             season:
                                 media.mediaType == 'tv' ? _seasonNumber : null,
                             episode: media.mediaType == 'tv' ? 1 : null,
-                            episodeTitle: media.mediaType == 'tv'
-                                ? _episodeTitleFor(1)
-                                : null,
+                            onStart: () => _showStreamSelector(
+                              forDownload: true,
+                              season: media.mediaType == 'tv'
+                                  ? _seasonNumber
+                                  : null,
+                              episode: media.mediaType == 'tv' ? 1 : null,
+                              episodeTitle: media.mediaType == 'tv'
+                                  ? _episodeTitleFor(1)
+                                  : null,
+                            ),
                           ),
-                        ),
                         GlassContainer(
                           borderRadius: SabuflixTheme.radiusPill,
                           blur: 28,
@@ -714,7 +754,8 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                 if (!isWatched && context.mounted) {
                                   await context
                                       .read<ContinueWatchingProvider>()
-                                      .remove(media.id);
+                                      .remove(media.id,
+                                          mediaType: media.mediaType);
                                 }
                               },
                               child: Padding(
@@ -854,13 +895,19 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    if (_episodes.isEmpty)
+                    if (_loadingEpisodes || _loadingDetails)
                       const SizedBox(
                         height: 150,
                         child: Center(
                             child: CircularProgressIndicator(
                                 color: SabuflixTheme.accent)),
                       )
+                    else if (_episodes.isEmpty)
+                      Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Text(
+                              'Nenhum episódio disponível nesta temporada.',
+                              style: SabuflixTheme.body()))
                     else
                       SizedBox(
                         height: 150,

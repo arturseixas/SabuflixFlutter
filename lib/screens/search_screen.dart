@@ -30,7 +30,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final search = context.watch<SearchProvider>();
     final settings = context.watch<SettingsProvider>();
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final contentWidth = screenWidth >= 800 ? screenWidth - 240 : screenWidth;
+    final contentWidth = screenWidth;
     final crossAxisCount = (contentWidth / 172).floor().clamp(2, 7);
     final bottomInset = screenWidth < 800 ? 118.0 : 32.0;
     final results = settings.visibleItems(search.searchResults);

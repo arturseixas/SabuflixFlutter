@@ -33,9 +33,12 @@ class ContinueWatchingProvider extends ChangeNotifier {
 
   bool get isEmpty => _entries.isEmpty;
 
-  WatchProgress? forMedia(int mediaId) {
+  WatchProgress? forMedia(int mediaId, {String? mediaType}) {
     for (final entry in _entries) {
-      if (entry.media.id == mediaId) return entry;
+      if (entry.media.id == mediaId &&
+          (mediaType == null || entry.media.mediaType == mediaType)) {
+        return entry;
+      }
     }
     return null;
   }
@@ -102,7 +105,8 @@ class ContinueWatchingProvider extends ChangeNotifier {
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
 
-    _entries.removeWhere((current) => current.media.id == media.id);
+    _entries
+        .removeWhere((current) => current.media.storageKey == media.storageKey);
 
     final tooEarly = positionSeconds < _minimumSeconds;
     if (!entry.isFinished && !tooEarly) {
@@ -116,9 +120,11 @@ class ContinueWatchingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> remove(int mediaId) async {
+  Future<void> remove(int mediaId, {String? mediaType}) async {
     final before = _entries.length;
-    _entries.removeWhere((entry) => entry.media.id == mediaId);
+    _entries.removeWhere((entry) =>
+        entry.media.id == mediaId &&
+        (mediaType == null || entry.media.mediaType == mediaType));
     if (_entries.length == before) return;
     await _persist();
     notifyListeners();
@@ -133,10 +139,11 @@ class ContinueWatchingProvider extends ChangeNotifier {
 
   Future<void> _persist() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final key = '$_keyPrefix$_profileKey';
       final encoded =
           json.encode(_entries.map((entry) => entry.toJson()).toList());
-      await prefs.setString('$_keyPrefix$_profileKey', encoded);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, encoded);
     } catch (e) {
       debugPrint('Error saving watch progress: $e');
     }

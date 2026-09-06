@@ -12,10 +12,18 @@ import '../widgets/glass_container.dart';
 import '../widgets/wordmark.dart';
 import 'main_navigation_screen.dart';
 
-class ProfileSelectionScreen extends StatelessWidget {
+class ProfileSelectionScreen extends StatefulWidget {
   const ProfileSelectionScreen({super.key});
+  @override
+  State<ProfileSelectionScreen> createState() => _ProfileSelectionScreenState();
+}
+
+class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
+  bool _selecting = false;
 
   void _selectProfile(BuildContext context, Profile profile) async {
+    if (_selecting) return;
+    setState(() => _selecting = true);
     final profileProvider =
         Provider.of<ProfileProvider>(context, listen: false);
     final favProvider = Provider.of<FavoritesProvider>(context, listen: false);
@@ -36,7 +44,13 @@ class ProfileSelectionScreen extends StatelessWidget {
       await continueWatchingProvider.loadForProfile(profile.id);
       await watchedProvider.loadForProfile(profile.id);
     } catch (e) {
-      // ignore
+      if (context.mounted) {
+        setState(() => _selecting = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content:
+                Text('Não foi possível abrir este perfil. Tente novamente.')));
+      }
+      return;
     }
 
     if (context.mounted) {
@@ -84,7 +98,10 @@ class ProfileSelectionScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Quem está assistindo?',
+                          _selecting
+                              ? 'Preparando seu perfil…'
+                              : 'Quem está assistindo?',
+                          textAlign: TextAlign.center,
                           style: SabuflixTheme.headline(
                             fontSize: 32,
                             fontWeight: FontWeight.w600,
@@ -126,7 +143,7 @@ class ProfileSelectionScreen extends StatelessWidget {
             child: SafeArea(
               top: false,
               child: Text(
-                'SUA CENTRAL DE MÍDIA  •  VERSÃO 1.1.1',
+                'Seu próximo filme começa aqui.',
                 textAlign: TextAlign.center,
                 style: SabuflixTheme.label(fontSize: 9),
               ),
@@ -148,7 +165,8 @@ class _ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
+      borderRadius: SabuflixTheme.radiusLg,
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -230,7 +248,8 @@ class _AddProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
+      borderRadius: SabuflixTheme.radiusLg,
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,

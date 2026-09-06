@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Sabuflix design system.
 ///
@@ -31,8 +30,8 @@ class SabuflixTheme {
   // Text scale — true label hierarchy, solid grays (not alpha) for
   // predictable contrast over photography.
   static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF98989D);
-  static const Color textMuted = Color(0xFF636366);
+  static const Color textSecondary = Color(0xFFB3B3BD);
+  static const Color textMuted = Color(0xFF9A9AA3);
 
   // --- Typography -------------------------------------------------------
   // Manrope throughout, in place of the default UI grotesques. Its high
@@ -49,7 +48,8 @@ class SabuflixTheme {
     double height = 1.05,
     double letterSpacing = -1.4,
   }) {
-    return GoogleFonts.manrope(
+    return TextStyle(
+      fontFamily: 'Manrope',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -65,7 +65,8 @@ class SabuflixTheme {
     double height = 1.1,
     double letterSpacing = -0.9,
   }) {
-    return GoogleFonts.manrope(
+    return TextStyle(
+      fontFamily: 'Manrope',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -81,7 +82,8 @@ class SabuflixTheme {
     double height = 1.2,
     double letterSpacing = -0.5,
   }) {
-    return GoogleFonts.manrope(
+    return TextStyle(
+      fontFamily: 'Manrope',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -96,7 +98,8 @@ class SabuflixTheme {
     Color color = textSecondary,
     double height = 1.45,
   }) {
-    return GoogleFonts.manrope(
+    return TextStyle(
+      fontFamily: 'Manrope',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -112,7 +115,8 @@ class SabuflixTheme {
     Color color = textMuted,
     double letterSpacing = 0.6,
   }) {
-    return GoogleFonts.manrope(
+    return TextStyle(
+      fontFamily: 'Manrope',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -126,7 +130,8 @@ class SabuflixTheme {
     Color color = textSecondary,
     double letterSpacing = -0.25,
   }) {
-    return GoogleFonts.manrope(
+    return TextStyle(
+      fontFamily: 'Manrope',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -141,7 +146,8 @@ class SabuflixTheme {
     double fontSize = 20,
     Color color = textPrimary,
   }) {
-    return GoogleFonts.manrope(
+    return TextStyle(
+      fontFamily: 'Manrope',
       fontSize: fontSize,
       fontWeight: FontWeight.w800,
       color: color,
@@ -201,19 +207,23 @@ class SabuflixTheme {
         onSurface: textPrimary,
         error: Color(0xFFFF453A),
       ),
-      splashFactory: NoSplash.splashFactory,
+      splashFactory: InkRipple.splashFactory,
       splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
+      highlightColor: Colors.white12,
+      focusColor: Colors.white24,
       dividerColor: border,
-      textTheme:
-          GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme).copyWith(
-        bodyLarge: GoogleFonts.manrope(color: textPrimary),
-        bodyMedium: GoogleFonts.manrope(color: textSecondary),
-        titleLarge: GoogleFonts.manrope(
-            color: textPrimary,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.6),
-      ),
+      textTheme: ThemeData.dark()
+          .textTheme
+          .apply(fontFamily: 'Manrope')
+          .copyWith(
+            bodyLarge: TextStyle(fontFamily: 'Manrope', color: textPrimary),
+            bodyMedium: TextStyle(fontFamily: 'Manrope', color: textSecondary),
+            titleLarge: TextStyle(
+                fontFamily: 'Manrope',
+                color: textPrimary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.6),
+          ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -233,8 +243,11 @@ class SabuflixTheme {
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(980)),
           ),
-          textStyle: GoogleFonts.manrope(
-              fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.4),
+          textStyle: TextStyle(
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              letterSpacing: -0.4),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -245,16 +258,22 @@ class SabuflixTheme {
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(980)),
           ),
-          textStyle: GoogleFonts.manrope(
-              fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.4),
+          textStyle: TextStyle(
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              letterSpacing: -0.4),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: textSecondary,
           splashFactory: NoSplash.splashFactory,
-          textStyle: GoogleFonts.manrope(
-              fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.4),
+          textStyle: TextStyle(
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              letterSpacing: -0.4),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -279,10 +298,16 @@ class SabuflixTheme {
       chipTheme: ChipThemeData(
         backgroundColor: Colors.white.withValues(alpha: 0.08),
         selectedColor: textPrimary,
-        labelStyle: GoogleFonts.manrope(
-            color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
-        secondaryLabelStyle: GoogleFonts.manrope(
-            color: background, fontSize: 13, fontWeight: FontWeight.w600),
+        labelStyle: TextStyle(
+            fontFamily: 'Manrope',
+            color: textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500),
+        secondaryLabelStyle: TextStyle(
+            fontFamily: 'Manrope',
+            color: background,
+            fontSize: 13,
+            fontWeight: FontWeight.w600),
         side: BorderSide.none,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         shape: const RoundedRectangleBorder(
@@ -302,13 +327,17 @@ class SabuflixTheme {
           color: elevated,
           borderRadius: const BorderRadius.all(Radius.circular(8)),
         ),
-        textStyle: GoogleFonts.manrope(color: textPrimary, fontSize: 12),
+        textStyle:
+            TextStyle(fontFamily: 'Manrope', color: textPrimary, fontSize: 12),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: elevated,
-        contentTextStyle: GoogleFonts.manrope(
-            color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+        contentTextStyle: TextStyle(
+            fontFamily: 'Manrope',
+            color: textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w500),
         shape: RoundedRectangleBorder(borderRadius: radiusMd),
       ),
       progressIndicatorTheme:

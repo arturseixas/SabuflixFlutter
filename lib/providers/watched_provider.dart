@@ -11,7 +11,7 @@ class WatchedProvider extends ChangeNotifier {
   static const _keyPrefix = 'sabuflix_watched_';
   static const _maxEntries = 500;
 
-  final Map<int, MediaItem> _items = {};
+  final Map<String, MediaItem> _items = {};
   String _profileKey = 'default';
   bool _isLoading = true;
 
@@ -23,7 +23,10 @@ class WatchedProvider extends ChangeNotifier {
   List<MediaItem> get items =>
       List.unmodifiable(_items.values.toList().reversed);
 
-  bool isWatched(int mediaId) => _items.containsKey(mediaId);
+  bool isWatched(int mediaId, {String? mediaType}) =>
+      _items.values.any((item) =>
+          item.id == mediaId &&
+          (mediaType == null || item.mediaType == mediaType));
 
   Future<void> loadForProfile(String? profileId) async {
     final key = profileId ?? 'default';
@@ -43,7 +46,7 @@ class WatchedProvider extends ChangeNotifier {
             try {
               final item =
                   MediaItem.fromJson(Map<String, dynamic>.from(value as Map));
-              _items[item.id] = item;
+              _items[item.storageKey] = item;
             } catch (error) {
               debugPrint('Skipping unreadable watched item: $error');
             }
@@ -60,10 +63,10 @@ class WatchedProvider extends ChangeNotifier {
   }
 
   Future<void> toggle(MediaItem media) async {
-    if (_items.containsKey(media.id)) {
-      _items.remove(media.id);
+    if (_items.containsKey(media.storageKey)) {
+      _items.remove(media.storageKey);
     } else {
-      _items[media.id] = media.forStorage;
+      _items[media.storageKey] = media.forStorage;
       while (_items.length > _maxEntries) {
         _items.remove(_items.keys.first);
       }
@@ -73,8 +76,8 @@ class WatchedProvider extends ChangeNotifier {
   }
 
   Future<void> markWatched(MediaItem media) async {
-    if (_items.containsKey(media.id)) return;
-    _items[media.id] = media.forStorage;
+    if (_items.containsKey(media.storageKey)) return;
+    _items[media.storageKey] = media.forStorage;
     notifyListeners();
     await _persist();
   }
@@ -87,11 +90,10 @@ class WatchedProvider extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
+    final key = '$_keyPrefix$_profileKey';
+    final encoded = json
+        .encode(_items.values.map((item) => item.forStorage.toJson()).toList());
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      '$_keyPrefix$_profileKey',
-      json.encode(
-          _items.values.map((item) => item.forStorage.toJson()).toList()),
-    );
+    await prefs.setString(key, encoded);
   }
 }

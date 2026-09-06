@@ -12,6 +12,7 @@ class FavoritesProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   String? _currentProfileId;
+  Future<void> _pending = Future.value();
 
   FavoritesProvider() {
     loadFavorites(null);
@@ -30,12 +31,19 @@ class FavoritesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool isFavorite(int mediaId) {
-    return _favorites.any((item) => item.id == mediaId);
+  bool isFavorite(int mediaId, {String? mediaType}) {
+    return _favorites.any((item) =>
+        item.id == mediaId &&
+        (mediaType == null || item.mediaType == mediaType));
   }
 
-  Future<void> toggleFavorite(MediaItem media) async {
-    await _favoritesService.toggleFavorite(media, _currentProfileId);
-    await loadFavorites(_currentProfileId);
+  Future<void> toggleFavorite(MediaItem media) {
+    final profile = _currentProfileId;
+    final operation = _pending.then((_) async {
+      await _favoritesService.toggleFavorite(media, profile);
+      if (_currentProfileId == profile) await loadFavorites(profile);
+    });
+    _pending = operation.catchError((Object _) {});
+    return operation;
   }
 }

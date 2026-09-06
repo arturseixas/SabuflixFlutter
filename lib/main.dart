@@ -1,6 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'theme/sabuflix_theme.dart';
@@ -18,6 +20,10 @@ import 'screens/profile_selection_screen.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+        ['Manrope'], await rootBundle.loadString('assets/fonts/OFL.txt'));
+  });
   runApp(const SabuflixApp());
 }
 

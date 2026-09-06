@@ -210,7 +210,8 @@ class _PlaylistCard extends StatelessWidget {
                               Provider.of<PlaylistProvider>(context,
                                       listen: false)
                                   .removeMediaFromPlaylist(
-                                      playlist.id, media.id);
+                                      playlist.id, media.id,
+                                      mediaType: media.mediaType);
                             },
                             child: Container(
                               padding: const EdgeInsets.all(4),

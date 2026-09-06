@@ -20,24 +20,35 @@ class PlaylistProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    _playlists = [];
+    final key = _getPrefsKey();
     final prefs = await SharedPreferences.getInstance();
-    final String? jsonStr = prefs.getString(_getPrefsKey());
-
-    if (jsonStr != null) {
-      final List<dynamic> decoded = json.decode(jsonStr);
-      _playlists = decoded.map((p) => Playlist.fromJson(p)).toList();
-    } else {
-      _playlists = [];
+    if (_currentProfileId != profileId) return;
+    final raw = prefs.getString(key);
+    if (raw != null) {
+      try {
+        final decoded = json.decode(raw) as List;
+        for (final value in decoded) {
+          try {
+            _playlists.add(
+                Playlist.fromJson(Map<String, dynamic>.from(value as Map)));
+          } catch (_) {/* Preserve other readable playlists. */}
+        }
+      } catch (_) {
+        await prefs.setString('${key}_recovery', raw);
+      }
     }
+    if (_currentProfileId != profileId) return;
 
     _isLoading = false;
     notifyListeners();
   }
 
   Future<void> _savePlaylists() async {
-    final prefs = await SharedPreferences.getInstance();
+    final key = _getPrefsKey();
     final encoded = json.encode(_playlists.map((p) => p.toJson()).toList());
-    await prefs.setString(_getPrefsKey(), encoded);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, encoded);
   }
 
   Future<void> createPlaylist(String name) async {
@@ -61,7 +72,7 @@ class PlaylistProvider extends ChangeNotifier {
     final index = _playlists.indexWhere((p) => p.id == playlistId);
     if (index != -1) {
       final playlist = _playlists[index];
-      if (!playlist.items.any((item) => item.id == media.id)) {
+      if (!playlist.items.any((item) => item.storageKey == media.storageKey)) {
         final updatedItems = List<MediaItem>.from(playlist.items)..add(media);
         _playlists[index] = playlist.copyWith(items: updatedItems);
         await _savePlaylists();
@@ -70,12 +81,16 @@ class PlaylistProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> removeMediaFromPlaylist(String playlistId, int mediaId) async {
+  Future<void> removeMediaFromPlaylist(String playlistId, int mediaId,
+      {String? mediaType}) async {
     final index = _playlists.indexWhere((p) => p.id == playlistId);
     if (index != -1) {
       final playlist = _playlists[index];
-      final updatedItems =
-          playlist.items.where((item) => item.id != mediaId).toList();
+      final updatedItems = playlist.items
+          .where((item) =>
+              item.id != mediaId ||
+              (mediaType != null && item.mediaType != mediaType))
+          .toList();
       _playlists[index] = playlist.copyWith(items: updatedItems);
       await _savePlaylists();
       notifyListeners();

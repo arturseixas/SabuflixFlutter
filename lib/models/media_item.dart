@@ -39,11 +39,13 @@ class MediaItem {
     this.ageRating,
   });
 
+  String get storageKey => '${mediaType}_$id';
+
   String get fullPosterPath {
     if (posterPath != null && posterPath!.isNotEmpty) {
       return 'https://image.tmdb.org/t/p/w500$posterPath';
     }
-    return 'https://via.placeholder.com/500x750/14141F/FFFFFF?text=Sabuflix';
+    return '';
   }
 
   String get fullBackdropPath {
@@ -64,7 +66,7 @@ class MediaItem {
     if (releaseDate != null && releaseDate!.length >= 4) {
       return releaseDate!.substring(0, 4);
     }
-    return '2026';
+    return 'Ano não informado';
   }
 
   String get formattedRating {

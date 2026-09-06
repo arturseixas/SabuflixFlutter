@@ -5,6 +5,20 @@ import '../models/media_item.dart';
 import '../models/cast_member.dart';
 
 class TMDBService {
+  final http.Client? _client;
+  final Duration timeout;
+  TMDBService({http.Client? client, this.timeout = const Duration(seconds: 15)})
+      : _client = client;
+  Future<http.Response> _get(Uri uri) async {
+    final response =
+        await (_client?.get(uri) ?? http.get(uri)).timeout(timeout);
+    if (response.statusCode != 200) {
+      throw StateError(
+          'Serviço de catálogo indisponível (${response.statusCode}).');
+    }
+    return response;
+  }
+
   /// TMDB offers a free developer API. A build-time key keeps local and CI
   /// builds configurable while the current public client key remains a
   /// backwards-compatible fallback.
@@ -54,7 +68,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/trending/$mediaType/$timeWindow?api_key=$apiKey&language=$defaultLang');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -70,7 +84,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/movie/popular?api_key=$apiKey&language=$defaultLang&page=1');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -88,7 +102,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/tv/popular?api_key=$apiKey&language=$defaultLang&page=1');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -106,7 +120,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/movie/top_rated?api_key=$apiKey&language=$defaultLang&page=1');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -126,7 +140,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/$endpoint?api_key=$apiKey&language=$defaultLang&with_genres=$genreId&sort_by=popularity.desc');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -136,7 +150,7 @@ class TMDBService {
             .toList();
       }
     } catch (e) {
-      debugPrint('Error fetching by genre $genreId: $e');
+      rethrow;
     }
     return [];
   }
@@ -150,7 +164,7 @@ class TMDBService {
     final url =
         Uri.parse('$baseUrl/${endpoint}api_key=$apiKey&language=$defaultLang');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
@@ -209,7 +223,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/tv/$tvId/season/$seasonNumber?api_key=$apiKey&language=$defaultLang');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['episodes'] ?? [];
@@ -225,7 +239,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/$endpoint/$id/images?api_key=$apiKey&include_image_language=pt,en,null');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List logos = data['logos'] ?? [];
@@ -258,7 +272,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/$endpoint/$id/credits?api_key=$apiKey&language=$defaultLang');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List castList = data['cast'] ?? [];
@@ -278,7 +292,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/$endpoint/$id/videos?api_key=$apiKey&language=$defaultLang');
     try {
-      var response = await http.get(url);
+      var response = await _get(url);
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
         List results = data['results'] ?? [];
@@ -287,7 +301,7 @@ class TMDBService {
         if (results.isEmpty) {
           final fallbackUrl = Uri.parse(
               '$baseUrl/$endpoint/$id/videos?api_key=$apiKey&language=en-US');
-          response = await http.get(fallbackUrl);
+          response = await _get(fallbackUrl);
           if (response.statusCode == 200) {
             data = json.decode(response.body);
             results = data['results'] ?? [];
@@ -316,7 +330,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/$endpoint/$id/recommendations?api_key=$apiKey&language=$defaultLang');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -337,7 +351,7 @@ class TMDBService {
     final url = Uri.parse(
         '$baseUrl/search/multi?api_key=$apiKey&language=$defaultLang&query=${Uri.encodeComponent(query)}&page=1');
     try {
-      final response = await http.get(url);
+      final response = await _get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -348,7 +362,7 @@ class TMDBService {
             .toList();
       }
     } catch (e) {
-      debugPrint('Error searching media: $e');
+      rethrow;
     }
     return [];
   }

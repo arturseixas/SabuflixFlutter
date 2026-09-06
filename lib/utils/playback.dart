@@ -31,7 +31,8 @@ Future<void> playDownload(BuildContext context, DownloadItem item) async {
     return;
   }
 
-  final saved = continueWatching.forMedia(item.media.id);
+  final saved =
+      continueWatching.forMedia(item.media.id, mediaType: item.media.mediaType);
   final sameEpisode = saved != null &&
       saved.season == item.season &&
       saved.episode == item.episode;

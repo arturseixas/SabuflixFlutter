@@ -8,6 +8,7 @@ Route<T> glassRoute<T>(Widget page) {
     reverseTransitionDuration: const Duration(milliseconds: 320),
     pageBuilder: (context, animation, secondaryAnimation) => page,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (MediaQuery.disableAnimationsOf(context)) return child;
       final curved =
           CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       return FadeTransition(

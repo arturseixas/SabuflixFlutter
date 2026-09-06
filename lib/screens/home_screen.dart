@@ -22,6 +22,10 @@ class HomeScreen extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 800;
 
+    final heroes = settings.visibleItems([
+      if (catalog.heroItem != null) catalog.heroItem!,
+      ...catalog.trending,
+    ]);
     return Scaffold(
       backgroundColor: SabuflixTheme.background,
       body: catalog.isLoading
@@ -35,7 +39,7 @@ class HomeScreen extends StatelessWidget {
                   color: SabuflixTheme.textPrimary,
                   backgroundColor: SabuflixTheme.surface,
                   child: CustomScrollView(
-                    physics: const BouncingScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       if (!isDesktop)
                         SliverAppBar(
@@ -66,9 +70,9 @@ class HomeScreen extends StatelessWidget {
                             onRetry: catalog.loadCatalog,
                           ),
                         ),
-                      if (catalog.heroItem != null)
+                      if (heroes.isNotEmpty)
                         SliverToBoxAdapter(
-                          child: HeroBanner(media: catalog.heroItem!),
+                          child: HeroBanner(media: heroes.first),
                         ),
                       SliverToBoxAdapter(
                         child: Column(
@@ -112,7 +116,7 @@ class HomeScreen extends StatelessWidget {
                                   settings.visibleItems(catalog.sciFiMovies),
                             ),
                             // Clears the floating dock on phones.
-                            SizedBox(height: isDesktop ? 40 : 120),
+                            const SizedBox(height: 40),
                           ],
                         ),
                       ),
@@ -201,14 +205,15 @@ class _AccountBadge extends StatelessWidget {
         final profile = provider.currentProfile;
         if (profile == null) return const SizedBox.shrink();
 
-        return GestureDetector(
-          onTap: () {
+        return IconButton(
+          tooltip: 'Trocar perfil',
+          onPressed: () {
             Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                     builder: (_) => const ProfileSelectionScreen()));
           },
-          child: Container(
+          icon: Container(
             width: 32,
             height: 32,
             alignment: Alignment.center,

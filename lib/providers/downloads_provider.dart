@@ -37,6 +37,7 @@ class DownloadsProvider extends ChangeNotifier {
     loadForProfile(null);
   }
 
+  bool get isSupported => !kIsWeb;
   bool get isLoading => _isLoading;
   String get profileKey => _profileKey;
 
@@ -104,6 +105,11 @@ class DownloadsProvider extends ChangeNotifier {
   // --- Loading & reconciliation ----------------------------------------
 
   Future<void> loadForProfile(String? profileId) async {
+    if (!isSupported) {
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
     final key = profileId ?? 'default';
     if (_hydrated && key == _profileKey) {
       // Same profile (the selection screen re-confirms it on every launch):
@@ -226,6 +232,13 @@ class DownloadsProvider extends ChangeNotifier {
     int? episode,
     String? episodeTitle,
   }) async {
+    if (!isSupported) return false;
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        !['http', 'https'].contains(uri.scheme) ||
+        uri.host.isEmpty) {
+      return false;
+    }
     final id = DownloadItem.buildId(media.id, season: season, episode: episode);
     if (_items.any((item) => item.id == id)) return false;
 

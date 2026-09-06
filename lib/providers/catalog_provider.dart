@@ -7,7 +7,7 @@ import '../services/tmdb_service.dart';
 
 class CatalogProvider extends ChangeNotifier {
   static const _catalogCacheKey = 'sabuflix_catalog_cache_v1';
-  final TMDBService _tmdbService = TMDBService();
+  final TMDBService _tmdbService;
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
@@ -47,7 +47,8 @@ class CatalogProvider extends ChangeNotifier {
       _popularMovies.isNotEmpty ||
       _popularTV.isNotEmpty;
 
-  CatalogProvider() {
+  CatalogProvider({TMDBService? service})
+      : _tmdbService = service ?? TMDBService() {
     _initialize();
   }
 
@@ -56,7 +57,23 @@ class CatalogProvider extends ChangeNotifier {
     await loadCatalog();
   }
 
+  bool _refreshing = false;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   Future<void> loadCatalog() async {
+    if (_refreshing || _disposed) return;
+    _refreshing = true;
     _isLoading = !hasContent;
     _errorMessage = null;
     notifyListeners();
@@ -105,6 +122,7 @@ class CatalogProvider extends ChangeNotifier {
           ? 'Sem conexão. Exibindo o último catálogo disponível.'
           : 'Não foi possível carregar o catálogo.';
     } finally {
+      _refreshing = false;
       _isLoading = false;
       notifyListeners();
     }

@@ -50,7 +50,8 @@ class FavoritesService {
 
   Future<void> toggleFavorite(MediaItem media, String? profileId) async {
     final favorites = await getFavorites(profileId);
-    final existingIndex = favorites.indexWhere((item) => item.id == media.id);
+    final existingIndex =
+        favorites.indexWhere((item) => item.storageKey == media.storageKey);
 
     if (existingIndex >= 0) {
       favorites.removeAt(existingIndex);

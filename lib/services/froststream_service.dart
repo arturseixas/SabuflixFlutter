@@ -63,7 +63,11 @@ class FrostStreamService {
     final seenUrls = <String>{};
     return results.expand((items) => items).where((stream) {
       final url = stream['url']?.toString();
-      return url == null || url.isEmpty || seenUrls.add(url);
+      final uri = Uri.tryParse(url ?? '');
+      return uri != null &&
+          ['http', 'https'].contains(uri.scheme) &&
+          uri.host.isNotEmpty &&
+          seenUrls.add(url!);
     }).toList();
   }
 

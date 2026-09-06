@@ -40,6 +40,25 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             constraints: const BoxConstraints(maxWidth: 620),
             child: Consumer<DownloadsProvider>(
               builder: (context, downloads, child) {
+                if (!downloads.isSupported) {
+                  return Center(
+                      child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child:
+                              Column(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.download_for_offline_outlined,
+                                size: 48),
+                            const SizedBox(height: 20),
+                            Text('Assista offline no aplicativo',
+                                textAlign: TextAlign.center,
+                                style: SabuflixTheme.title(fontSize: 22)),
+                            const SizedBox(height: 12),
+                            Text(
+                                'Para baixar filmes e episódios, use o Sabuflix no Android ou Windows.',
+                                textAlign: TextAlign.center,
+                                style: SabuflixTheme.body()),
+                          ])));
+                }
                 if (downloads.isLoading) {
                   return const Center(
                     child: SizedBox(

@@ -7,7 +7,8 @@ import '../services/tmdb_service.dart';
 
 class SearchProvider extends ChangeNotifier {
   static const _recentSearchesKey = 'sabuflix_recent_searches';
-  final TMDBService _tmdbService = TMDBService();
+  final TMDBService _tmdbService;
+  bool _disposed = false;
   Timer? _debounce;
   int _requestGeneration = 0;
 
@@ -29,7 +30,8 @@ class SearchProvider extends ChangeNotifier {
   List<String> _recentSearches = [];
   List<String> get recentSearches => List.unmodifiable(_recentSearches);
 
-  SearchProvider() {
+  SearchProvider({TMDBService? service})
+      : _tmdbService = service ?? TMDBService() {
     _loadRecentSearches();
   }
 
@@ -41,6 +43,7 @@ class SearchProvider extends ChangeNotifier {
 
   void scheduleSearch(String text) {
     _debounce?.cancel();
+    _requestGeneration++;
     _query = text;
     _selectedGenreId = null;
     _errorMessage = null;
@@ -148,8 +151,15 @@ class SearchProvider extends ChangeNotifier {
   }
 
   @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
+    _disposed = true;
+    _requestGeneration++;
     super.dispose();
   }
 }

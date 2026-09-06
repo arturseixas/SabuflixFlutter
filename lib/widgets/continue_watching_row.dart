@@ -152,7 +152,9 @@ class _ContinueCard extends StatelessWidget {
                     Positioned(
                       top: 6,
                       right: 6,
-                      child: _RemoveButton(mediaId: entry.media.id),
+                      child: _RemoveButton(
+                          mediaId: entry.media.id,
+                          mediaType: entry.media.mediaType),
                     ),
                   ],
                 ),
@@ -185,13 +187,16 @@ class _ContinueCard extends StatelessWidget {
 
 class _RemoveButton extends StatelessWidget {
   final int mediaId;
+  final String mediaType;
 
-  const _RemoveButton({required this.mediaId});
+  const _RemoveButton({required this.mediaId, required this.mediaType});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.read<ContinueWatchingProvider>().remove(mediaId),
+      onTap: () => context
+          .read<ContinueWatchingProvider>()
+          .remove(mediaId, mediaType: mediaType),
       child: Container(
         width: 24,
         height: 24,
