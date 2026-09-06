@@ -33,6 +33,11 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Release packaging outputs (.github/workflows/build.yml)
+/dist/
+/release.7z
+/config.txt
+
 # Symbolication related
 app.*.symbols
 
