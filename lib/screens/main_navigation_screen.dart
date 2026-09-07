@@ -34,6 +34,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     Icons.video_library_outlined,
     Icons.settings_outlined
   ];
+  static const _selectedIcons = [
+    Icons.home_rounded,
+    Icons.search_rounded,
+    Icons.explore_rounded,
+    Icons.video_library_rounded,
+    Icons.settings_rounded
+  ];
   static const _pages = [
     HomeScreen(),
     SearchScreen(),
@@ -119,22 +126,101 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ]),
         bottomNavigationBar: desktop
             ? null
-            : NavigationBar(
-                selectedIndex: _index,
-                onDestinationSelected: _select,
-                backgroundColor: SabuflixTheme.background,
-                indicatorColor: SabuflixTheme.surfaceLight,
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                destinations: [
-                  for (var i = 0; i < _labels.length; i++)
-                    NavigationDestination(
-                        icon: Badge(
-                            isLabelVisible: i == 3 && count > 0,
-                            label: Text('$count'),
-                            child: Icon(_icons[i])),
-                        label: _labels[i])
-                ],
+            : DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: SabuflixTheme.background,
+                  border: Border(
+                    top: BorderSide(color: Color(0xFF1C1C1E), width: .5),
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: SizedBox(
+                    height: 64,
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < _labels.length; i++)
+                          Expanded(
+                            child: _MobileNavItem(
+                              label: _labels[i],
+                              icon: _icons[i],
+                              selectedIcon: _selectedIcons[i],
+                              selected: _index == i,
+                              badgeCount: i == 3 ? count : 0,
+                              onTap: () => _select(i),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
+      ),
+    );
+  }
+}
+
+class _MobileNavItem extends StatelessWidget {
+  const _MobileNavItem({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.selected,
+    required this.badgeCount,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final bool selected;
+  final int badgeCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? Colors.white : const Color(0xFF77777F);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 30,
+        containedInkWell: true,
+        highlightShape: BoxShape.rectangle,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Badge(
+              isLabelVisible: badgeCount > 0,
+              backgroundColor: Colors.white,
+              textColor: Colors.black,
+              smallSize: 6,
+              largeSize: 16,
+              label: Text('$badgeCount'),
+              child: AnimatedSwitcher(
+                duration: SabuflixTheme.durationFast,
+                child: Icon(
+                  selected ? selectedIcon : icon,
+                  key: ValueKey(selected),
+                  color: color,
+                  size: 23,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            AnimatedDefaultTextStyle(
+              duration: SabuflixTheme.durationFast,
+              style: SabuflixTheme.caption(
+                fontSize: 10.5,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: color,
+              ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.fade),
+            ),
+          ],
+        ),
       ),
     );
   }
