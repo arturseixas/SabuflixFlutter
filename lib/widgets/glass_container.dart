@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/sabuflix_theme.dart';
 
@@ -18,7 +17,7 @@ class GlassContainer extends StatelessWidget {
   const GlassContainer({
     super.key,
     required this.child,
-    this.borderRadius = const BorderRadius.all(Radius.circular(999)),
+    this.borderRadius = const BorderRadius.all(Radius.circular(4)),
     this.blur = 32,
     this.fillOpacity = 0.4,
     this.padding,
@@ -31,53 +30,21 @@ class GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveShadows =
-        boxShadow ??
-        [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
-          ),
-          if (hasGlow)
-            BoxShadow(
-              color: (glowColor ?? SabuflixTheme.accent).withValues(
-                alpha: 0.35,
-              ),
-              blurRadius: 22,
-              spreadRadius: 1,
-            ),
-        ];
-
-    final effectiveGradient =
-        gradient ??
-        const LinearGradient(
-          colors: [SabuflixTheme.surface, SabuflixTheme.surface],
-        );
-
-    final effectiveBorder =
-        border ??
-        Border.all(color: Colors.white.withValues(alpha: 0.22), width: 0.8);
-
+    final colors = SabuflixTheme.of(context);
     return Container(
+      padding: padding,
       decoration: BoxDecoration(
+        color: gradient == null ? colors.surface : null,
+        gradient: gradient,
         borderRadius: borderRadius,
-        boxShadow: effectiveShadows,
+        border: border ?? Border.all(color: colors.border),
+        boxShadow: boxShadow,
       ),
-      child: ClipRRect(
+      child: Material(
+        type: MaterialType.transparency,
         borderRadius: borderRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              gradient: effectiveGradient,
-              borderRadius: borderRadius,
-              border: effectiveBorder,
-            ),
-            child: child,
-          ),
-        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
       ),
     );
   }

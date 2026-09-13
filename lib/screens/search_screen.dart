@@ -38,45 +38,47 @@ class _SearchScreenState extends State<SearchScreen> {
         search.query.trim().isEmpty && search.selectedGenreId == null;
 
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 920),
+                constraints: BoxConstraints(maxWidth: 920),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                  padding: EdgeInsets.fromLTRB(20, 18, 20, 8),
                   child: GlassContainer(
                     borderRadius: SabuflixTheme.radiusPill,
                     blur: 24,
                     fillOpacity: 0.35,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
                       controller: _searchController,
                       textInputAction: TextInputAction.search,
-                      style: SabuflixTheme.body(
-                          fontSize: 15, color: SabuflixTheme.textPrimary),
+                      style: SabuflixTheme.of(context).body(
+                          fontSize: 15,
+                          color: SabuflixTheme.of(context).textPrimary),
                       onChanged: context.read<SearchProvider>().scheduleSearch,
                       onSubmitted: context.read<SearchProvider>().search,
                       decoration: InputDecoration(
                         hintText: 'Filmes, séries e gêneros',
-                        hintStyle: SabuflixTheme.body(
-                            fontSize: 15, color: SabuflixTheme.textMuted),
+                        hintStyle: SabuflixTheme.of(context).body(
+                            fontSize: 15,
+                            color: SabuflixTheme.of(context).textMuted),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         fillColor: Colors.transparent,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        prefixIcon: const Icon(Icons.search_rounded,
-                            color: SabuflixTheme.accent, size: 22),
+                        contentPadding: EdgeInsets.symmetric(vertical: 14),
+                        prefixIcon: Icon(Icons.search_rounded,
+                            color: SabuflixTheme.of(context).accent, size: 22),
                         suffixIcon: search.query.isNotEmpty
                             ? IconButton(
                                 tooltip: 'Limpar busca',
-                                icon: const Icon(Icons.close_rounded,
-                                    color: SabuflixTheme.textMuted, size: 20),
+                                icon: Icon(Icons.close_rounded,
+                                    color: SabuflixTheme.of(context).textMuted,
+                                    size: 20),
                                 onPressed: () {
                                   _searchController.clear();
                                   context.read<SearchProvider>().clearSearch();
@@ -93,12 +95,11 @@ class _SearchScreenState extends State<SearchScreen> {
               height: 48,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 children: TMDBService.genreMap.entries.take(20).map((entry) {
                   final selected = search.selectedGenreId == entry.key;
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 4),
                     child: FilterChip(
                       label: Text(entry.value),
                       selected: selected,
@@ -114,30 +115,30 @@ class _SearchScreenState extends State<SearchScreen> {
                 }).toList(),
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Expanded(
               child: AnimatedSwitcher(
                 duration: SabuflixTheme.durationFast,
                 child: search.isSearching
-                    ? const Center(
+                    ? Center(
                         key: ValueKey('search-loading'),
                         child: SizedBox(
                           width: 26,
                           height: 26,
                           child: CircularProgressIndicator(
-                              color: SabuflixTheme.textPrimary,
+                              color: SabuflixTheme.of(context).textPrimary,
                               strokeWidth: 2.5),
                         ),
                       )
                     : isIdle
                         ? _DiscoveryState(
-                            key: const ValueKey('search-discovery'),
+                            key: ValueKey('search-discovery'),
                             bottomInset: bottomInset,
                             controller: _searchController,
                           )
                         : results.isEmpty
                             ? _SearchEmptyState(
-                                key: const ValueKey('search-empty'),
+                                key: ValueKey('search-empty'),
                                 message: search.errorMessage ??
                                     (settings.hideUnreleased &&
                                             search.searchResults.isNotEmpty
@@ -149,8 +150,8 @@ class _SearchScreenState extends State<SearchScreen> {
                                     : () => search.search(search.query),
                               )
                             : GridView.builder(
-                                key: const ValueKey('search-results'),
-                                physics: const BouncingScrollPhysics(),
+                                key: ValueKey('search-results'),
+                                physics: BouncingScrollPhysics(),
                                 padding:
                                     EdgeInsets.fromLTRB(20, 8, 20, bottomInset),
                                 gridDelegate:
@@ -198,19 +199,18 @@ class _DiscoveryState extends StatelessWidget {
             children: [
               Expanded(
                   child: Text('Buscas recentes',
-                      style: SabuflixTheme.title(fontSize: 18))),
+                      style: SabuflixTheme.of(context).title(fontSize: 18))),
               TextButton(
-                  onPressed: search.clearRecentSearches,
-                  child: const Text('Limpar')),
+                  onPressed: search.clearRecentSearches, child: Text('Limpar')),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: search.recentSearches.map((value) {
               return ActionChip(
-                avatar: const Icon(Icons.history_rounded, size: 16),
+                avatar: Icon(Icons.history_rounded, size: 16),
                 label: Text(value),
                 onPressed: () {
                   controller.text = value;
@@ -221,20 +221,21 @@ class _DiscoveryState extends StatelessWidget {
               );
             }).toList(),
           ),
-          const SizedBox(height: 30),
+          SizedBox(height: 30),
         ],
-        Text('Em alta agora', style: SabuflixTheme.title(fontSize: 18)),
-        const SizedBox(height: 14),
+        Text('Em alta agora',
+            style: SabuflixTheme.of(context).title(fontSize: 18)),
+        SizedBox(height: 14),
         if (trending.isEmpty)
           Text('O catálogo aparecerá aqui quando estiver disponível.',
-              style: SabuflixTheme.body(fontSize: 13))
+              style: SabuflixTheme.of(context).body(fontSize: 13))
         else
           SizedBox(
             height: settings.compactPosters ? 222 : 252,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: trending.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 15),
+              separatorBuilder: (_, __) => SizedBox(width: 15),
               itemBuilder: (context, index) =>
                   MediaCard(media: trending[index]),
             ),
@@ -254,21 +255,21 @@ class _SearchEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: EdgeInsets.symmetric(horizontal: 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off_rounded,
-                size: 50, color: SabuflixTheme.textMuted),
-            const SizedBox(height: 16),
+            Icon(Icons.search_off_rounded,
+                size: 50, color: SabuflixTheme.of(context).textMuted),
+            SizedBox(height: 16),
             Text(message,
                 textAlign: TextAlign.center,
-                style: SabuflixTheme.body(fontSize: 14)),
-            const SizedBox(height: 14),
+                style: SabuflixTheme.of(context).body(fontSize: 14)),
+            SizedBox(height: 14),
             TextButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Tentar novamente')),
+                icon: Icon(Icons.refresh_rounded),
+                label: Text('Tentar novamente')),
           ],
         ),
       ),

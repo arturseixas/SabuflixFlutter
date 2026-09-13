@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/sabuflix_theme.dart';
 
-/// A UIKit-style segmented control: a recessed track with a single light
-/// "thumb" that slides between segments.
+/// Accessible rectangular filters using the same action language as the hero.
 class SabuSegmentedControl extends StatelessWidget {
   final List<String> segments;
   final int selectedIndex;
@@ -19,68 +18,36 @@ class SabuSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (segments.length < 2) return const SizedBox.shrink();
+    if (segments.length < 2) return SizedBox.shrink();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final segmentWidth = constraints.maxWidth / segments.length;
-        return Container(
-          height: height,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.07),
-            borderRadius: SabuflixTheme.radiusPill,
-          ),
-          child: Stack(
-            children: [
-              AnimatedPositioned(
-                duration: SabuflixTheme.durationFast,
-                curve: SabuflixTheme.curveStandard,
-                left: segmentWidth * selectedIndex,
-                top: 0,
-                bottom: 0,
-                width: segmentWidth,
-                child: Container(
-                  margin: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: SabuflixTheme.radiusPill,
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        width: 0.8),
-                  ),
+    final colors = SabuflixTheme.of(context);
+    return Row(children: [
+      for (var i = 0; i < segments.length; i++)
+        Expanded(
+            child: Padding(
+          padding: EdgeInsets.only(right: i == segments.length - 1 ? 0 : 6),
+          child: Semantics(
+              selected: i == selectedIndex,
+              child: OutlinedButton(
+                onPressed: () => onChanged(i),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: Size(48, height < 48 ? 48 : height),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+                  backgroundColor: i == selectedIndex
+                      ? SabuflixTheme.brandBlue
+                      : colors.secondaryFill,
+                  foregroundColor:
+                      i == selectedIndex ? Colors.white : colors.textPrimary,
+                  side: BorderSide(
+                      color: i == selectedIndex
+                          ? SabuflixTheme.brandBlue
+                          : colors.borderStrong),
                 ),
-              ),
-              Row(
-                children: [
-                  for (int i = 0; i < segments.length; i++)
-                    Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => onChanged(i),
-                        child: Center(
-                          child: AnimatedDefaultTextStyle(
-                            duration: SabuflixTheme.durationFast,
-                            style: SabuflixTheme.caption(
-                              fontSize: 13,
-                              fontWeight: i == selectedIndex
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              color: i == selectedIndex
-                                  ? SabuflixTheme.textPrimary
-                                  : SabuflixTheme.textSecondary,
-                            ),
-                            child: Text(segments[i],
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
+                child: Text(segments[i],
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              )),
+        )),
+    ]);
   }
 }

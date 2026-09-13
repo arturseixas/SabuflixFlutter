@@ -19,8 +19,7 @@ class HeroBanner extends StatelessWidget {
       builder: (context, constraints) {
         final desktop = constraints.maxWidth >= 800;
         final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-        final height =
-            (desktop
+        final height = (desktop
                 ? (constraints.maxWidth * .46).clamp(480.0, 660.0)
                 : 520.0) +
             (textScale - 1).clamp(0.0, 2.0) * 240;
@@ -33,9 +32,8 @@ class HeroBanner extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: media.fullBackdropPath,
                   fit: BoxFit.cover,
-                  alignment: desktop
-                      ? Alignment.centerRight
-                      : Alignment.topCenter,
+                  alignment:
+                      desktop ? Alignment.centerRight : Alignment.topCenter,
                   placeholder: (_, url) =>
                       const ColoredBox(color: SabuflixTheme.surface),
                   errorWidget: (_, url, error) =>
@@ -72,7 +70,10 @@ class HeroBanner extends StatelessWidget {
                 ),
               Positioned(
                 left: desktop ? 40 : 20,
-                right: desktop ? constraints.maxWidth * .35 : 20,
+                right: desktop
+                    ? constraints.maxWidth -
+                        (constraints.maxWidth * .55).clamp(520.0, 720.0)
+                    : 20,
                 bottom: 48,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,10 +144,10 @@ class HeroBanner extends StatelessWidget {
                             glassRoute(MediaDetailsScreen(media: media)),
                           ),
                           style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(160, 50),
+                            minimumSize: const Size(160, 52),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
-                              vertical: 16,
+                              vertical: 14,
                             ),
                           ),
                           icon: const Icon(
@@ -183,10 +184,15 @@ class HeroBanner extends StatelessWidget {
                             }
                           },
                           style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(150, 50),
+                            foregroundColor: Colors.white,
+                            backgroundColor:
+                                Colors.white.withValues(alpha: .08),
+                            side: BorderSide(
+                                color: Colors.white.withValues(alpha: .24)),
+                            minimumSize: const Size(150, 52),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
-                              vertical: 16,
+                              vertical: 14,
                             ),
                           ),
                           icon: Icon(

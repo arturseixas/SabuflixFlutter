@@ -46,7 +46,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
     } catch (e) {
       if (context.mounted) {
         setState(() => _selecting = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content:
                 Text('Não foi possível abrir este perfil. Tente novamente.')));
       }
@@ -56,7 +56,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
     if (context.mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+        MaterialPageRoute(builder: (context) => MainNavigationScreen()),
       );
     }
   }
@@ -72,10 +72,10 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       body: Stack(
         children: [
-          const Positioned(
+          Positioned(
             top: 30,
             left: 30,
             child: SafeArea(child: SabuflixWordmark(fontSize: 20)),
@@ -84,16 +84,16 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
             child: Consumer<ProfileProvider>(
               builder: (context, provider, child) {
                 if (provider.isLoading) {
-                  return const Center(
+                  return Center(
                     child: CircularProgressIndicator(
-                      color: SabuflixTheme.accent,
+                      color: SabuflixTheme.of(context).accent,
                     ),
                   );
                 }
 
                 return Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 100, 24, 90),
+                    padding: EdgeInsets.fromLTRB(24, 100, 24, 90),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -102,12 +102,12 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                               ? 'Preparando seu perfil…'
                               : 'Quem está assistindo?',
                           textAlign: TextAlign.center,
-                          style: SabuflixTheme.headline(
+                          style: SabuflixTheme.of(context).headline(
                             fontSize: 32,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 48),
+                        SizedBox(height: 48),
                         Wrap(
                           spacing: 24,
                           runSpacing: 24,
@@ -145,7 +145,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
               child: Text(
                 'Seu próximo filme começa aqui.',
                 textAlign: TextAlign.center,
-                style: SabuflixTheme.label(fontSize: 9),
+                style: SabuflixTheme.of(context).label(fontSize: 9),
               ),
             ),
           ),
@@ -183,11 +183,11 @@ class _ProfileAvatar extends StatelessWidget {
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      offset: Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.person, size: 64, color: Colors.white),
+                child: Icon(Icons.person, size: 64, color: Colors.white),
               ),
               Positioned(
                 top: 4,
@@ -195,13 +195,13 @@ class _ProfileAvatar extends StatelessWidget {
                 child: GestureDetector(
                   onTap: onEdit,
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.7),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.edit_rounded,
-                        color: Colors.white, size: 16),
+                    child:
+                        Icon(Icons.edit_rounded, color: Colors.white, size: 16),
                   ),
                 ),
               ),
@@ -210,15 +210,14 @@ class _ProfileAvatar extends StatelessWidget {
                   bottom: -4,
                   left: -4,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: SabuflixTheme.accent,
+                      color: SabuflixTheme.brandBlue,
                       borderRadius: SabuflixTheme.radiusSm,
                     ),
                     child: Text(
                       profile.maxAgeRating,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.bold),
@@ -227,13 +226,13 @@ class _ProfileAvatar extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             profile.name,
-            style: SabuflixTheme.body(
+            style: SabuflixTheme.of(context).body(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: SabuflixTheme.textPrimary),
+                color: SabuflixTheme.of(context).textPrimary),
           ),
         ],
       ),
@@ -258,20 +257,21 @@ class _AddProfileButton extends StatelessWidget {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: SabuflixTheme.surface,
+              color: SabuflixTheme.of(context).surface,
               borderRadius: SabuflixTheme.radiusLg,
-              border: Border.all(color: SabuflixTheme.border, width: 2),
+              border:
+                  Border.all(color: SabuflixTheme.of(context).border, width: 2),
             ),
-            child: const Icon(Icons.add_rounded,
-                size: 64, color: SabuflixTheme.textSecondary),
+            child: Icon(Icons.add_rounded,
+                size: 64, color: SabuflixTheme.of(context).textSecondary),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             'Adicionar',
-            style: SabuflixTheme.body(
+            style: SabuflixTheme.of(context).body(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: SabuflixTheme.textSecondary),
+                color: SabuflixTheme.of(context).textSecondary),
           ),
         ],
       ),
@@ -356,34 +356,38 @@ class _ProfileDialogState extends State<_ProfileDialog> {
       backgroundColor: Colors.transparent,
       child: GlassContainer(
         borderRadius: SabuflixTheme.radiusLg,
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.profileToEdit == null ? 'Novo Perfil' : 'Editar Perfil',
-                style: SabuflixTheme.headline(fontSize: 22)),
-            const SizedBox(height: 24),
+                style: SabuflixTheme.of(context).headline(fontSize: 22)),
+            SizedBox(height: 24),
             TextField(
               controller: _nameController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: SabuflixTheme.of(context).textPrimary),
               decoration: InputDecoration(
                 labelText: 'Nome do Perfil',
-                labelStyle: const TextStyle(color: SabuflixTheme.textSecondary),
+                labelStyle:
+                    TextStyle(color: SabuflixTheme.of(context).textSecondary),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: SabuflixTheme.radiusSm,
-                  borderSide: const BorderSide(color: SabuflixTheme.border),
+                  borderSide:
+                      BorderSide(color: SabuflixTheme.of(context).border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: SabuflixTheme.radiusSm,
-                  borderSide: const BorderSide(color: SabuflixTheme.accent),
+                  borderSide:
+                      BorderSide(color: SabuflixTheme.of(context).accent),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text('Classificação Máxima Permitida:',
-                style: SabuflixTheme.body(color: SabuflixTheme.textSecondary)),
-            const SizedBox(height: 12),
+                style: SabuflixTheme.of(context)
+                    .body(color: SabuflixTheme.of(context).textSecondary)),
+            SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -394,20 +398,21 @@ class _ProfileDialogState extends State<_ProfileDialog> {
                       style: TextStyle(
                           color: isSelected
                               ? Colors.white
-                              : SabuflixTheme.textSecondary)),
+                              : SabuflixTheme.of(context).textSecondary)),
                   selected: isSelected,
-                  selectedColor: SabuflixTheme.accent,
-                  backgroundColor: SabuflixTheme.surface,
+                  selectedColor: SabuflixTheme.of(context).accent,
+                  backgroundColor: SabuflixTheme.of(context).surface,
                   onSelected: (selected) {
                     if (selected) setState(() => _maxAgeRating = age);
                   },
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text('Cor do Ícone:',
-                style: SabuflixTheme.body(color: SabuflixTheme.textSecondary)),
-            const SizedBox(height: 12),
+                style: SabuflixTheme.of(context)
+                    .body(color: SabuflixTheme.of(context).textSecondary)),
+            SizedBox(height: 12),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -422,36 +427,38 @@ class _ProfileDialogState extends State<_ProfileDialog> {
                       color: Color(c),
                       shape: BoxShape.circle,
                       border: isSelected
-                          ? Border.all(color: Colors.white, width: 3)
+                          ? Border.all(
+                              color: SabuflixTheme.of(context).textPrimary,
+                              width: 3)
                           : null,
                     ),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (widget.profileToEdit != null)
                   TextButton(
                     onPressed: _delete,
-                    child: const Text('Excluir',
+                    child: Text('Excluir',
                         style: TextStyle(color: Colors.redAccent)),
                   ),
-                const Spacer(),
+                Spacer(),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar',
-                      style: TextStyle(color: SabuflixTheme.textSecondary)),
+                  child: Text('Cancelar',
+                      style: TextStyle(
+                          color: SabuflixTheme.of(context).textSecondary)),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: _save,
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: SabuflixTheme.accent),
-                  child: const Text('Salvar',
-                      style: TextStyle(color: Colors.white)),
+                      backgroundColor: SabuflixTheme.brandBlue),
+                  child: Text('Salvar', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),

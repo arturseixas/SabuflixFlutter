@@ -15,6 +15,7 @@ import '../services/native_pip_service.dart';
 import '../services/addon_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/formatters.dart';
+import '../utils/browser_playback.dart';
 import '../widgets/glass_container.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -56,6 +57,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   bool _isPlaying = false;
   bool _isBuffering = false;
+  bool _waitingForBrowserPlay = kIsWeb;
   double _currentPosition = 0;
   double _totalDuration = 0;
 
@@ -174,8 +176,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
     try {
       _player = Player();
-      _errorSubscription = _player!.stream.error.listen((_) => _failPlayback());
-      _startupTimer = Timer(const Duration(seconds: 30), _failPlayback);
+      _errorSubscription = _player!.stream.error.listen((message) {
+        if (kIsWeb && isRecoverableBrowserPlayError(message)) {
+          _startupTimer?.cancel();
+          if (!mounted) return;
+          setState(() {
+            _waitingForBrowserPlay = true;
+            _isPlaying = false;
+            _showControls = true;
+            _isBuffering = false;
+          });
+        } else {
+          _failPlayback();
+        }
+      });
+      if (!kIsWeb) {
+        _startupTimer = Timer(const Duration(seconds: 30), _failPlayback);
+      }
       _videoController = VideoController(_player!);
 
       _player!.stream.position.listen((Duration position) {
@@ -192,7 +209,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
       _player!.stream.playing.listen((bool playing) {
         if (!mounted) return;
-        setState(() => _isPlaying = playing);
+        if (playing && kIsWeb) _startupTimer?.cancel();
+        setState(() {
+          _isPlaying = playing;
+          if (playing) _waitingForBrowserPlay = false;
+        });
       });
 
       _player!.stream.buffering.listen((bool buffering) {
@@ -216,7 +237,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         });
       });
 
-      await _player!.open(Media(widget.videoUrl!));
+      // Opening a route/awaiting a manifest can consume browser user activation.
+      // Load paused, then start from the visible Play button's gesture.
+      await _player!.open(Media(widget.videoUrl!), play: !kIsWeb);
       unawaited(_loadExternalSubtitles());
     } catch (_) {
       _failPlayback();
@@ -280,7 +303,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     setState(() {
       _isPlaying = false;
       _isBuffering = false;
-      _playbackError = 'Não foi possível reproduzir esta fonte.';
+      _playbackError = kIsWeb
+          ? 'O navegador não conseguiu reproduzir esta fonte. Tente outra opção: o servidor precisa permitir acesso pelo navegador e usar um formato compatível.'
+          : 'Não foi possível reproduzir esta fonte.';
     });
   }
 
@@ -368,9 +393,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   void _playPause() {
     if (_player != null) {
-      _player!.playOrPause();
-    } else {
-      setState(() => _isPlaying = !_isPlaying);
+      if (_isPlaying) {
+        _startupTimer?.cancel();
+        _player!.pause();
+      } else {
+        if (kIsWeb) {
+          setState(() => _waitingForBrowserPlay = false);
+          _startupTimer?.cancel();
+          _startupTimer = Timer(const Duration(seconds: 30), _failPlayback);
+        }
+        _player!.play();
+      }
     }
     _startHideTimer();
   }
@@ -450,7 +483,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Theme(
+        data: SabuflixTheme.themeData,
+        child: Builder(builder: _buildPlayer),
+      );
+
+  Widget _buildPlayer(BuildContext context) {
     if (_playbackError != null) return _errorView();
     final hasVideo = _videoController != null;
 
@@ -491,7 +529,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         Container(color: SabuflixTheme.background),
                   ),
 
-                if (_isBuffering && hasVideo)
+                if (_isBuffering && hasVideo && !_waitingForBrowserPlay)
                   const Center(
                     child: CircularProgressIndicator(
                       color: SabuflixTheme.accent,
@@ -702,6 +740,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                       ],
                                     ),
                                     child: IconButton(
+                                      tooltip:
+                                          _isPlaying ? 'Pausar' : 'Reproduzir',
                                       iconSize: 38,
                                       icon: Icon(
                                         _isPlaying

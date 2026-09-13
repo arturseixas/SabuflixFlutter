@@ -58,8 +58,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final desktop =
-        MediaQuery.sizeOf(context).width >= 800 &&
+    final desktop = MediaQuery.sizeOf(context).width >= 800 &&
         MediaQuery.textScalerOf(context).scale(14) <= 20;
     final count = context.select<DownloadsProvider, int>((p) => p.activeCount);
     return PopScope(
@@ -70,27 +69,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       child: Scaffold(
         appBar: desktop
             ? AppBar(
-                backgroundColor: SabuflixTheme.background,
+                backgroundColor: SabuflixTheme.of(context).background,
                 toolbarHeight: 76,
                 titleSpacing: 24,
                 title: Row(
                   children: [
-                    const SabuflixWordmark(fontSize: 21),
-                    const SizedBox(width: 24),
+                    SabuflixWordmark(fontSize: 21),
+                    SizedBox(width: 24),
                     for (var i = 0; i < _labels.length; i++)
                       Flexible(
                         child: Padding(
-                          padding: const EdgeInsets.only(right: 4),
+                          padding: EdgeInsets.only(right: 4),
                           child: TextButton(
                             onPressed: () => _select(i),
                             style: TextButton.styleFrom(
                               foregroundColor: _index == i
-                                  ? SabuflixTheme.accent
-                                  : SabuflixTheme.textSecondary,
-                              backgroundColor: _index == i
-                                  ? SabuflixTheme.surface
-                                  : Colors.transparent,
-                              padding: const EdgeInsets.symmetric(
+                                  ? SabuflixTheme.of(context).accent
+                                  : SabuflixTheme.of(context).textSecondary,
+                              backgroundColor: Colors.transparent,
+                              padding: EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 18,
                               ),
@@ -116,7 +113,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       onPressed: () => Navigator.pushReplacement(
                         context,
                         MaterialPageRoute<void>(
-                          builder: (_) => const ProfileSelectionScreen(),
+                          builder: (_) => ProfileSelectionScreen(),
                         ),
                       ),
                       icon: CircleAvatar(
@@ -124,7 +121,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         backgroundColor: Color(
                           profiles.currentProfile?.colorValue ?? 0xFF4285F4,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.person_rounded,
                           size: 21,
                           color: Colors.white,
@@ -132,7 +129,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                 ],
               )
             : null,
@@ -142,19 +139,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             for (var i = 0; i < _pages.length; i++)
               TickerMode(
                 enabled: _index == i,
-                child: _visited.contains(i)
-                    ? _pages[i]
-                    : const SizedBox.shrink(),
+                child: _visited.contains(i) ? _pages[i] : SizedBox.shrink(),
               ),
           ],
         ),
         bottomNavigationBar: desktop
             ? null
             : DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: SabuflixTheme.background,
+                decoration: BoxDecoration(
+                  color: SabuflixTheme.of(context).background,
                   border: Border(
-                    top: BorderSide(color: Color(0xFF1C1C1E), width: .5),
+                    top: BorderSide(
+                        color: SabuflixTheme.of(context).border, width: .5),
                   ),
                 ),
                 child: SafeArea(
@@ -203,7 +199,9 @@ class _MobileNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? SabuflixTheme.accent : SabuflixTheme.textMuted;
+    final color = selected
+        ? SabuflixTheme.of(context).accent
+        : SabuflixTheme.of(context).textMuted;
     return Semantics(
       button: true,
       selected: selected,
@@ -233,10 +231,10 @@ class _MobileNavItem extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             AnimatedDefaultTextStyle(
               duration: SabuflixTheme.durationFast,
-              style: SabuflixTheme.caption(
+              style: SabuflixTheme.of(context).caption(
                 fontSize: 10.5,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: color,

@@ -32,40 +32,41 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final bottomInset = isMobile ? 118.0 : 32.0;
 
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       body: SafeArea(
         bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
+            constraints: BoxConstraints(maxWidth: 620),
             child: Consumer<DownloadsProvider>(
               builder: (context, downloads, child) {
                 if (!downloads.isSupported) {
                   return Center(
                       child: Padding(
-                          padding: const EdgeInsets.all(24),
+                          padding: EdgeInsets.all(24),
                           child:
                               Column(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.download_for_offline_outlined,
-                                size: 48),
-                            const SizedBox(height: 20),
+                            Icon(Icons.download_for_offline_outlined, size: 48),
+                            SizedBox(height: 20),
                             Text('Assista offline no aplicativo',
                                 textAlign: TextAlign.center,
-                                style: SabuflixTheme.title(fontSize: 22)),
-                            const SizedBox(height: 12),
+                                style: SabuflixTheme.of(context)
+                                    .title(fontSize: 22)),
+                            SizedBox(height: 12),
                             Text(
                                 'Para baixar filmes e episódios, use o Sabuflix no Android ou Windows.',
                                 textAlign: TextAlign.center,
-                                style: SabuflixTheme.body()),
+                                style: SabuflixTheme.of(context).body()),
                           ])));
                 }
                 if (downloads.isLoading) {
-                  return const Center(
+                  return Center(
                     child: SizedBox(
                       width: 26,
                       height: 26,
                       child: CircularProgressIndicator(
-                          color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
+                          color: SabuflixTheme.of(context).textPrimary,
+                          strokeWidth: 2.5),
                     ),
                   );
                 }
@@ -82,7 +83,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   children: [
                     _Header(downloads: downloads, centered: isMobile),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                      padding: EdgeInsets.fromLTRB(20, 4, 20, 14),
                       child: SabuSegmentedControl(
                         segments: [
                           'Filmes${movies.isEmpty ? '' : ' (${movies.length})'}',
@@ -97,12 +98,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                         duration: SabuflixTheme.durationFast,
                         child: _tab == 0
                             ? _MoviesList(
-                                key: const ValueKey('downloads-movies'),
+                                key: ValueKey('downloads-movies'),
                                 movies: movies,
                                 bottomInset: bottomInset,
                               )
                             : _SeriesList(
-                                key: const ValueKey('downloads-series'),
+                                key: ValueKey('downloads-series'),
                                 groups: series,
                                 bottomInset: bottomInset,
                               ),
@@ -142,7 +143,7 @@ class _Header extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, 18, 20, 16),
       child: Column(
         crossAxisAlignment:
             centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
@@ -150,36 +151,23 @@ class _Header extends StatelessWidget {
           Text(
             'Downloads',
             textAlign: centered ? TextAlign.center : TextAlign.start,
-            style: SabuflixTheme.display(fontSize: 32),
+            style: SabuflixTheme.of(context).display(fontSize: 32),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             pieces.join(' · '),
             textAlign: centered ? TextAlign.center : TextAlign.start,
-            style: SabuflixTheme.caption(
-                fontSize: 13, color: SabuflixTheme.textSecondary),
+            style: SabuflixTheme.of(context).caption(
+                fontSize: 13, color: SabuflixTheme.of(context).textSecondary),
           ),
           if (stalled) ...[
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             Align(
               alignment: centered ? Alignment.center : Alignment.centerLeft,
-              child: TextButton.icon(
+              child: ElevatedButton.icon(
                 onPressed: () => context.read<DownloadsProvider>().resumeAll(),
-                style: TextButton.styleFrom(
-                  foregroundColor: SabuflixTheme.accent,
-                  backgroundColor: SabuflixTheme.accent.withValues(alpha: 0.14),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: const StadiumBorder(),
-                ),
-                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                label: Text(
-                  'Retomar downloads',
-                  style: SabuflixTheme.caption(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: SabuflixTheme.accent),
-                ),
+                icon: Icon(Icons.play_arrow_rounded, size: 18),
+                label: const Text('Retomar downloads'),
               ),
             ),
           ],
@@ -208,10 +196,10 @@ class _MoviesList extends StatelessWidget {
     }
 
     return ListView.separated(
-      physics: const BouncingScrollPhysics(),
+      physics: BouncingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
       itemCount: movies.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => SizedBox(height: 10),
       itemBuilder: (context, index) => DownloadTile(item: movies[index]),
     );
   }
@@ -237,10 +225,10 @@ class _SeriesList extends StatelessWidget {
     }
 
     return ListView.separated(
-      physics: const BouncingScrollPhysics(),
+      physics: BouncingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
       itemCount: groups.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => SizedBox(height: 10),
       itemBuilder: (context, index) => _SeriesTile(group: groups[index]),
     );
   }
@@ -256,7 +244,7 @@ class _SeriesTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.05),
+      color: SabuflixTheme.of(context).surfaceLight,
       borderRadius: SabuflixTheme.radiusLg,
       child: InkWell(
         borderRadius: SabuflixTheme.radiusLg,
@@ -265,7 +253,7 @@ class _SeriesTile extends StatelessWidget {
           glassRoute(SeriesDownloadsScreen(mediaId: group.series.id)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10),
           child: Row(
             children: [
               ClipRRect(
@@ -276,17 +264,19 @@ class _SeriesTile extends StatelessWidget {
                   height: 68,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
-                      color: SabuflixTheme.surface, width: 46, height: 68),
+                      color: SabuflixTheme.of(context).surface,
+                      width: 46,
+                      height: 68),
                   errorWidget: (context, url, error) => Container(
-                    color: SabuflixTheme.surface,
+                    color: SabuflixTheme.of(context).surface,
                     width: 46,
                     height: 68,
-                    child: const Icon(Icons.live_tv_rounded,
-                        color: SabuflixTheme.textMuted, size: 18),
+                    child: Icon(Icons.live_tv_rounded,
+                        color: SabuflixTheme.of(context).textMuted, size: 18),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,22 +286,23 @@ class _SeriesTile extends StatelessWidget {
                       group.series.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: SabuflixTheme.title(fontSize: 15),
+                      style: SabuflixTheme.of(context).title(fontSize: 15),
                     ),
-                    const SizedBox(height: 3),
+                    SizedBox(height: 3),
                     Text(
                       group.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: SabuflixTheme.caption(
-                          fontSize: 12, color: SabuflixTheme.textSecondary),
+                      style: SabuflixTheme.of(context).caption(
+                          fontSize: 12,
+                          color: SabuflixTheme.of(context).textSecondary),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: SabuflixTheme.textMuted, size: 22),
-              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded,
+                  color: SabuflixTheme.of(context).textMuted, size: 22),
+              SizedBox(width: 4),
             ],
           ),
         ),
@@ -336,21 +327,21 @@ class _EmptyLibrary extends StatelessWidget {
             width: 78,
             height: 78,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
+              color: SabuflixTheme.of(context).surfaceLight,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.download_rounded,
-                size: 34, color: SabuflixTheme.textSecondary),
+            child: Icon(Icons.download_rounded,
+                size: 34, color: SabuflixTheme.of(context).textSecondary),
           ),
-          const SizedBox(height: 22),
+          SizedBox(height: 22),
           Text('Downloads',
               textAlign: TextAlign.center,
-              style: SabuflixTheme.display(fontSize: 30)),
-          const SizedBox(height: 10),
+              style: SabuflixTheme.of(context).display(fontSize: 30)),
+          SizedBox(height: 10),
           Text(
             'Baixe filmes e episódios para assistir sem internet. Eles ficam guardados aqui, separados por filmes e séries.',
             textAlign: TextAlign.center,
-            style: SabuflixTheme.body(fontSize: 14, height: 1.5),
+            style: SabuflixTheme.of(context).body(fontSize: 14, height: 1.5),
           ),
         ],
       ),
@@ -378,15 +369,15 @@ class _EmptySection extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 42, color: SabuflixTheme.textMuted),
-          const SizedBox(height: 16),
+          Icon(icon, size: 42, color: SabuflixTheme.of(context).textMuted),
+          SizedBox(height: 16),
           Text(title,
               textAlign: TextAlign.center,
-              style: SabuflixTheme.title(fontSize: 17)),
-          const SizedBox(height: 8),
+              style: SabuflixTheme.of(context).title(fontSize: 17)),
+          SizedBox(height: 8),
           Text(message,
               textAlign: TextAlign.center,
-              style: SabuflixTheme.body(fontSize: 14)),
+              style: SabuflixTheme.of(context).body(fontSize: 14)),
         ],
       ),
     );

@@ -138,7 +138,7 @@ class SabuflixTheme {
   static BorderRadius get radiusXl =>
       const BorderRadius.all(Radius.circular(8));
   static BorderRadius get radiusPill =>
-      const BorderRadius.all(Radius.circular(999));
+      const BorderRadius.all(Radius.circular(4));
 
   static const Duration durationFast = Duration(milliseconds: 220);
   static const Duration durationMed = Duration(milliseconds: 380);
@@ -146,186 +146,321 @@ class SabuflixTheme {
   static const Curve curveSpring = Curves.easeOutBack;
 
   static List<BoxShadow> get shadowSm => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: 0.4),
-      blurRadius: 14,
-      offset: const Offset(0, 4),
-    ),
-  ];
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.4),
+          blurRadius: 14,
+          offset: const Offset(0, 4),
+        ),
+      ];
 
   static List<BoxShadow> get shadowMd => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: 0.5),
-      blurRadius: 28,
-      offset: const Offset(0, 10),
-    ),
-  ];
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.5),
+          blurRadius: 28,
+          offset: const Offset(0, 10),
+        ),
+      ];
 
   static Border get glassBorder =>
       Border.all(color: Colors.white.withValues(alpha: 0.14), width: 0.6);
 
-  static ThemeData get themeData {
-    final base = ThemeData.dark().copyWith(
-      scaffoldBackgroundColor: background,
-      primaryColor: accent,
-      colorScheme: const ColorScheme.dark(
-        primary: accent,
-        secondary: accent,
-        surface: surface,
-        onSurface: textPrimary,
-        onPrimary: background,
-        onSurfaceVariant: textSecondary,
-        outline: borderStrong,
-        error: Color(0xFFFF453A),
+  static SabuPalette of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light
+          ? const SabuPalette.light()
+          : const SabuPalette.dark();
+
+  static ThemeData get themeData => _theme(Brightness.dark);
+  static ThemeData get lightThemeData => _theme(Brightness.light);
+  static const brandBlue = Color(0xFF204FE0);
+
+  static ThemeData _theme(Brightness brightness) {
+    final p = brightness == Brightness.light
+        ? const SabuPalette.light()
+        : const SabuPalette.dark();
+    final shape = RoundedRectangleBorder(borderRadius: radiusMd);
+    final text = const TextStyle(
+        fontFamily: 'Manrope',
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -.4);
+    final primary = ElevatedButton.styleFrom(
+      backgroundColor: brandBlue,
+      foregroundColor: Colors.white,
+      disabledBackgroundColor: p.surfaceLight,
+      disabledForegroundColor: p.textMuted,
+      minimumSize: const Size(48, 52),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      shape: shape,
+      textStyle: text,
+    );
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      fontFamily: 'Manrope',
+      scaffoldBackgroundColor: p.background,
+      colorScheme:
+          ColorScheme.fromSeed(seedColor: brandBlue, brightness: brightness)
+              .copyWith(
+        primary: brandBlue,
+        onPrimary: Colors.white,
+        secondary: p.accent,
+        onSecondary: Colors.white,
+        surface: p.surface,
+        onSurface: p.textPrimary,
+        onSurfaceVariant: p.textSecondary,
+        outline: p.borderStrong,
+        outlineVariant: p.border,
+        error: p.error,
+        surfaceTint: Colors.transparent,
       ),
-      splashFactory: InkRipple.splashFactory,
-      splashColor: Colors.transparent,
-      highlightColor: Colors.white12,
-      focusColor: Colors.white24,
-      dividerColor: border,
-      textTheme: ThemeData.dark().textTheme
-          .apply(fontFamily: 'Manrope')
-          .copyWith(
-            bodyLarge: TextStyle(fontFamily: 'Manrope', color: textPrimary),
-            bodyMedium: TextStyle(fontFamily: 'Manrope', color: textSecondary),
-            titleLarge: TextStyle(
+      textTheme: (brightness == Brightness.light
+              ? ThemeData.light()
+              : ThemeData.dark())
+          .textTheme
+          .apply(
               fontFamily: 'Manrope',
-              color: textPrimary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.6,
-            ),
-          ),
+              bodyColor: p.textPrimary,
+              displayColor: p.textPrimary),
+      dividerColor: p.border,
+      focusColor: p.accent.withValues(alpha: .2),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: false,
-        scrolledUnderElevation: 0,
-        iconTheme: const IconThemeData(color: textPrimary),
-        titleTextStyle: title(fontSize: 20, fontWeight: FontWeight.w800),
-      ),
-      iconTheme: const IconThemeData(color: textSecondary, size: 22),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF204FE0),
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: surfaceLight,
+          backgroundColor: p.background,
+          foregroundColor: p.textPrimary,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
-          splashFactory: NoSplash.splashFactory,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(4)),
-          ),
-          textStyle: TextStyle(
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-            letterSpacing: -0.4,
-          ),
-        ),
-      ),
+          scrolledUnderElevation: 0,
+          centerTitle: false,
+          titleTextStyle: p.title(fontSize: 20)),
+      iconTheme: IconThemeData(color: p.textSecondary, size: 22),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: primary),
+      filledButtonTheme: FilledButtonThemeData(style: primary),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: textPrimary,
-          backgroundColor: Colors.white.withValues(alpha: 0.08),
-          side: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(4)),
-          ),
-          textStyle: TextStyle(
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-            letterSpacing: -0.4,
-          ),
-        ),
-      ),
+          style: OutlinedButton.styleFrom(
+        foregroundColor: p.textPrimary,
+        backgroundColor: p.secondaryFill,
+        side: BorderSide(color: p.borderStrong),
+        shape: shape,
+        minimumSize: const Size(48, 52),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        textStyle: text,
+      )),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: textSecondary,
-          splashFactory: NoSplash.splashFactory,
-          textStyle: TextStyle(
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-            letterSpacing: -0.4,
-          ),
-        ),
-      ),
+          style: TextButton.styleFrom(
+        foregroundColor: p.accent,
+        shape: shape,
+        minimumSize: const Size(48, 48),
+        textStyle: text,
+      )),
+      iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(
+        foregroundColor: p.textPrimary,
+        minimumSize: const Size(48, 48),
+        shape: shape,
+      )),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.08),
-        hintStyle: body(color: textMuted),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        fillColor: p.surface,
+        hintStyle: p.body(color: p.textMuted),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: radiusMd,
-          borderSide: BorderSide.none,
-        ),
+            borderRadius: radiusMd, borderSide: BorderSide(color: p.border)),
         enabledBorder: OutlineInputBorder(
-          borderRadius: radiusMd,
-          borderSide: BorderSide.none,
-        ),
+            borderRadius: radiusMd, borderSide: BorderSide(color: p.border)),
         focusedBorder: OutlineInputBorder(
-          borderRadius: radiusMd,
-          borderSide: const BorderSide(color: accent, width: 1.2),
-        ),
+            borderRadius: radiusMd,
+            borderSide: BorderSide(color: p.accent, width: 2)),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: Colors.white.withValues(alpha: 0.08),
-        selectedColor: textPrimary,
-        labelStyle: TextStyle(
-          fontFamily: 'Manrope',
-          color: textSecondary,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
-        secondaryLabelStyle: TextStyle(
-          fontFamily: 'Manrope',
-          color: background,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-        side: BorderSide.none,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(4)),
-        ),
-      ),
-      sliderTheme: const SliderThemeData(
-        trackHeight: 3,
-        activeTrackColor: Colors.white,
-        inactiveTrackColor: Color(0x33FFFFFF),
-        thumbColor: Colors.white,
-        overlayColor: Color(0x1FFFFFFF),
-        thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6),
-      ),
+          backgroundColor: p.surface,
+          selectedColor: brandBlue,
+          labelStyle: WidgetStateTextStyle.resolveWith((states) =>
+              text.copyWith(
+                  fontSize: 13,
+                  color: states.contains(WidgetState.selected)
+                      ? Colors.white
+                      : p.textPrimary)),
+          secondaryLabelStyle: text.copyWith(fontSize: 13, color: Colors.white),
+          checkmarkColor: Colors.white,
+          side: BorderSide(color: p.border),
+          shape: shape,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+      dialogTheme: DialogThemeData(
+          backgroundColor: p.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: shape,
+          titleTextStyle: p.headline(fontSize: 24),
+          contentTextStyle: p.body()),
+      bottomSheetTheme: BottomSheetThemeData(
+          backgroundColor: p.surface,
+          modalBackgroundColor: p.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: radiusLg)),
+      popupMenuTheme: PopupMenuThemeData(
+          color: p.elevated,
+          surfaceTintColor: Colors.transparent,
+          textStyle: p.body(color: p.textPrimary),
+          shape: shape),
+      sliderTheme: SliderThemeData(
+          activeTrackColor: brandBlue,
+          thumbColor: brandBlue,
+          inactiveTrackColor: p.border,
+          trackHeight: 3),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+          color: p.accent, linearTrackColor: p.border),
       tooltipTheme: TooltipThemeData(
-        decoration: BoxDecoration(
-          color: elevated,
-          borderRadius: const BorderRadius.all(Radius.circular(8)),
-        ),
-        textStyle: TextStyle(
-          fontFamily: 'Manrope',
-          color: textPrimary,
-          fontSize: 12,
-        ),
-      ),
+          decoration: BoxDecoration(color: p.elevated, borderRadius: radiusMd),
+          textStyle: p.caption(color: p.textPrimary)),
       snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: elevated,
-        contentTextStyle: TextStyle(
-          fontFamily: 'Manrope',
-          color: textPrimary,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: radiusMd),
-      ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: textPrimary,
-      ),
+          backgroundColor: p.elevated,
+          contentTextStyle: p.body(color: p.textPrimary),
+          behavior: SnackBarBehavior.floating,
+          shape: shape),
     );
-    return base;
+  }
+}
+
+/// Context-scoped colors: multiple themes can coexist (e.g. a dark player
+/// within the light app), without mutable global color state.
+class SabuPalette {
+  final bool isLight;
+  const SabuPalette.light() : isLight = true;
+  const SabuPalette.dark() : isLight = false;
+  Color get background =>
+      isLight ? const Color(0xFFFAF9F6) : SabuflixTheme.background;
+  Color get surface =>
+      isLight ? const Color(0xFFFFFFFF) : SabuflixTheme.surface;
+  Color get surfaceLight =>
+      isLight ? const Color(0xFFF0EFEB) : SabuflixTheme.surfaceLight;
+  Color get elevated =>
+      isLight ? const Color(0xFFFFFFFF) : SabuflixTheme.elevated;
+  Color get border => isLight ? const Color(0xFFDDDED9) : SabuflixTheme.border;
+  Color get borderStrong =>
+      isLight ? const Color(0xFF868B91) : const Color(0xFF51565E);
+  Color get textPrimary =>
+      isLight ? const Color(0xFF16181C) : SabuflixTheme.textPrimary;
+  Color get textSecondary =>
+      isLight ? const Color(0xFF50565F) : SabuflixTheme.textSecondary;
+  Color get textMuted =>
+      isLight ? const Color(0xFF656C76) : SabuflixTheme.textMuted;
+  Color get accent => isLight ? SabuflixTheme.brandBlue : SabuflixTheme.accent;
+  Color get accentHover =>
+      isLight ? const Color(0xFF1236B0) : SabuflixTheme.accentHover;
+  Color get accentMuted => SabuflixTheme.accentMuted;
+  Color get gold => isLight ? const Color(0xFF806000) : SabuflixTheme.gold;
+  Color get success =>
+      isLight ? const Color(0xFF18703A) : SabuflixTheme.success;
+  Color get error =>
+      isLight ? const Color(0xFFBA242B) : const Color(0xFFFF777D);
+  Color get secondaryFill =>
+      isLight ? const Color(0xFFF1F2F0) : const Color(0xFF222529);
+  TextStyle display({
+    double fontSize = 40,
+    FontWeight fontWeight = FontWeight.w800,
+    Color? color,
+    double height = 1.05,
+    double letterSpacing = -1.4,
+  }) {
+    return TextStyle(
+      fontFamily: 'Manrope',
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color ?? textPrimary,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  TextStyle headline({
+    double fontSize = 30,
+    FontWeight fontWeight = FontWeight.w800,
+    Color? color,
+    double height = 1.1,
+    double letterSpacing = -0.9,
+  }) {
+    return TextStyle(
+      fontFamily: 'Manrope',
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color ?? textPrimary,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  TextStyle title({
+    double fontSize = 18,
+    FontWeight fontWeight = FontWeight.w700,
+    Color? color,
+    double height = 1.2,
+    double letterSpacing = -0.5,
+  }) {
+    return TextStyle(
+      fontFamily: 'Manrope',
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color ?? textPrimary,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  TextStyle body({
+    double fontSize = 15,
+    FontWeight fontWeight = FontWeight.w500,
+    Color? color,
+    double height = 1.45,
+  }) {
+    return TextStyle(
+      fontFamily: 'Manrope',
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color ?? textSecondary,
+      height: height,
+      letterSpacing: -0.2,
+    );
+  }
+
+  TextStyle label({
+    double fontSize = 12,
+    FontWeight fontWeight = FontWeight.w700,
+    Color? color,
+    double letterSpacing = 0.6,
+  }) {
+    return TextStyle(
+      fontFamily: 'Manrope',
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color ?? textMuted,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  TextStyle caption({
+    double fontSize = 12,
+    FontWeight fontWeight = FontWeight.w500,
+    Color? color,
+    double letterSpacing = -0.25,
+  }) {
+    return TextStyle(
+      fontFamily: 'Manrope',
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color ?? textSecondary,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  TextStyle wordmark({double fontSize = 20, Color? color}) {
+    return TextStyle(
+      fontFamily: 'Manrope',
+      fontSize: fontSize,
+      fontWeight: FontWeight.w800,
+      color: color ?? textPrimary,
+      letterSpacing: -1.0,
+      height: 1.0,
+    );
   }
 }

@@ -24,7 +24,7 @@ class DownloadTile extends StatelessWidget {
     final downloads = context.read<DownloadsProvider>();
 
     return Material(
-      color: Colors.white.withValues(alpha: 0.05),
+      color: SabuflixTheme.of(context).surfaceLight,
       borderRadius: SabuflixTheme.radiusLg,
       child: InkWell(
         borderRadius: SabuflixTheme.radiusLg,
@@ -32,7 +32,7 @@ class DownloadTile extends StatelessWidget {
             ? () => playDownload(context, item)
             : () => _toggle(downloads),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -44,17 +44,19 @@ class DownloadTile extends StatelessWidget {
                   height: 68,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
-                      color: SabuflixTheme.surface, width: 46, height: 68),
+                      color: SabuflixTheme.of(context).surface,
+                      width: 46,
+                      height: 68),
                   errorWidget: (context, url, error) => Container(
-                    color: SabuflixTheme.surface,
+                    color: SabuflixTheme.of(context).surface,
                     width: 46,
                     height: 68,
-                    child: const Icon(Icons.movie_outlined,
-                        color: SabuflixTheme.textMuted, size: 18),
+                    child: Icon(Icons.movie_outlined,
+                        color: SabuflixTheme.of(context).textMuted, size: 18),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,33 +68,33 @@ class DownloadTile extends StatelessWidget {
                           : item.displayTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: SabuflixTheme.title(fontSize: 15),
+                      style: SabuflixTheme.of(context).title(fontSize: 15),
                     ),
-                    const SizedBox(height: 3),
+                    SizedBox(height: 3),
                     Text(
                       _metaLine,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: SabuflixTheme.caption(
+                      style: SabuflixTheme.of(context).caption(
                         fontSize: 12,
                         color: item.status == DownloadStatus.failed
-                            ? const Color(0xFFFF453A)
-                            : SabuflixTheme.textSecondary,
+                            ? Color(0xFFFF453A)
+                            : SabuflixTheme.of(context).textSecondary,
                       ),
                     ),
                     if (!item.isCompleted) ...[
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       ClipRRect(
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(3)),
+                        borderRadius: BorderRadius.all(Radius.circular(3)),
                         child: LinearProgressIndicator(
                           value: item.progress > 0 ? item.progress : null,
                           minHeight: 3,
-                          backgroundColor: Colors.white.withValues(alpha: 0.12),
+                          backgroundColor:
+                              SabuflixTheme.of(context).surfaceLight,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             item.status == DownloadStatus.failed
-                                ? const Color(0xFFFF453A)
-                                : SabuflixTheme.accent,
+                                ? Color(0xFFFF453A)
+                                : SabuflixTheme.of(context).accent,
                           ),
                         ),
                       ),
@@ -100,7 +102,7 @@ class DownloadTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _ActionButton(
                 icon: _actionIcon,
                 highlighted: item.isCompleted,
@@ -164,22 +166,20 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: highlighted
-          ? SabuflixTheme.accent
-          : Colors.white.withValues(alpha: 0.10),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(icon,
-              size: 20,
-              color: highlighted ? Colors.white : SabuflixTheme.textPrimary),
-        ),
+    return IconButton(
+      onPressed: onTap,
+      tooltip: icon == Icons.pause_rounded
+          ? 'Pausar download'
+          : 'Continuar download',
+      style: IconButton.styleFrom(
+        backgroundColor: highlighted
+            ? SabuflixTheme.brandBlue
+            : SabuflixTheme.of(context).secondaryFill,
+        foregroundColor:
+            highlighted ? Colors.white : SabuflixTheme.of(context).textPrimary,
+        side: BorderSide(color: SabuflixTheme.of(context).borderStrong),
       ),
+      icon: Icon(icon, size: 20),
     );
   }
 }
@@ -192,9 +192,9 @@ class _MoreButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_horiz_rounded,
-          color: SabuflixTheme.textSecondary, size: 20),
-      color: SabuflixTheme.elevated,
+      icon: Icon(Icons.more_horiz_rounded,
+          color: SabuflixTheme.of(context).textSecondary, size: 20),
+      color: SabuflixTheme.of(context).elevated,
       shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusMd),
       onSelected: (value) async {
         final downloads = context.read<DownloadsProvider>();
@@ -213,8 +213,8 @@ class _MoreButton extends StatelessWidget {
           value: 'delete',
           child: Text(
             'Excluir do aparelho',
-            style: SabuflixTheme.body(
-                fontSize: 14, color: SabuflixTheme.textPrimary),
+            style: SabuflixTheme.of(context).body(
+                fontSize: 14, color: SabuflixTheme.of(context).textPrimary),
           ),
         ),
       ],

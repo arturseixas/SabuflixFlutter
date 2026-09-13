@@ -19,7 +19,7 @@ class ContinueWatchingRow extends StatelessWidget {
       builder: (context, provider, child) {
         final entries =
             context.watch<SettingsProvider>().sortedProgress(provider.entries);
-        if (entries.isEmpty) return const SizedBox.shrink();
+        if (entries.isEmpty) return SizedBox.shrink();
 
         final isMobile = MediaQuery.of(context).size.width < 800;
         final cardWidth = isMobile ? 232.0 : 268.0;
@@ -29,23 +29,23 @@ class ContinueWatchingRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 14),
+              padding: EdgeInsets.fromLTRB(24, 20, 24, 14),
               child: Text(
                 'Continuar Assistindo',
-                style: SabuflixTheme.title(
-                    fontSize: 19, fontWeight: FontWeight.w800),
+                style: SabuflixTheme.of(context)
+                    .title(fontSize: 19, fontWeight: FontWeight.w800),
               ),
             ),
             SizedBox(
               height: rowHeight,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                physics: BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: 16),
                 itemCount: entries.length,
                 itemBuilder: (context, index) {
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 8),
                     child:
                         _ContinueCard(entry: entries[index], width: cardWidth),
                   );
@@ -86,9 +86,9 @@ class _ContinueCard extends StatelessWidget {
                       imageUrl: entry.media.fullBackdropPath,
                       fit: BoxFit.cover,
                       placeholder: (context, url) =>
-                          Container(color: SabuflixTheme.surface),
+                          Container(color: SabuflixTheme.of(context).surface),
                       errorWidget: (context, url, error) =>
-                          Container(color: SabuflixTheme.surface),
+                          Container(color: SabuflixTheme.of(context).surface),
                     ),
                     Container(
                       decoration: BoxDecoration(
@@ -114,7 +114,7 @@ class _ContinueCard extends StatelessWidget {
                               color: Colors.white.withValues(alpha: 0.5),
                               width: 1),
                         ),
-                        child: const Icon(Icons.play_arrow_rounded,
+                        child: Icon(Icons.play_arrow_rounded,
                             color: Colors.white, size: 26),
                       ),
                     ),
@@ -128,22 +128,21 @@ class _ContinueCard extends StatelessWidget {
                         children: [
                           Text(
                             entry.remainingLabel,
-                            style: SabuflixTheme.caption(
+                            style: SabuflixTheme.of(context).caption(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white),
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           ClipRRect(
-                            borderRadius:
-                                const BorderRadius.all(Radius.circular(2)),
+                            borderRadius: BorderRadius.all(Radius.circular(2)),
                             child: LinearProgressIndicator(
                               value: entry.progress,
                               minHeight: 3,
                               backgroundColor:
                                   Colors.white.withValues(alpha: 0.3),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                  SabuflixTheme.accent),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  SabuflixTheme.of(context).accent),
                             ),
                           ),
                         ],
@@ -161,23 +160,23 @@ class _ContinueCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 9),
+          SizedBox(height: 9),
           Text(
             entry.media.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: SabuflixTheme.caption(
+            style: SabuflixTheme.of(context).caption(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: SabuflixTheme.textPrimary),
+                color: SabuflixTheme.of(context).textPrimary),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             entry.subtitleLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: SabuflixTheme.caption(
-                fontSize: 11, color: SabuflixTheme.textMuted),
+            style: SabuflixTheme.of(context).caption(
+                fontSize: 11, color: SabuflixTheme.of(context).textMuted),
           ),
         ],
       ),
@@ -205,7 +204,7 @@ class _RemoveButton extends StatelessWidget {
           color: Colors.black.withValues(alpha: 0.55),
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+        child: Icon(Icons.close_rounded, color: Colors.white, size: 14),
       ),
     );
   }

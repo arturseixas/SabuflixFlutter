@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sabuflix/models/media_item.dart';
 import 'package:sabuflix/models/watch_progress.dart';
@@ -18,6 +19,32 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test('aparência persiste ao reiniciar e aceita preferência do sistema',
+      () async {
+    final settings = SettingsProvider();
+    await Future<void>.delayed(Duration.zero);
+    expect(settings.themeMode, ThemeMode.dark);
+    await settings.setThemeMode(ThemeMode.light);
+    final restarted = SettingsProvider();
+    await Future<void>.delayed(Duration.zero);
+    expect(restarted.themeMode, ThemeMode.light);
+    await restarted.setThemeMode(ThemeMode.system);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('sabuflix_setting_theme_mode'), 'system');
+    expect(settings.compactPosters, isFalse);
+    settings.dispose();
+    restarted.dispose();
+  });
+
+  test('preferência de aparência inválida usa modo escuro', () async {
+    SharedPreferences.setMockInitialValues(
+        {'sabuflix_setting_theme_mode': 'invalid'});
+    final settings = SettingsProvider();
+    await Future<void>.delayed(Duration.zero);
+    expect(settings.themeMode, ThemeMode.dark);
+    settings.dispose();
+  });
 
   test('oculta lançamentos futuros sem descartar datas desconhecidas',
       () async {

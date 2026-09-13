@@ -20,7 +20,7 @@ class SeriesDownloadsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       body: Consumer<DownloadsProvider>(
         builder: (context, downloads, child) {
           final group = downloads.seriesById(mediaId);
@@ -30,23 +30,23 @@ class SeriesDownloadsScreen extends StatelessWidget {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (Navigator.canPop(context)) Navigator.pop(context);
             });
-            return const SizedBox.shrink();
+            return SizedBox.shrink();
           }
 
           final seasons = group.seasons;
 
           return CustomScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: BouncingScrollPhysics(),
             slivers: [
               SliverAppBar(
                 pinned: true,
                 expandedHeight: 232,
-                backgroundColor: SabuflixTheme.background,
+                backgroundColor: SabuflixTheme.of(context).background,
                 actions: [
                   IconButton(
                     tooltip: 'Excluir todos os episódios',
-                    icon: const Icon(Icons.delete_outline_rounded,
-                        color: SabuflixTheme.textSecondary),
+                    icon: Icon(Icons.delete_outline_rounded,
+                        color: SabuflixTheme.of(context).textSecondary),
                     onPressed: () async {
                       final confirmed = await confirmDestructive(
                         context,
@@ -62,13 +62,13 @@ class SeriesDownloadsScreen extends StatelessWidget {
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  titlePadding: const EdgeInsets.fromLTRB(56, 0, 56, 14),
+                  titlePadding: EdgeInsets.fromLTRB(56, 0, 56, 14),
                   centerTitle: true,
                   title: Text(
                     group.series.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: SabuflixTheme.title(fontSize: 16),
+                    style: SabuflixTheme.of(context).title(fontSize: 16),
                   ),
                   background: Stack(
                     fit: StackFit.expand,
@@ -78,20 +78,24 @@ class SeriesDownloadsScreen extends StatelessWidget {
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
                         placeholder: (context, url) =>
-                            Container(color: SabuflixTheme.surface),
+                            Container(color: SabuflixTheme.of(context).surface),
                         errorWidget: (context, url, error) =>
-                            Container(color: SabuflixTheme.surface),
+                            Container(color: SabuflixTheme.of(context).surface),
                       ),
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            stops: const [0.0, 0.55, 1.0],
+                            stops: [0.0, 0.55, 1.0],
                             colors: [
-                              SabuflixTheme.background.withValues(alpha: 0.45),
-                              SabuflixTheme.background.withValues(alpha: 0.55),
-                              SabuflixTheme.background,
+                              SabuflixTheme.of(context)
+                                  .background
+                                  .withValues(alpha: 0.45),
+                              SabuflixTheme.of(context)
+                                  .background
+                                  .withValues(alpha: 0.55),
+                              SabuflixTheme.of(context).background,
                             ],
                           ),
                         ),
@@ -102,13 +106,14 @@ class SeriesDownloadsScreen extends StatelessWidget {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 18),
+                  padding: EdgeInsets.fromLTRB(20, 6, 20, 18),
                   child: Center(
                     child: Text(
                       '${group.episodes.length} ${group.episodes.length == 1 ? 'episódio' : 'episódios'}'
                       ' · ${formatBytes(group.totalBytes)}',
-                      style: SabuflixTheme.caption(
-                          fontSize: 13, color: SabuflixTheme.textSecondary),
+                      style: SabuflixTheme.of(context).caption(
+                          fontSize: 13,
+                          color: SabuflixTheme.of(context).textSecondary),
                     ),
                   ),
                 ),
@@ -116,28 +121,29 @@ class SeriesDownloadsScreen extends StatelessWidget {
               for (final season in seasons) ...[
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                    padding: EdgeInsets.fromLTRB(20, 10, 20, 10),
                     child: Text(
                       'TEMPORADA $season',
-                      style: SabuflixTheme.label(
-                          fontSize: 11, color: SabuflixTheme.textMuted),
+                      style: SabuflixTheme.of(context).label(
+                          fontSize: 11,
+                          color: SabuflixTheme.of(context).textMuted),
                     ),
                   ),
                 ),
                 SliverList.separated(
                   itemCount: group.episodesOfSeason(season).length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, __) => SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final episodes = group.episodesOfSeason(season);
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 16),
                       child: DownloadTile(
                           item: episodes[index], showEpisodeTag: true),
                     );
                   },
                 ),
               ],
-              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+              SliverToBoxAdapter(child: SizedBox(height: 40)),
             ],
           );
         },

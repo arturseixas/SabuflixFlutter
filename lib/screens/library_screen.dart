@@ -29,30 +29,30 @@ class LibraryScreen extends StatelessWidget {
     final watched = context.watch<WatchedProvider>().items;
 
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: BouncingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
+                  constraints: BoxConstraints(maxWidth: 1100),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+                    padding: EdgeInsets.fromLTRB(24, 28, 24, 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Biblioteca',
-                            style: SabuflixTheme.headline(
-                                fontSize: width < 500 ? 28 : 34)),
-                        const SizedBox(height: 8),
+                            style: SabuflixTheme.of(context)
+                                .headline(fontSize: width < 500 ? 28 : 34)),
+                        SizedBox(height: 8),
                         Text(
                           'Seus títulos, playlists e downloads em um só lugar.',
-                          style: SabuflixTheme.body(fontSize: 14),
+                          style: SabuflixTheme.of(context).body(fontSize: 14),
                         ),
-                        const SizedBox(height: 26),
+                        SizedBox(height: 26),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final columns = constraints.maxWidth >= 840
@@ -74,8 +74,8 @@ class LibraryScreen extends StatelessWidget {
                                   title: 'Minha Lista',
                                   detail:
                                       '${favorites.length} ${favorites.length == 1 ? 'título' : 'títulos'}',
-                                  onTap: () => Navigator.push(context,
-                                      glassRoute(const MyListScreen())),
+                                  onTap: () => Navigator.push(
+                                      context, glassRoute(MyListScreen())),
                                 ),
                                 _LibraryTile(
                                   width: cardWidth,
@@ -83,8 +83,8 @@ class LibraryScreen extends StatelessWidget {
                                   title: 'Playlists',
                                   detail:
                                       '${playlists.length} ${playlists.length == 1 ? 'coleção' : 'coleções'}',
-                                  onTap: () => Navigator.push(context,
-                                      glassRoute(const PlaylistsScreen())),
+                                  onTap: () => Navigator.push(
+                                      context, glassRoute(PlaylistsScreen())),
                                 ),
                                 _LibraryTile(
                                   width: cardWidth,
@@ -94,8 +94,8 @@ class LibraryScreen extends StatelessWidget {
                                       ? '${downloads.activeCount} em andamento'
                                       : '${downloads.completedCount} disponíveis',
                                   badge: downloads.activeCount > 0,
-                                  onTap: () => Navigator.push(context,
-                                      glassRoute(const DownloadsScreen())),
+                                  onTap: () => Navigator.push(
+                                      context, glassRoute(DownloadsScreen())),
                                 ),
                                 _LibraryTile(
                                   width: cardWidth,
@@ -104,27 +104,26 @@ class LibraryScreen extends StatelessWidget {
                                   detail:
                                       '${watched.length} ${watched.length == 1 ? 'título' : 'títulos'}',
                                   onTap: () => Navigator.push(context,
-                                      glassRoute(const WatchedHistoryScreen())),
+                                      glassRoute(WatchedHistoryScreen())),
                                 ),
                               ],
                             );
                           },
                         ),
                         if (favorites.isNotEmpty) ...[
-                          const SizedBox(height: 36),
+                          SizedBox(height: 36),
                           _SectionHeading(
                             title: 'Salvos recentemente',
                             onTap: () => Navigator.push(
-                                context, glassRoute(const MyListScreen())),
+                                context, glassRoute(MyListScreen())),
                           ),
-                          const SizedBox(height: 14),
+                          SizedBox(height: 14),
                           SizedBox(
                             height: 252,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
                               itemCount: favorites.take(10).length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 16),
+                              separatorBuilder: (_, __) => SizedBox(width: 16),
                               itemBuilder: (context, index) => MediaCard(
                                   media: favorites.reversed.elementAt(index)),
                             ),
@@ -188,7 +187,7 @@ class _LibraryTileState extends State<_LibraryTile> {
                 onTap: widget.onTap,
                 borderRadius: SabuflixTheme.radiusLg,
                 child: Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: EdgeInsets.all(18),
                   child: Row(
                     children: [
                       Stack(
@@ -198,42 +197,46 @@ class _LibraryTileState extends State<_LibraryTile> {
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color:
-                                  SabuflixTheme.accent.withValues(alpha: 0.13),
+                              color: SabuflixTheme.of(context)
+                                  .accent
+                                  .withValues(alpha: 0.13),
                               borderRadius: SabuflixTheme.radiusMd,
                             ),
                             child: Icon(widget.icon,
-                                color: SabuflixTheme.accent, size: 24),
+                                color: SabuflixTheme.of(context).accent,
+                                size: 24),
                           ),
                           if (widget.badge)
-                            const Positioned(
+                            Positioned(
                               top: -2,
                               right: -2,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                    color: SabuflixTheme.accent,
+                                    color: SabuflixTheme.of(context).accent,
                                     shape: BoxShape.circle),
                                 child: SizedBox(width: 9, height: 9),
                               ),
                             ),
                         ],
                       ),
-                      const SizedBox(width: 15),
+                      SizedBox(width: 15),
                       Expanded(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(widget.title,
-                                style: SabuflixTheme.title(fontSize: 15)),
-                            const SizedBox(height: 5),
+                                style: SabuflixTheme.of(context)
+                                    .title(fontSize: 15)),
+                            SizedBox(height: 5),
                             Text(widget.detail,
-                                style: SabuflixTheme.caption(fontSize: 12)),
+                                style: SabuflixTheme.of(context)
+                                    .caption(fontSize: 12)),
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right_rounded,
-                          color: SabuflixTheme.textMuted),
+                      Icon(Icons.chevron_right_rounded,
+                          color: SabuflixTheme.of(context).textMuted),
                     ],
                   ),
                 ),
@@ -256,8 +259,10 @@ class _SectionHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(title, style: SabuflixTheme.title(fontSize: 19))),
-        TextButton(onPressed: onTap, child: const Text('Ver tudo')),
+        Expanded(
+            child: Text(title,
+                style: SabuflixTheme.of(context).title(fontSize: 19))),
+        TextButton(onPressed: onTap, child: Text('Ver tudo')),
       ],
     );
   }

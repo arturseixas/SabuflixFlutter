@@ -17,27 +17,28 @@ class MyListScreen extends StatelessWidget {
     final bottomInset = screenWidth < 800 ? 118.0 : 32.0;
 
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       appBar: AppBar(
-        backgroundColor: SabuflixTheme.background,
+        backgroundColor: SabuflixTheme.of(context).background,
         title: Row(
           children: [
             Text('Minha Lista',
-                style: SabuflixTheme.title(
-                    fontSize: 20, fontWeight: FontWeight.w700)),
+                style: SabuflixTheme.of(context)
+                    .title(fontSize: 20, fontWeight: FontWeight.w700)),
             if (favorites.isNotEmpty) ...[
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                padding: EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
-                  color: SabuflixTheme.surfaceLight,
+                  color: SabuflixTheme.of(context).surfaceLight,
                   borderRadius: SabuflixTheme.radiusPill,
-                  border: Border.all(color: SabuflixTheme.border),
+                  border: Border.all(color: SabuflixTheme.of(context).border),
                 ),
                 child: Text(
                   '${favorites.length}',
-                  style: SabuflixTheme.label(
-                      fontSize: 12, color: SabuflixTheme.textSecondary),
+                  style: SabuflixTheme.of(context).label(
+                      fontSize: 12,
+                      color: SabuflixTheme.of(context).textSecondary),
                 ),
               ),
             ],
@@ -45,12 +46,13 @@ class MyListScreen extends StatelessWidget {
         ),
       ),
       body: favoritesProvider.isLoading
-          ? const Center(
+          ? Center(
               child: SizedBox(
                 width: 26,
                 height: 26,
                 child: CircularProgressIndicator(
-                    color: SabuflixTheme.textPrimary, strokeWidth: 2.5),
+                    color: SabuflixTheme.of(context).textPrimary,
+                    strokeWidth: 2.5),
               ),
             )
           : favorites.isEmpty
@@ -60,25 +62,26 @@ class MyListScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.bookmark_border_rounded,
-                            size: 52, color: SabuflixTheme.textMuted),
-                        const SizedBox(height: 18),
+                        Icon(Icons.bookmark_border_rounded,
+                            size: 52,
+                            color: SabuflixTheme.of(context).textMuted),
+                        SizedBox(height: 18),
                         Text(
                           'Sua lista está vazia',
-                          style: SabuflixTheme.title(fontSize: 17),
+                          style: SabuflixTheme.of(context).title(fontSize: 17),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           'Adicione filmes e séries para assistir mais tarde.',
                           textAlign: TextAlign.center,
-                          style: SabuflixTheme.body(fontSize: 14),
+                          style: SabuflixTheme.of(context).body(fontSize: 14),
                         ),
                       ],
                     ),
                   ),
                 )
               : GridView.builder(
-                  physics: const BouncingScrollPhysics(),
+                  physics: BouncingScrollPhysics(),
                   padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,

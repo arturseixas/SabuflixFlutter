@@ -40,38 +40,62 @@ class LocalCatalog extends TMDBService {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
-  for (final width in [320.0, 800.0, 1440.0]) {
-    testWidgets('navigation remains usable at $width', (tester) async {
-      tester.view.physicalSize = Size(width, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(MultiProvider(
-          providers: [
-            ChangeNotifierProvider(
-                create: (_) => CatalogProvider(service: LocalCatalog())),
-            ChangeNotifierProvider(create: (_) => ProfileProvider()),
-            ChangeNotifierProvider(create: (_) => DownloadsProvider()),
-            ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
-            ChangeNotifierProvider(create: (_) => FavoritesProvider()),
-            ChangeNotifierProvider(create: (_) => WatchedProvider()),
-            ChangeNotifierProvider(create: (_) => PlaylistProvider()),
-            ChangeNotifierProvider(create: (_) => SearchProvider()),
-            ChangeNotifierProvider(create: (_) => SettingsProvider()),
-          ],
-          child: MaterialApp(
-              theme: SabuflixTheme.themeData,
-              home: const MainNavigationScreen())));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Pesquisar').first);
-      await tester.pumpAndSettle();
-      expect(find.byType(TextField), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Ajustes').first);
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox());
-    });
+  for (final mode in [ThemeMode.dark, ThemeMode.light]) {
+    for (final width in [320.0, 800.0, 1440.0]) {
+      testWidgets('navigation remains usable at $width in ${mode.name}',
+          (tester) async {
+        SharedPreferences.setMockInitialValues(
+            {'sabuflix_setting_theme_mode': mode.name});
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(MultiProvider(
+            providers: [
+              ChangeNotifierProvider(
+                  create: (_) => CatalogProvider(service: LocalCatalog())),
+              ChangeNotifierProvider(create: (_) => ProfileProvider()),
+              ChangeNotifierProvider(create: (_) => DownloadsProvider()),
+              ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
+              ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+              ChangeNotifierProvider(create: (_) => WatchedProvider()),
+              ChangeNotifierProvider(create: (_) => PlaylistProvider()),
+              ChangeNotifierProvider(create: (_) => SearchProvider()),
+              ChangeNotifierProvider(create: (_) => SettingsProvider()),
+            ],
+            child: Consumer<SettingsProvider>(
+                builder: (context, settings, _) => MaterialApp(
+                    theme: SabuflixTheme.lightThemeData,
+                    darkTheme: SabuflixTheme.themeData,
+                    themeMode: settings.themeMode,
+                    themeAnimationDuration: Duration.zero,
+                    home: const MainNavigationScreen()))));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Pesquisar').first);
+        await tester.pumpAndSettle();
+        expect(find.byType(TextField), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        for (final label in ['Descobrir', 'Biblioteca']) {
+          await tester.tap(find.text(label).first);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        }
+        await tester.tap(find.text('Ajustes').first);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        final settingsContext =
+            tester.element(find.byKey(const ValueKey('theme-light')));
+        expect(Theme.of(settingsContext).brightness,
+            mode == ThemeMode.light ? Brightness.light : Brightness.dark);
+        await tester.tap(find.byKey(
+            ValueKey(mode == ThemeMode.dark ? 'theme-light' : 'theme-dark')));
+        await tester.pumpAndSettle();
+        expect(Theme.of(settingsContext).brightness,
+            mode == ThemeMode.dark ? Brightness.light : Brightness.dark);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      });
+    }
   }
 }

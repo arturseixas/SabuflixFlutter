@@ -17,41 +17,44 @@ class PlaylistsScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         child: GlassContainer(
           borderRadius: SabuflixTheme.radiusLg,
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Nova Playlist',
-                  style: SabuflixTheme.headline(fontSize: 22)),
-              const SizedBox(height: 24),
+                  style: SabuflixTheme.of(context).headline(fontSize: 22)),
+              SizedBox(height: 24),
               TextField(
                 controller: controller,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: SabuflixTheme.of(context).textPrimary),
                 decoration: InputDecoration(
                   labelText: 'Nome da Playlist',
                   labelStyle:
-                      const TextStyle(color: SabuflixTheme.textSecondary),
+                      TextStyle(color: SabuflixTheme.of(context).textSecondary),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: SabuflixTheme.radiusSm,
-                    borderSide: const BorderSide(color: SabuflixTheme.border),
+                    borderSide:
+                        BorderSide(color: SabuflixTheme.of(context).border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: SabuflixTheme.radiusSm,
-                    borderSide: const BorderSide(color: SabuflixTheme.accent),
+                    borderSide:
+                        BorderSide(color: SabuflixTheme.of(context).accent),
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar',
-                        style: TextStyle(color: SabuflixTheme.textSecondary)),
+                    child: Text('Cancelar',
+                        style: TextStyle(
+                            color: SabuflixTheme.of(context).textSecondary)),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () {
                       if (controller.text.trim().isNotEmpty) {
@@ -61,9 +64,8 @@ class PlaylistsScreen extends StatelessWidget {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: SabuflixTheme.accent),
-                    child: const Text('Criar',
-                        style: TextStyle(color: Colors.white)),
+                        backgroundColor: SabuflixTheme.brandBlue),
+                    child: Text('Criar', style: TextStyle(color: Colors.white)),
                   ),
                 ],
               ),
@@ -77,15 +79,15 @@ class PlaylistsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       appBar: AppBar(
         title: Text('Minhas Playlists',
-            style: SabuflixTheme.headline(fontSize: 20)),
+            style: SabuflixTheme.of(context).headline(fontSize: 20)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add, color: SabuflixTheme.textPrimary),
+            icon: Icon(Icons.add, color: SabuflixTheme.of(context).textPrimary),
             onPressed: () => _showCreatePlaylistDialog(context),
           ),
         ],
@@ -93,8 +95,9 @@ class PlaylistsScreen extends StatelessWidget {
       body: Consumer<PlaylistProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
-            return const Center(
-                child: CircularProgressIndicator(color: SabuflixTheme.accent));
+            return Center(
+                child: CircularProgressIndicator(
+                    color: SabuflixTheme.of(context).accent));
           }
 
           if (provider.playlists.isEmpty) {
@@ -104,22 +107,26 @@ class PlaylistsScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.featured_play_list_outlined,
                       size: 80,
-                      color: SabuflixTheme.textMuted.withValues(alpha: 0.5)),
-                  const SizedBox(height: 24),
+                      color: SabuflixTheme.of(context)
+                          .textMuted
+                          .withValues(alpha: 0.5)),
+                  SizedBox(height: 24),
                   Text('Nenhuma playlist criada',
-                      style: SabuflixTheme.headline(
-                          fontSize: 20, color: SabuflixTheme.textSecondary)),
-                  const SizedBox(height: 16),
+                      style: SabuflixTheme.of(context).headline(
+                          fontSize: 20,
+                          color: SabuflixTheme.of(context).textSecondary)),
+                  SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () => _showCreatePlaylistDialog(context),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: SabuflixTheme.accent,
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
+                      backgroundColor: SabuflixTheme.brandBlue,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: SabuflixTheme.radiusMd),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     ),
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text('Criar Playlist',
+                    icon: Icon(Icons.add, color: Colors.white),
+                    label: Text('Criar Playlist',
                         style: TextStyle(
                             color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
@@ -129,7 +136,7 @@ class PlaylistsScreen extends StatelessWidget {
           }
 
           return ListView.builder(
-            physics: const BouncingScrollPhysics(),
+            physics: BouncingScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
               16,
               16,
@@ -155,16 +162,17 @@ class _PlaylistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(playlist.name, style: SabuflixTheme.headline(fontSize: 20)),
+              Text(playlist.name,
+                  style: SabuflixTheme.of(context).headline(fontSize: 20)),
               IconButton(
-                icon: const Icon(Icons.delete_outline,
+                icon: Icon(Icons.delete_outline,
                     color: Colors.redAccent, size: 20),
                 onPressed: () {
                   Provider.of<PlaylistProvider>(context, listen: false)
@@ -173,18 +181,19 @@ class _PlaylistCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           if (playlist.items.isEmpty)
             Container(
               height: 160,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: SabuflixTheme.surface,
+                color: SabuflixTheme.of(context).surface,
                 borderRadius: SabuflixTheme.radiusMd,
               ),
               alignment: Alignment.center,
               child: Text('Playlist vazia',
-                  style: SabuflixTheme.body(color: SabuflixTheme.textMuted)),
+                  style: SabuflixTheme.of(context)
+                      .body(color: SabuflixTheme.of(context).textMuted)),
             )
           else
             SizedBox(
@@ -195,7 +204,7 @@ class _PlaylistCard extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final media = playlist.items[index];
                   return Padding(
-                    padding: const EdgeInsets.only(right: 16),
+                    padding: EdgeInsets.only(right: 16),
                     child: Stack(
                       children: [
                         SizedBox(
@@ -214,12 +223,12 @@ class _PlaylistCard extends StatelessWidget {
                                       mediaType: media.mediaType);
                             },
                             child: Container(
-                              padding: const EdgeInsets.all(4),
+                              padding: EdgeInsets.all(4),
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.7),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close,
+                              child: Icon(Icons.close,
                                   color: Colors.white, size: 14),
                             ),
                           ),

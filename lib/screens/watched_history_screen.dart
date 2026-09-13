@@ -12,17 +12,16 @@ class WatchedHistoryScreen extends StatelessWidget {
     final clear = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Limpar histórico?'),
-        content: const Text(
+        title: Text('Limpar histórico?'),
+        content: Text(
             'Os títulos marcados como assistidos serão removidos deste perfil.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
+              child: Text('Cancelar')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Limpar', style: TextStyle(color: Colors.redAccent)),
+            child: Text('Limpar', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -39,36 +38,36 @@ class WatchedHistoryScreen extends StatelessWidget {
     final columns = (width / 180).floor().clamp(2, 7);
 
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       appBar: AppBar(
-        title: Text('Já assistidos', style: SabuflixTheme.title(fontSize: 20)),
+        title: Text('Já assistidos',
+            style: SabuflixTheme.of(context).title(fontSize: 20)),
         actions: [
           if (provider.items.isNotEmpty)
             TextButton(
-                onPressed: () => _confirmClear(context),
-                child: const Text('Limpar')),
+                onPressed: () => _confirmClear(context), child: Text('Limpar')),
         ],
       ),
       body: provider.isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : provider.items.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.visibility_outlined,
-                          size: 52, color: SabuflixTheme.textMuted),
-                      const SizedBox(height: 16),
+                      Icon(Icons.visibility_outlined,
+                          size: 52, color: SabuflixTheme.of(context).textMuted),
+                      SizedBox(height: 16),
                       Text('Nenhum título marcado',
-                          style: SabuflixTheme.title(fontSize: 17)),
-                      const SizedBox(height: 7),
+                          style: SabuflixTheme.of(context).title(fontSize: 17)),
+                      SizedBox(height: 7),
                       Text('Use a ação “Marcar como assistido” nos detalhes.',
-                          style: SabuflixTheme.body(fontSize: 13)),
+                          style: SabuflixTheme.of(context).body(fontSize: 13)),
                     ],
                   ),
                 )
               : GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, 32),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: columns,
                     childAspectRatio: 0.65,

@@ -13,12 +13,12 @@ class HomeSkeleton extends StatelessWidget {
     final isDesktop = MediaQuery.of(context).size.width >= 800;
 
     return Shimmer.fromColors(
-      baseColor: SabuflixTheme.surface,
-      highlightColor: SabuflixTheme.surfaceLight,
-      period: const Duration(milliseconds: 1400),
+      baseColor: SabuflixTheme.of(context).surface,
+      highlightColor: SabuflixTheme.of(context).surfaceLight,
+      period: Duration(milliseconds: 1400),
       enabled: !MediaQuery.disableAnimationsOf(context),
       child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
+        physics: NeverScrollableScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -27,17 +27,17 @@ class HomeSkeleton extends StatelessWidget {
                   ? (MediaQuery.sizeOf(context).width * .46).clamp(480.0, 660.0)
                   : 520,
               width: double.infinity,
-              color: SabuflixTheme.surface,
+              color: SabuflixTheme.of(context).surface,
             ),
-            const SizedBox(height: 26),
+            SizedBox(height: 26),
             for (int row = 0; row < 2; row++) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 14),
+                padding: EdgeInsets.fromLTRB(24, 0, 24, 14),
                 child: Container(
                   width: 172,
                   height: 18,
                   decoration: BoxDecoration(
-                    color: SabuflixTheme.surface,
+                    color: SabuflixTheme.of(context).surface,
                     borderRadius: SabuflixTheme.radiusSm,
                   ),
                 ),
@@ -46,22 +46,22 @@ class HomeSkeleton extends StatelessWidget {
                 height: (isDesktop ? 340 : 270) * 9 / 16,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  physics: NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
                   itemCount: 5,
                   itemBuilder: (context, index) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Container(
                       width: isDesktop ? 340 : 270,
                       decoration: BoxDecoration(
-                        color: SabuflixTheme.surface,
+                        color: SabuflixTheme.of(context).surface,
                         borderRadius: SabuflixTheme.radiusLg,
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 26),
+              SizedBox(height: 26),
             ],
           ],
         ),

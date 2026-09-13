@@ -22,23 +22,23 @@ class SettingsScreen extends StatelessWidget {
     final isMobile = width < 800;
 
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
+      backgroundColor: SabuflixTheme.of(context).background,
       body: SafeArea(
         bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 820),
+            constraints: BoxConstraints(maxWidth: 820),
             child: ListView(
-              physics: const BouncingScrollPhysics(),
+              physics: BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(22, 28, 22, isMobile ? 126 : 42),
               children: [
                 Text('Ajustes',
-                    style: SabuflixTheme.headline(
-                        fontSize: width < 500 ? 28 : 34)),
-                const SizedBox(height: 8),
+                    style: SabuflixTheme.of(context)
+                        .headline(fontSize: width < 500 ? 28 : 34)),
+                SizedBox(height: 8),
                 Text('Personalize a experiência neste dispositivo.',
-                    style: SabuflixTheme.body(fontSize: 14)),
-                const SizedBox(height: 28),
+                    style: SabuflixTheme.of(context).body(fontSize: 14)),
+                SizedBox(height: 28),
                 if (profile != null)
                   _SettingsCard(
                     children: [
@@ -48,52 +48,131 @@ class SettingsScreen extends StatelessWidget {
                         onTap: () => Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const ProfileSelectionScreen()),
+                              builder: (_) => ProfileSelectionScreen()),
                         ),
                       ),
                     ],
                   ),
-                const _SectionLabel('CATÁLOGO'),
+                const _SectionLabel('APARÊNCIA'),
+                _SettingsCard(children: [
+                  Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Tema do aplicativo',
+                              style: SabuflixTheme.of(context).title()),
+                          const SizedBox(height: 6),
+                          Text('A aparência é salva neste dispositivo.',
+                              style:
+                                  SabuflixTheme.of(context).body(fontSize: 13)),
+                          const SizedBox(height: 16),
+                          Row(children: [
+                            for (final mode in ThemeMode.values)
+                              Expanded(
+                                  child: Padding(
+                                padding: EdgeInsets.only(
+                                    right: mode == ThemeMode.dark ? 0 : 6),
+                                child: Semantics(
+                                    selected: settings.themeMode == mode,
+                                    child: OutlinedButton(
+                                      key: ValueKey('theme-${mode.name}'),
+                                      onPressed: () =>
+                                          settings.setThemeMode(mode),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4, vertical: 12),
+                                        backgroundColor:
+                                            settings.themeMode == mode
+                                                ? SabuflixTheme.brandBlue
+                                                : SabuflixTheme.of(context)
+                                                    .secondaryFill,
+                                        foregroundColor:
+                                            settings.themeMode == mode
+                                                ? Colors.white
+                                                : SabuflixTheme.of(context)
+                                                    .textPrimary,
+                                        side: BorderSide(
+                                            color: settings.themeMode == mode
+                                                ? SabuflixTheme.brandBlue
+                                                : SabuflixTheme.of(context)
+                                                    .borderStrong),
+                                      ),
+                                      child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                                mode == ThemeMode.system
+                                                    ? Icons
+                                                        .brightness_auto_outlined
+                                                    : mode == ThemeMode.light
+                                                        ? Icons
+                                                            .light_mode_outlined
+                                                        : Icons
+                                                            .dark_mode_outlined,
+                                                size: 20),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                                mode == ThemeMode.system
+                                                    ? 'Sistema'
+                                                    : mode == ThemeMode.light
+                                                        ? 'Claro'
+                                                        : 'Escuro',
+                                                style: const TextStyle(
+                                                    fontSize: 12)),
+                                          ]),
+                                    )),
+                              )),
+                          ]),
+                        ],
+                      )),
+                ]),
+                _SectionLabel('CATÁLOGO'),
                 _SettingsCard(
                   children: [
                     SwitchListTile.adaptive(
                       value: settings.hideUnreleased,
                       onChanged: settings.setHideUnreleased,
-                      title: const Text('Ocultar lançamentos futuros'),
-                      subtitle:
-                          const Text('Mostra apenas títulos já lançados.'),
-                      secondary: const Icon(Icons.event_available_outlined),
+                      title: Text('Ocultar lançamentos futuros'),
+                      subtitle: Text('Mostra apenas títulos já lançados.'),
+                      secondary: width >= 500
+                          ? Icon(Icons.event_available_outlined)
+                          : null,
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1),
                     SwitchListTile.adaptive(
                       value: settings.compactPosters,
                       onChanged: settings.setCompactPosters,
-                      title: const Text('Capas compactas'),
-                      subtitle: const Text('Oculta os nomes abaixo das capas.'),
-                      secondary: const Icon(Icons.view_compact_outlined),
+                      title: Text('Capas compactas'),
+                      subtitle: Text('Oculta os nomes abaixo das capas.'),
+                      secondary: width >= 500
+                          ? Icon(Icons.view_compact_outlined)
+                          : null,
                     ),
                   ],
                 ),
-                const _SectionLabel('CONTINUAR ASSISTINDO'),
+                _SectionLabel('CONTINUAR ASSISTINDO'),
                 _SettingsCard(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                      padding: EdgeInsets.fromLTRB(18, 16, 18, 18),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.sort_rounded,
-                                  color: SabuflixTheme.textSecondary),
-                              const SizedBox(width: 14),
+                              Icon(Icons.sort_rounded,
+                                  color:
+                                      SabuflixTheme.of(context).textSecondary),
+                              SizedBox(width: 14),
                               Expanded(
                                   child: Text('Ordenar por',
-                                      style: SabuflixTheme.body(
-                                          color: SabuflixTheme.textPrimary))),
+                                      style: SabuflixTheme.of(context).body(
+                                          color: SabuflixTheme.of(context)
+                                              .textPrimary))),
                             ],
                           ),
-                          const SizedBox(height: 14),
+                          SizedBox(height: 14),
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -117,7 +196,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const _SectionLabel('DADOS DESTE PERFIL'),
+                _SectionLabel('DADOS DESTE PERFIL'),
                 _SettingsCard(
                   children: [
                     _DataAction(
@@ -136,7 +215,7 @@ class SettingsScreen extends StatelessWidget {
                             context.read<ContinueWatchingProvider>().clear,
                       ),
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1),
                     _DataAction(
                       icon: Icons.visibility_outlined,
                       title: 'Limpar títulos assistidos',
@@ -151,8 +230,8 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const _SectionLabel('FONTES E LEGENDAS'),
-                const _SettingsCard(
+                _SectionLabel('FONTES E LEGENDAS'),
+                _SettingsCard(
                   children: [
                     ListTile(
                       leading: Icon(Icons.movie_outlined),
@@ -169,30 +248,30 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const _SectionLabel('SOBRE'),
+                _SectionLabel('SOBRE'),
                 _SettingsCard(
                   children: [
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.all(20),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SabuflixWordmark(fontSize: 18),
                           Spacer(),
-                          Text('1.3.0',
+                          Text('1.4.0',
                               style: TextStyle(
-                                  color: SabuflixTheme.textMuted,
+                                  color: SabuflixTheme.of(context).textMuted,
                                   fontSize: 12)),
                         ],
                       ),
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1),
                     _LinkTile(
                       icon: Icons.info_outline_rounded,
                       title: 'Informações e atribuições',
                       onTap: _showAbout,
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1),
                     _LinkTile(
                       icon: Icons.movie_filter_outlined,
                       title: 'The Movie Database (TMDB)',
@@ -200,12 +279,12 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
                 Text(
                   'O Sabuflix é um cliente de mídia. Não hospeda nem distribui conteúdo. Use somente fontes e mídias que você tem autorização para acessar.',
                   textAlign: TextAlign.center,
-                  style: SabuflixTheme.caption(
-                      fontSize: 11, color: SabuflixTheme.textMuted),
+                  style: SabuflixTheme.of(context).caption(
+                      fontSize: 11, color: SabuflixTheme.of(context).textMuted),
                 ),
               ],
             ),
@@ -229,11 +308,10 @@ class SettingsScreen extends StatelessWidget {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
+              child: Text('Cancelar')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Limpar', style: TextStyle(color: Colors.redAccent)),
+            child: Text('Limpar', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -249,10 +327,10 @@ class SettingsScreen extends StatelessWidget {
       applicationLegalese:
           '© 2026 Sabuflix\n\nEste produto usa a API do TMDB, mas não é endossado ou certificado pelo TMDB.',
       children: [
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         Text(
           'Uma experiência oficial Sabuflix para descobrir, organizar e reproduzir sua mídia autorizada.',
-          style: SabuflixTheme.body(fontSize: 13),
+          style: SabuflixTheme.of(context).body(fontSize: 13),
         ),
       ],
     );
@@ -263,7 +341,7 @@ class SettingsScreen extends StatelessWidget {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
         context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o link.')));
+          SnackBar(content: Text('Não foi possível abrir o link.')));
     }
   }
 }
@@ -275,8 +353,8 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 28, 6, 10),
-      child: Text(text, style: SabuflixTheme.label(fontSize: 11)),
+      padding: EdgeInsets.fromLTRB(6, 28, 6, 10),
+      child: Text(text, style: SabuflixTheme.of(context).label(fontSize: 11)),
     );
   }
 }
@@ -307,23 +385,24 @@ class _ProfileRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+      contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 9),
       leading: CircleAvatar(
           backgroundColor: color,
-          child: const Icon(Icons.person_rounded, color: Colors.white)),
-      title: Text(name, style: SabuflixTheme.title(fontSize: 15)),
-      subtitle:
-          Text('Perfil ativo', style: SabuflixTheme.caption(fontSize: 12)),
-      trailing: const Row(
+          child: Icon(Icons.person_rounded, color: Colors.white)),
+      title: Text(name, style: SabuflixTheme.of(context).title(fontSize: 15)),
+      subtitle: Text('Perfil ativo',
+          style: SabuflixTheme.of(context).caption(fontSize: 12)),
+      trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('Trocar',
               style: TextStyle(
-                  color: SabuflixTheme.accent,
+                  color: SabuflixTheme.of(context).accent,
                   fontWeight: FontWeight.w600,
                   fontSize: 12)),
           SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded, color: SabuflixTheme.textMuted),
+          Icon(Icons.chevron_right_rounded,
+              color: SabuflixTheme.of(context).textMuted),
         ],
       ),
     );
@@ -364,17 +443,17 @@ class _DataAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: count == 0 ? null : onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 4),
       leading: Icon(icon,
           color: count == 0
-              ? SabuflixTheme.textMuted
-              : SabuflixTheme.textSecondary),
+              ? SabuflixTheme.of(context).textMuted
+              : SabuflixTheme.of(context).textSecondary),
       title: Text(title,
-          style: SabuflixTheme.body(
+          style: SabuflixTheme.of(context).body(
               color: count == 0
-                  ? SabuflixTheme.textMuted
-                  : SabuflixTheme.textPrimary)),
-      trailing: Text('$count', style: SabuflixTheme.caption()),
+                  ? SabuflixTheme.of(context).textMuted
+                  : SabuflixTheme.of(context).textPrimary)),
+      trailing: Text('$count', style: SabuflixTheme.of(context).caption()),
     );
   }
 }
@@ -390,12 +469,13 @@ class _LinkTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: () => onTap(context),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-      leading: Icon(icon, color: SabuflixTheme.textSecondary),
+      contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      leading: Icon(icon, color: SabuflixTheme.of(context).textSecondary),
       title: Text(title,
-          style: SabuflixTheme.body(color: SabuflixTheme.textPrimary)),
-      trailing: const Icon(Icons.open_in_new_rounded,
-          size: 17, color: SabuflixTheme.textMuted),
+          style: SabuflixTheme.of(context)
+              .body(color: SabuflixTheme.of(context).textPrimary)),
+      trailing: Icon(Icons.open_in_new_rounded,
+          size: 17, color: SabuflixTheme.of(context).textMuted),
     );
   }
 }

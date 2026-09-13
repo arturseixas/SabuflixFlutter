@@ -44,14 +44,17 @@ class SabuflixApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
         ChangeNotifierProvider(create: (_) => WatchedProvider()),
       ],
-      child: MaterialApp(
-        title: 'Sabuflix',
-        debugShowCheckedModeBanner: false,
-        theme: SabuflixTheme.themeData,
-        themeMode: ThemeMode.dark,
-        scrollBehavior: const _SabuflixScrollBehavior(),
-        home: const _AppLifecycleGate(child: ProfileSelectionScreen()),
-      ),
+      child: Consumer<SettingsProvider>(
+          builder: (context, settings, _) => MaterialApp(
+                title: 'Sabuflix',
+                debugShowCheckedModeBanner: false,
+                theme: SabuflixTheme.lightThemeData,
+                darkTheme: SabuflixTheme.themeData,
+                themeMode: settings.themeMode,
+                themeAnimationDuration: Duration.zero,
+                scrollBehavior: const _SabuflixScrollBehavior(),
+                home: const _AppLifecycleGate(child: ProfileSelectionScreen()),
+              )),
     );
   }
 }

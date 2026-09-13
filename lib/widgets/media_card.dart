@@ -34,7 +34,7 @@ class _MediaCardState extends State<MediaCard> {
   void _showActions() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SabuflixTheme.surface,
+      backgroundColor: SabuflixTheme.of(context).surface,
       showDragHandle: true,
       builder: (sheetContext) {
         return SafeArea(
@@ -66,7 +66,8 @@ class _MediaCardState extends State<MediaCard> {
                       Navigator.pop(sheetContext);
                       await watched.toggle(widget.media);
                       if (!isWatched && mounted) {
-                        await this.context
+                        await this
+                            .context
                             .read<ContinueWatchingProvider>()
                             .remove(
                               widget.media.id,
@@ -92,8 +93,8 @@ class _MediaCardState extends State<MediaCard> {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.info_outline_rounded),
-                    title: const Text('Ver detalhes'),
+                    leading: Icon(Icons.info_outline_rounded),
+                    title: Text('Ver detalhes'),
                     onTap: () {
                       Navigator.pop(sheetContext);
                       Navigator.push(
@@ -102,7 +103,7 @@ class _MediaCardState extends State<MediaCard> {
                       );
                     },
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                 ],
               );
             },
@@ -160,9 +161,11 @@ class _MediaCardState extends State<MediaCard> {
                         decoration: BoxDecoration(
                           borderRadius: SabuflixTheme.radiusMd,
                           border: _isFocused
-                              ? Border.all(color: Colors.white, width: 3)
+                              ? Border.all(
+                                  color: SabuflixTheme.of(context).accent,
+                                  width: 3)
                               : null,
-                          boxShadow: const [],
+                          boxShadow: [],
                         ),
                         child: ClipRRect(
                           borderRadius: SabuflixTheme.radiusMd,
@@ -174,13 +177,13 @@ class _MediaCardState extends State<MediaCard> {
                                     ? widget.media.fullBackdropPath
                                     : widget.media.fullPosterPath,
                                 fit: BoxFit.cover,
-                                placeholder: (context, url) =>
-                                    Container(color: SabuflixTheme.surface),
+                                placeholder: (context, url) => Container(
+                                    color: SabuflixTheme.of(context).surface),
                                 errorWidget: (context, url, error) => Container(
-                                  color: SabuflixTheme.surface,
-                                  child: const Icon(
+                                  color: SabuflixTheme.of(context).surface,
+                                  child: Icon(
                                     Icons.image_outlined,
-                                    color: SabuflixTheme.textMuted,
+                                    color: SabuflixTheme.of(context).textMuted,
                                     size: 28,
                                   ),
                                 ),
@@ -203,7 +206,7 @@ class _MediaCardState extends State<MediaCard> {
                                         ),
                                       ),
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.check_rounded,
                                       color: Colors.white,
                                       size: 17,
@@ -217,19 +220,33 @@ class _MediaCardState extends State<MediaCard> {
                     ),
                   ),
                   if (!compact) ...[
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Text(
                       widget.landscape
                           ? widget.media.title.toUpperCase()
                           : widget.media.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: SabuflixTheme.caption(
+                      style: SabuflixTheme.of(context).caption(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: SabuflixTheme.textPrimary,
+                        color: SabuflixTheme.of(context).textPrimary,
                       ),
                     ),
+                    if (widget.landscape) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                          [
+                            if (widget.media.releaseDate?.isNotEmpty ?? false)
+                              widget.media.formattedYear,
+                            if (widget.media.genres?.isNotEmpty ?? false)
+                              widget.media.genres!.take(2).join(' · '),
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              SabuflixTheme.of(context).caption(fontSize: 11)),
+                    ],
                   ],
                 ],
               ),

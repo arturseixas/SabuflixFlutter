@@ -24,7 +24,7 @@ Future<void> playDownload(BuildContext context, DownloadItem item) async {
     await downloads.refreshFromDisk();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
           content:
               Text('O arquivo não está mais no aparelho. Baixe novamente.')),
     );
@@ -100,25 +100,26 @@ Future<bool> confirmDestructive(
   final result = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      backgroundColor: SabuflixTheme.surface,
+      backgroundColor: SabuflixTheme.of(context).surface,
       shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusLg),
-      title: Text(title, style: SabuflixTheme.title(fontSize: 18)),
-      content: Text(message, style: SabuflixTheme.body(fontSize: 14)),
+      title: Text(title, style: SabuflixTheme.of(context).title(fontSize: 18)),
+      content:
+          Text(message, style: SabuflixTheme.of(context).body(fontSize: 14)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
           child: Text('Cancelar',
-              style: SabuflixTheme.body(
-                  fontSize: 14, fontWeight: FontWeight.w700)),
+              style: SabuflixTheme.of(context)
+                  .body(fontSize: 14, fontWeight: FontWeight.w700)),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
           child: Text(
             confirmLabel,
-            style: SabuflixTheme.body(
+            style: SabuflixTheme.of(context).body(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFFF453A)),
+                color: Color(0xFFFF453A)),
           ),
         ),
       ],

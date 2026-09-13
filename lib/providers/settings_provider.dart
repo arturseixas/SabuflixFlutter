@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/media_item.dart';
@@ -15,6 +15,17 @@ class SettingsProvider extends ChangeNotifier {
   static const _compactPostersKey = 'sabuflix_setting_compact_posters';
   static const _hideUnreleasedKey = 'sabuflix_setting_hide_unreleased';
   static const _continueSortKey = 'sabuflix_setting_continue_sort';
+  static const _themeModeKey = 'sabuflix_setting_theme_mode';
+  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode get themeMode => _themeMode;
+
+  Future<void> setThemeMode(ThemeMode value) async {
+    if (_themeMode == value) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themeModeKey, value.name);
+    _themeMode = value;
+    notifyListeners();
+  }
 
   bool _compactPosters = false;
   bool _hideUnreleased = true;
@@ -32,6 +43,9 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    final savedTheme = prefs.getString(_themeModeKey);
+    _themeMode = ThemeMode.values.firstWhere((mode) => mode.name == savedTheme,
+        orElse: () => ThemeMode.dark);
     _compactPosters = prefs.getBool(_compactPostersKey) ?? false;
     _hideUnreleased = prefs.getBool(_hideUnreleasedKey) ?? true;
     final rawSort = prefs.getString(_continueSortKey);

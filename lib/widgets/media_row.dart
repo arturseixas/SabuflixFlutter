@@ -38,16 +38,15 @@ class _MediaRowState extends State<MediaRow> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.mediaItems.isEmpty) return const SizedBox.shrink();
+    if (widget.mediaItems.isEmpty) return SizedBox.shrink();
     final compact = context.select<SettingsProvider, bool>(
       (p) => p.compactPosters,
     );
     final desktop = MediaQuery.sizeOf(context).width >= 800;
     final inset = desktop ? 40.0 : 20.0;
     final width = desktop ? 340.0 : 270.0;
-    final caption = compact
-        ? 0.0
-        : 10 + MediaQuery.textScalerOf(context).scale(18);
+    final caption =
+        compact ? 0.0 : 15 + MediaQuery.textScalerOf(context).scale(32);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -58,9 +57,9 @@ class _MediaRowState extends State<MediaRow> {
               Expanded(
                 child: Text(
                   widget.title.toUpperCase(),
-                  style: SabuflixTheme.label(
+                  style: SabuflixTheme.of(context).label(
                     fontSize: desktop ? 15 : 13,
-                    color: SabuflixTheme.textPrimary,
+                    color: SabuflixTheme.of(context).textPrimary,
                     letterSpacing: 1.4,
                   ),
                 ),
@@ -69,12 +68,12 @@ class _MediaRowState extends State<MediaRow> {
                 IconButton(
                   tooltip: 'Voltar em ${widget.title}',
                   onPressed: () => _move(-1),
-                  icon: const Icon(Icons.chevron_left),
+                  icon: Icon(Icons.chevron_left),
                 ),
                 IconButton(
                   tooltip: 'Avançar em ${widget.title}',
                   onPressed: () => _move(1),
-                  icon: const Icon(Icons.chevron_right),
+                  icon: Icon(Icons.chevron_right),
                 ),
               ],
             ],
@@ -87,7 +86,7 @@ class _MediaRowState extends State<MediaRow> {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: inset, vertical: 4),
             itemCount: widget.mediaItems.length,
-            separatorBuilder: (_, index) => const SizedBox(width: 14),
+            separatorBuilder: (_, index) => SizedBox(width: 14),
             itemBuilder: (_, index) => MediaCard(
               media: widget.mediaItems[index],
               width: width,

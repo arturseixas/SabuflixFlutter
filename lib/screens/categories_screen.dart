@@ -1,150 +1,139 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import '../models/media_item.dart';
+import '../providers/catalog_provider.dart';
 import '../providers/search_provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/app_route.dart';
-import '../widgets/glass_container.dart';
 import 'search_screen.dart';
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
-
-  static const List<Map<String, dynamic>> categoryCards = [
-    {
-      'id': 28,
-      'name': 'Ação & Aventura',
-      'icon': Icons.flash_on_rounded,
-      'color': Color(0xFF0A84FF)
-    },
-    {
-      'id': 35,
-      'name': 'Comédia',
-      'icon': Icons.sentiment_satisfied_rounded,
-      'color': Color(0xFFFF9F0A)
-    },
-    {
-      'id': 27,
-      'name': 'Terror & Suspense',
-      'icon': Icons.visibility_rounded,
-      'color': Color(0xFF5E5CE6)
-    },
-    {
-      'id': 878,
-      'name': 'Ficção Científica',
-      'icon': Icons.rocket_launch_rounded,
-      'color': Color(0xFF64D2FF)
-    },
-    {
-      'id': 16,
-      'name': 'Animação',
-      'icon': Icons.animation_rounded,
-      'color': Color(0xFF63E6E2)
-    },
-    {
-      'id': 18,
-      'name': 'Drama',
-      'icon': Icons.theater_comedy_rounded,
-      'color': Color(0xFFAC8E68)
-    },
-    {
-      'id': 99,
-      'name': 'Documentários',
-      'icon': Icons.camera_roll_rounded,
-      'color': Color(0xFF40C8E0)
-    },
-    {
-      'id': 10749,
-      'name': 'Romance',
-      'icon': Icons.favorite_rounded,
-      'color': Color(0xFFFF375F)
-    },
+  static const _genres = [
+    (28, 'Ação e aventura'),
+    (35, 'Comédia'),
+    (27, 'Terror e suspense'),
+    (878, 'Ficção científica'),
+    (16, 'Animação'),
+    (18, 'Drama'),
+    (99, 'Documentários'),
+    (10749, 'Romance')
   ];
 
   @override
   Widget build(BuildContext context) {
-    final searchProvider = Provider.of<SearchProvider>(context, listen: false);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount =
-        screenWidth < 430 ? 1 : (screenWidth / 220).floor().clamp(2, 4);
-
+    final colors = SabuflixTheme.of(context);
+    final catalog = context.watch<CatalogProvider>();
+    final items = [
+      ...catalog.trending,
+      ...catalog.popularMovies,
+      ...catalog.actionMovies,
+      ...catalog.comedyMovies,
+      ...catalog.sciFiMovies
+    ];
+    final width = MediaQuery.sizeOf(context).width;
     return Scaffold(
-      backgroundColor: SabuflixTheme.background,
-      appBar: AppBar(
-        backgroundColor: SabuflixTheme.background,
-        title: Text('Descobrir',
-            style:
-                SabuflixTheme.title(fontSize: 20, fontWeight: FontWeight.w700)),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 980),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 8, 22, 18),
-                child: Text(
-                  'Encontre sua próxima história por gênero.',
-                  style: SabuflixTheme.body(fontSize: 14),
-                ),
-              ),
-              Expanded(
-                child: GridView.builder(
-                  padding: EdgeInsets.fromLTRB(
-                      20, 4, 20, screenWidth < 800 ? 118 : 28),
-                  physics: const BouncingScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: screenWidth < 430 ? 2.5 : 1.7,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                  ),
-                  itemCount: categoryCards.length,
-                  itemBuilder: (context, index) {
-                    final cat = categoryCards[index];
-                    final Color catColor = cat['color'] as Color;
-
-                    return GlassContainer(
-                      borderRadius: SabuflixTheme.radiusLg,
-                      blur: 24,
-                      fillOpacity: 0.25,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            searchProvider.filterByGenre(cat['id'] as int);
-                            Navigator.push(
-                                context, glassRoute(const SearchScreen()));
-                          },
-                          borderRadius: SabuflixTheme.radiusLg,
-                          child: Padding(
-                            padding: const EdgeInsets.all(18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Icon(cat['icon'] as IconData,
-                                    size: 24, color: catColor),
-                                Text(
-                                  cat['name'] as String,
-                                  style: SabuflixTheme.body(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: SabuflixTheme.textPrimary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      backgroundColor: colors.background,
+      body: SafeArea(
+          child: CustomScrollView(slivers: [
+        SliverPadding(
+            padding: EdgeInsets.fromLTRB(width >= 800 ? 40 : 20, 36, 20, 32),
+            sliver: SliverToBoxAdapter(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text('DESCUBRA',
+                      style: colors.display(fontSize: width >= 800 ? 48 : 34)),
+                  const SizedBox(height: 12),
+                  Text('Outras histórias. Novos pontos de vista.',
+                      style: colors.body(fontSize: 17)),
+                ]))),
+        SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: width >= 800 ? 40 : 20),
+            sliver: SliverGrid.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: width >= 1100
+                        ? 3
+                        : width >= 600
+                            ? 2
+                            : 1,
+                    childAspectRatio: 1.65,
+                    mainAxisSpacing: 24,
+                    crossAxisSpacing: 24),
+                itemCount: _genres.length,
+                itemBuilder: (context, index) {
+                  final genre = _genres[index];
+                  MediaItem? artwork;
+                  for (final item in items) {
+                    if (item.genreIds.contains(genre.$1) &&
+                        item.backdropPath != null) {
+                      artwork = item;
+                      break;
+                    }
+                  }
+                  final hasImage = artwork != null;
+                  return Material(
+                      color: colors.surface,
+                      borderRadius: SabuflixTheme.radiusMd,
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(fit: StackFit.expand, children: [
+                        if (hasImage)
+                          CachedNetworkImage(
+                              imageUrl: artwork.fullBackdropPath,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => const ColoredBox(
+                                  color: SabuflixTheme.surface)),
+                        if (hasImage)
+                          const DecoratedBox(
+                              decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                Colors.black12,
+                                Colors.black87
+                              ]))),
+                        InkWell(
+                            onTap: () {
+                              context
+                                  .read<SearchProvider>()
+                                  .filterByGenre(genre.$1);
+                              Navigator.push(
+                                  context, glassRoute(const SearchScreen()));
+                            },
+                            child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text(genre.$2.toUpperCase(),
+                                          style: colors.headline(
+                                              fontSize: 24,
+                                              color: hasImage
+                                                  ? Colors.white
+                                                  : colors.textPrimary)),
+                                      const SizedBox(height: 12),
+                                      Row(children: [
+                                        Text('Explorar filmes',
+                                            style: colors.caption(
+                                                color: hasImage
+                                                    ? Colors.white
+                                                    : colors.accent)),
+                                        const SizedBox(width: 8),
+                                        Icon(Icons.arrow_forward,
+                                            size: 18,
+                                            color: hasImage
+                                                ? Colors.white
+                                                : colors.accent)
+                                      ]),
+                                    ]))),
+                      ]));
+                })),
+        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+      ])),
     );
   }
 }
