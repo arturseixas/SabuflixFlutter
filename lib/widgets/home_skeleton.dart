@@ -16,13 +16,16 @@ class HomeSkeleton extends StatelessWidget {
       baseColor: SabuflixTheme.surface,
       highlightColor: SabuflixTheme.surfaceLight,
       period: const Duration(milliseconds: 1400),
+      enabled: !MediaQuery.disableAnimationsOf(context),
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              height: isDesktop ? 420 : 320,
+              height: isDesktop
+                  ? (MediaQuery.sizeOf(context).width * .46).clamp(480.0, 660.0)
+                  : 520,
               width: double.infinity,
               color: SabuflixTheme.surface,
             ),
@@ -40,7 +43,7 @@ class HomeSkeleton extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                height: 222,
+                height: (isDesktop ? 340 : 270) * 9 / 16,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   physics: const NeverScrollableScrollPhysics(),
@@ -49,7 +52,7 @@ class HomeSkeleton extends StatelessWidget {
                   itemBuilder: (context, index) => Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Container(
-                      width: 148,
+                      width: isDesktop ? 340 : 270,
                       decoration: BoxDecoration(
                         color: SabuflixTheme.surface,
                         borderRadius: SabuflixTheme.radiusLg,

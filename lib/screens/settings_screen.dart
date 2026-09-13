@@ -151,6 +151,24 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const _SectionLabel('FONTES E LEGENDAS'),
+                const _SettingsCard(
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.movie_outlined),
+                      title: Text('FenixFlix'),
+                      subtitle: Text(
+                          'Filmes e séries · 4K, Full HD, HD e SD\nÁudio dublado e legendado'),
+                    ),
+                    Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.subtitles_outlined),
+                      title: Text('OpenSubtitles'),
+                      subtitle: Text(
+                          'Escolha a legenda no player. Português aparece primeiro.'),
+                    ),
+                  ],
+                ),
                 const _SectionLabel('SOBRE'),
                 _SettingsCard(
                   children: [
@@ -161,7 +179,7 @@ class SettingsScreen extends StatelessWidget {
                         children: [
                           SabuflixWordmark(fontSize: 18),
                           Spacer(),
-                          Text('1.1.0',
+                          Text('1.3.0',
                               style: TextStyle(
                                   color: SabuflixTheme.textMuted,
                                   fontSize: 12)),

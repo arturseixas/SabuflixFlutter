@@ -2,8 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/sabuflix_theme.dart';
 
-/// A frosted "Liquid Glass" panel: real backdrop blur, multi-stop translucent fill,
-/// specular edge highlights, and dynamic ambient reflections.
+/// Opaque dark surfaces keep controls legible over any film.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final BorderRadius borderRadius;
@@ -32,7 +31,8 @@ class GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveShadows = boxShadow ??
+    final effectiveShadows =
+        boxShadow ??
         [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.45),
@@ -41,32 +41,23 @@ class GlassContainer extends StatelessWidget {
           ),
           if (hasGlow)
             BoxShadow(
-              color:
-                  (glowColor ?? SabuflixTheme.accent).withValues(alpha: 0.35),
+              color: (glowColor ?? SabuflixTheme.accent).withValues(
+                alpha: 0.35,
+              ),
               blurRadius: 22,
               spreadRadius: 1,
             ),
         ];
 
-    final effectiveGradient = gradient ??
-        LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white
-                .withValues(alpha: (fillOpacity + 0.14).clamp(0.0, 1.0)),
-            SabuflixTheme.surface.withValues(alpha: fillOpacity),
-            Colors.white
-                .withValues(alpha: (fillOpacity * 0.35).clamp(0.0, 1.0)),
-          ],
-          stops: const [0.0, 0.45, 1.0],
+    final effectiveGradient =
+        gradient ??
+        const LinearGradient(
+          colors: [SabuflixTheme.surface, SabuflixTheme.surface],
         );
 
-    final effectiveBorder = border ??
-        Border.all(
-          color: Colors.white.withValues(alpha: 0.22),
-          width: 0.8,
-        );
+    final effectiveBorder =
+        border ??
+        Border.all(color: Colors.white.withValues(alpha: 0.22), width: 0.8);
 
     return Container(
       decoration: BoxDecoration(

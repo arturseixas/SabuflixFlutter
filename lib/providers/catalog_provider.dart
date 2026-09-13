@@ -8,6 +8,35 @@ import '../services/tmdb_service.dart';
 class CatalogProvider extends ChangeNotifier {
   static const _catalogCacheKey = 'sabuflix_catalog_cache_v1';
   final TMDBService _tmdbService;
+  final Map<String, List<MediaItem>> fenixCatalogs = {};
+  static const _fenixSections = [
+    ('Filmes populares · FenixFlix', 'movie', 'populares_fenix'),
+    ('Séries populares · FenixFlix', 'series', 'populares_fenix'),
+    ('Filmes recém-adicionados · FenixFlix', 'movie', 'recentes_servidor'),
+    ('Séries recém-adicionadas · FenixFlix', 'series', 'recentes_servidor'),
+  ];
+  bool _loadingFenix = false;
+
+  Future<void> _loadFenix() async {
+    if (_loadingFenix) return;
+    _loadingFenix = true;
+    try {
+      await Future.wait(
+        _fenixSections.map((section) async {
+          final items = await _tmdbService.fetchFenixCatalog(
+            section.$2,
+            section.$3,
+          );
+          if (_disposed || items.isEmpty) return;
+          fenixCatalogs[section.$1] = items;
+          notifyListeners();
+        }),
+      );
+      if (!_disposed) await _saveCache();
+    } finally {
+      _loadingFenix = false;
+    }
+  }
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
@@ -45,10 +74,11 @@ class CatalogProvider extends ChangeNotifier {
   bool get hasContent =>
       _trending.isNotEmpty ||
       _popularMovies.isNotEmpty ||
-      _popularTV.isNotEmpty;
+      _popularTV.isNotEmpty ||
+      fenixCatalogs.values.any((items) => items.isNotEmpty);
 
   CatalogProvider({TMDBService? service})
-      : _tmdbService = service ?? TMDBService() {
+    : _tmdbService = service ?? TMDBService() {
     _initialize();
   }
 
@@ -73,6 +103,7 @@ class CatalogProvider extends ChangeNotifier {
 
   Future<void> loadCatalog() async {
     if (_refreshing || _disposed) return;
+    _loadFenix();
     _refreshing = true;
     _isLoading = !hasContent;
     _errorMessage = null;
@@ -111,7 +142,9 @@ class CatalogProvider extends ChangeNotifier {
           orElse: () => _trending.first,
         );
         final logo = await _tmdbService.fetchLogoPath(
-            selectedHero.id, selectedHero.mediaType);
+          selectedHero.id,
+          selectedHero.mediaType,
+        );
         _heroItem = selectedHero.copyWith(logoPath: logo);
       }
       _lastUpdated = DateTime.now();
@@ -139,6 +172,12 @@ class CatalogProvider extends ChangeNotifier {
       final raw = prefs.getString(_catalogCacheKey);
       if (raw == null || raw.isEmpty) return;
       final data = Map<String, dynamic>.from(json.decode(raw) as Map);
+      final fenix = data['fenix'];
+      if (fenix is Map) {
+        for (final entry in fenix.entries) {
+          fenixCatalogs[entry.key.toString()] = _decodeItems(entry.value);
+        }
+      }
       _trending = _decodeItems(data['trending']);
       _popularMovies = _decodeItems(data['popularMovies']);
       _popularTV = _decodeItems(data['popularTV']);
@@ -179,6 +218,9 @@ class CatalogProvider extends ChangeNotifier {
       await prefs.setString(
         _catalogCacheKey,
         json.encode({
+          'fenix': fenixCatalogs.map(
+            (key, items) => MapEntry(key, encode(items)),
+          ),
           'trending': encode(_trending),
           'popularMovies': encode(_popularMovies),
           'popularTV': encode(_popularTV),

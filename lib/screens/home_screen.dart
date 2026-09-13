@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/sabuflix_theme.dart';
@@ -33,96 +32,92 @@ class HomeScreen extends StatelessWidget {
           // catalogue loads, so the first paint doesn't jump.
           ? const HomeSkeleton()
           : !catalog.hasContent
-              ? _CatalogError(onRetry: catalog.loadCatalog)
-              : RefreshIndicator(
-                  onRefresh: () => catalog.loadCatalog(),
-                  color: SabuflixTheme.textPrimary,
-                  backgroundColor: SabuflixTheme.surface,
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      if (!isDesktop)
-                        SliverAppBar(
-                          floating: true,
-                          backgroundColor: Colors.transparent,
-                          elevation: 0,
-                          centerTitle: false,
-                          flexibleSpace: ClipRect(
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                              child: Container(
-                                  color: SabuflixTheme.background
-                                      .withValues(alpha: 0.5)),
-                            ),
-                          ),
-                          title: const SabuflixWordmark(fontSize: 19),
-                          actions: const [
-                            Padding(
-                              padding: EdgeInsets.only(right: 16),
-                              child: _AccountBadge(),
-                            ),
-                          ],
+          ? _CatalogError(onRetry: catalog.loadCatalog)
+          : RefreshIndicator(
+              onRefresh: () => catalog.loadCatalog(),
+              color: SabuflixTheme.textPrimary,
+              backgroundColor: SabuflixTheme.surface,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  if (!isDesktop)
+                    SliverAppBar(
+                      floating: true,
+                      backgroundColor: SabuflixTheme.background,
+                      elevation: 0,
+                      centerTitle: false,
+                      title: const SabuflixWordmark(fontSize: 19),
+                      actions: const [
+                        Padding(
+                          padding: EdgeInsets.only(right: 16),
+                          child: _AccountBadge(),
                         ),
-                      if (catalog.errorMessage != null)
-                        SliverToBoxAdapter(
-                          child: _ConnectionNotice(
-                            message: catalog.errorMessage!,
-                            onRetry: catalog.loadCatalog,
-                          ),
-                        ),
-                      if (heroes.isNotEmpty)
-                        SliverToBoxAdapter(
-                          child: HeroBanner(media: heroes.first),
-                        ),
-                      SliverToBoxAdapter(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 16),
-                            const ContinueWatchingRow(),
-                            MediaRow(
-                              title: 'Em Alta Hoje',
-                              mediaItems:
-                                  settings.visibleItems(catalog.trending),
-                            ),
-                            MediaRow(
-                              title: 'Filmes Populares',
-                              mediaItems:
-                                  settings.visibleItems(catalog.popularMovies),
-                            ),
-                            MediaRow(
-                              title: 'Séries em Destaque',
-                              mediaItems:
-                                  settings.visibleItems(catalog.popularTV),
-                            ),
-                            MediaRow(
-                              title: 'Mais Bem Avaliados',
-                              mediaItems:
-                                  settings.visibleItems(catalog.topRated),
-                            ),
-                            MediaRow(
-                              title: 'Ação e Aventura',
-                              mediaItems:
-                                  settings.visibleItems(catalog.actionMovies),
-                            ),
-                            MediaRow(
-                              title: 'Comédias',
-                              mediaItems:
-                                  settings.visibleItems(catalog.comedyMovies),
-                            ),
-                            MediaRow(
-                              title: 'Ficção Científica',
-                              mediaItems:
-                                  settings.visibleItems(catalog.sciFiMovies),
-                            ),
-                            // Clears the floating dock on phones.
-                            const SizedBox(height: 40),
-                          ],
-                        ),
+                      ],
+                    ),
+                  if (catalog.errorMessage != null)
+                    SliverToBoxAdapter(
+                      child: _ConnectionNotice(
+                        message: catalog.errorMessage!,
+                        onRetry: catalog.loadCatalog,
                       ),
-                    ],
+                    ),
+                  if (heroes.isNotEmpty)
+                    SliverToBoxAdapter(child: HeroBanner(media: heroes.first)),
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        const ContinueWatchingRow(),
+                        for (final section in catalog.fenixCatalogs.entries)
+                          MediaRow(
+                            title: section.key,
+                            mediaItems: settings.visibleItems(section.value),
+                          ),
+                        MediaRow(
+                          title: 'Em Alta Hoje',
+                          mediaItems: settings.visibleItems(catalog.trending),
+                        ),
+                        MediaRow(
+                          title: 'Filmes Populares',
+                          mediaItems: settings.visibleItems(
+                            catalog.popularMovies,
+                          ),
+                        ),
+                        MediaRow(
+                          title: 'Séries em Destaque',
+                          mediaItems: settings.visibleItems(catalog.popularTV),
+                        ),
+                        MediaRow(
+                          title: 'Mais Bem Avaliados',
+                          mediaItems: settings.visibleItems(catalog.topRated),
+                        ),
+                        MediaRow(
+                          title: 'Ação e Aventura',
+                          mediaItems: settings.visibleItems(
+                            catalog.actionMovies,
+                          ),
+                        ),
+                        MediaRow(
+                          title: 'Comédias',
+                          mediaItems: settings.visibleItems(
+                            catalog.comedyMovies,
+                          ),
+                        ),
+                        MediaRow(
+                          title: 'Ficção Científica',
+                          mediaItems: settings.visibleItems(
+                            catalog.sciFiMovies,
+                          ),
+                        ),
+                        // Clears the floating dock on phones.
+                        const SizedBox(height: 40),
+                      ],
+                    ),
                   ),
-                ),
+                ],
+              ),
+            ),
     );
   }
 }
@@ -139,11 +134,16 @@ class _CatalogError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded,
-                size: 54, color: SabuflixTheme.textMuted),
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 54,
+              color: SabuflixTheme.textMuted,
+            ),
             const SizedBox(height: 18),
-            Text('Catálogo indisponível',
-                style: SabuflixTheme.title(fontSize: 18)),
+            Text(
+              'Catálogo indisponível',
+              style: SabuflixTheme.title(fontSize: 18),
+            ),
             const SizedBox(height: 8),
             Text(
               'Verifique sua conexão e tente novamente.',
@@ -181,12 +181,15 @@ class _ConnectionNotice extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.cloud_off_outlined,
-                size: 18, color: SabuflixTheme.textSecondary),
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 18,
+              color: SabuflixTheme.textSecondary,
+            ),
             const SizedBox(width: 10),
             Expanded(
-                child:
-                    Text(message, style: SabuflixTheme.caption(fontSize: 12))),
+              child: Text(message, style: SabuflixTheme.caption(fontSize: 12)),
+            ),
             TextButton(onPressed: onRetry, child: const Text('Atualizar')),
           ],
         ),
@@ -209,9 +212,9 @@ class _AccountBadge extends StatelessWidget {
           tooltip: 'Trocar perfil',
           onPressed: () {
             Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const ProfileSelectionScreen()));
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileSelectionScreen()),
+            );
           },
           icon: Container(
             width: 32,

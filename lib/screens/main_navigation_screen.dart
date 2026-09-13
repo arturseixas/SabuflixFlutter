@@ -25,28 +25,28 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     'Pesquisar',
     'Descobrir',
     'Biblioteca',
-    'Ajustes'
+    'Ajustes',
   ];
   static const _icons = [
     Icons.home_outlined,
     Icons.search,
     Icons.explore_outlined,
     Icons.video_library_outlined,
-    Icons.settings_outlined
+    Icons.settings_outlined,
   ];
   static const _selectedIcons = [
     Icons.home_rounded,
     Icons.search_rounded,
     Icons.explore_rounded,
     Icons.video_library_rounded,
-    Icons.settings_rounded
+    Icons.settings_rounded,
   ];
   static const _pages = [
     HomeScreen(),
     SearchScreen(),
     CategoriesScreen(),
     LibraryScreen(),
-    SettingsScreen()
+    SettingsScreen(),
   ];
   void _select(int index) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -58,7 +58,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final desktop = MediaQuery.sizeOf(context).width >= 800 &&
+    final desktop =
+        MediaQuery.sizeOf(context).width >= 800 &&
         MediaQuery.textScalerOf(context).scale(14) <= 20;
     final count = context.select<DownloadsProvider, int>((p) => p.activeCount);
     return PopScope(
@@ -72,58 +73,81 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 backgroundColor: SabuflixTheme.background,
                 toolbarHeight: 76,
                 titleSpacing: 24,
-                title: Row(children: [
-                  const SabuflixWordmark(fontSize: 21),
-                  const SizedBox(width: 24),
-                  for (var i = 0; i < _labels.length; i++)
-                    Flexible(
+                title: Row(
+                  children: [
+                    const SabuflixWordmark(fontSize: 21),
+                    const SizedBox(width: 24),
+                    for (var i = 0; i < _labels.length; i++)
+                      Flexible(
                         child: Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: TextButton(
-                                onPressed: () => _select(i),
-                                style: TextButton.styleFrom(
-                                    foregroundColor: _index == i
-                                        ? Colors.white
-                                        : SabuflixTheme.textSecondary,
-                                    backgroundColor: _index == i
-                                        ? SabuflixTheme.surfaceLight
-                                        : Colors.transparent,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 18)),
-                                child: Semantics(
-                                    selected: _index == i,
-                                    child: Text(_labels[i],
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis))))),
-                ]),
+                          padding: const EdgeInsets.only(right: 4),
+                          child: TextButton(
+                            onPressed: () => _select(i),
+                            style: TextButton.styleFrom(
+                              foregroundColor: _index == i
+                                  ? SabuflixTheme.accent
+                                  : SabuflixTheme.textSecondary,
+                              backgroundColor: _index == i
+                                  ? SabuflixTheme.surface
+                                  : Colors.transparent,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 18,
+                              ),
+                            ),
+                            child: Semantics(
+                              selected: _index == i,
+                              child: Text(
+                                _labels[i],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 actions: [
                   Consumer<ProfileProvider>(
-                      builder: (context, profiles, _) => IconButton(
-                          tooltip:
-                              'Trocar perfil: ${profiles.currentProfile?.name ?? ''}',
-                          onPressed: () => Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute<void>(
-                                  builder: (_) =>
-                                      const ProfileSelectionScreen())),
-                          icon: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: Color(
-                                  profiles.currentProfile?.colorValue ??
-                                      0xFF4285F4),
-                              child: const Icon(Icons.person_rounded,
-                                  size: 21, color: Colors.white)))),
+                    builder: (context, profiles, _) => IconButton(
+                      tooltip:
+                          'Trocar perfil: ${profiles.currentProfile?.name ?? ''}',
+                      onPressed: () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ProfileSelectionScreen(),
+                        ),
+                      ),
+                      icon: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Color(
+                          profiles.currentProfile?.colorValue ?? 0xFF4285F4,
+                        ),
+                        child: const Icon(
+                          Icons.person_rounded,
+                          size: 21,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 16),
                 ],
               )
             : null,
-        body: IndexedStack(index: _index, children: [
-          for (var i = 0; i < _pages.length; i++)
-            TickerMode(
+        body: IndexedStack(
+          index: _index,
+          children: [
+            for (var i = 0; i < _pages.length; i++)
+              TickerMode(
                 enabled: _index == i,
-                child:
-                    _visited.contains(i) ? _pages[i] : const SizedBox.shrink()),
-        ]),
+                child: _visited.contains(i)
+                    ? _pages[i]
+                    : const SizedBox.shrink(),
+              ),
+          ],
+        ),
         bottomNavigationBar: desktop
             ? null
             : DecoratedBox(
@@ -179,7 +203,7 @@ class _MobileNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? Colors.white : const Color(0xFF77777F);
+    final color = selected ? SabuflixTheme.accent : SabuflixTheme.textMuted;
     return Semantics(
       button: true,
       selected: selected,

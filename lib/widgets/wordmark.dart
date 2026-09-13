@@ -9,6 +9,6 @@ class SabuflixWordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text('Sabuflix', style: SabuflixTheme.wordmark(fontSize: fontSize));
+    return Text('SABUFLIX', style: SabuflixTheme.wordmark(fontSize: fontSize));
   }
 }

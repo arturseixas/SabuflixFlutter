@@ -10,16 +10,17 @@ import '../theme/sabuflix_theme.dart';
 import '../utils/app_route.dart';
 import '../screens/media_details_screen.dart';
 
-/// A poster card in the Apple Music / Apple TV idiom: artwork only, title
-/// set below in small type. No badges, no overlays, no rating chip.
+/// Artwork-first card; home shelves use cinematic landscape stills.
 class MediaCard extends StatefulWidget {
   final MediaItem media;
   final double width;
+  final bool landscape;
 
   const MediaCard({
     super.key,
     required this.media,
     this.width = 148,
+    this.landscape = false,
   });
 
   @override
@@ -39,39 +40,52 @@ class _MediaCardState extends State<MediaCard> {
         return SafeArea(
           child: Consumer2<WatchedProvider, FavoritesProvider>(
             builder: (context, watched, favorites, child) {
-              final isWatched = watched.isWatched(widget.media.id,
-                  mediaType: widget.media.mediaType);
-              final isFavorite = favorites.isFavorite(widget.media.id,
-                  mediaType: widget.media.mediaType);
+              final isWatched = watched.isWatched(
+                widget.media.id,
+                mediaType: widget.media.mediaType,
+              );
+              final isFavorite = favorites.isFavorite(
+                widget.media.id,
+                mediaType: widget.media.mediaType,
+              );
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    leading: Icon(isWatched
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_rounded),
-                    title: Text(isWatched
-                        ? 'Marcar como não assistido'
-                        : 'Marcar como assistido'),
+                    leading: Icon(
+                      isWatched
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_rounded,
+                    ),
+                    title: Text(
+                      isWatched
+                          ? 'Marcar como não assistido'
+                          : 'Marcar como assistido',
+                    ),
                     onTap: () async {
                       Navigator.pop(sheetContext);
                       await watched.toggle(widget.media);
                       if (!isWatched && mounted) {
-                        await this
-                            .context
+                        await this.context
                             .read<ContinueWatchingProvider>()
-                            .remove(widget.media.id,
-                                mediaType: widget.media.mediaType);
+                            .remove(
+                              widget.media.id,
+                              mediaType: widget.media.mediaType,
+                            );
                       }
                     },
                   ),
                   ListTile(
-                    leading: Icon(isFavorite
-                        ? Icons.bookmark_remove_outlined
-                        : Icons.bookmark_add_outlined),
-                    title: Text(isFavorite
-                        ? 'Remover da Minha Lista'
-                        : 'Adicionar à Minha Lista'),
+                    leading: Icon(
+                      isFavorite
+                          ? Icons.bookmark_remove_outlined
+                          : Icons.bookmark_add_outlined,
+                    ),
+                    title: Text(
+                      isFavorite
+                          ? 'Remover da Minha Lista'
+                          : 'Adicionar à Minha Lista',
+                    ),
                     onTap: () {
                       Navigator.pop(sheetContext);
                       favorites.toggleFavorite(widget.media);
@@ -82,8 +96,10 @@ class _MediaCardState extends State<MediaCard> {
                     title: const Text('Ver detalhes'),
                     onTap: () {
                       Navigator.pop(sheetContext);
-                      Navigator.push(context,
-                          glassRoute(MediaDetailsScreen(media: widget.media)));
+                      Navigator.push(
+                        context,
+                        glassRoute(MediaDetailsScreen(media: widget.media)),
+                      );
                     },
                   ),
                   const SizedBox(height: 8),
@@ -98,10 +114,12 @@ class _MediaCardState extends State<MediaCard> {
 
   @override
   Widget build(BuildContext context) {
-    final compact =
-        context.select<SettingsProvider, bool>((p) => p.compactPosters);
+    final compact = context.select<SettingsProvider, bool>(
+      (p) => p.compactPosters,
+    );
     final watched = context.select<WatchedProvider, bool>(
-        (p) => p.isWatched(widget.media.id, mediaType: widget.media.mediaType));
+      (p) => p.isWatched(widget.media.id, mediaType: widget.media.mediaType),
+    );
 
     return Semantics(
       button: true,
@@ -117,7 +135,9 @@ class _MediaCardState extends State<MediaCard> {
             onFocusChange: (focused) => setState(() => _isFocused = focused),
             onTap: () {
               Navigator.push(
-                  context, glassRoute(MediaDetailsScreen(media: widget.media)));
+                context,
+                glassRoute(MediaDetailsScreen(media: widget.media)),
+              );
             },
             onLongPress: _showActions,
             onSecondaryTap: _showActions,
@@ -142,9 +162,7 @@ class _MediaCardState extends State<MediaCard> {
                           border: _isFocused
                               ? Border.all(color: Colors.white, width: 3)
                               : null,
-                          boxShadow: _isHovered
-                              ? SabuflixTheme.shadowMd
-                              : SabuflixTheme.shadowSm,
+                          boxShadow: const [],
                         ),
                         child: ClipRRect(
                           borderRadius: SabuflixTheme.radiusMd,
@@ -152,14 +170,19 @@ class _MediaCardState extends State<MediaCard> {
                             fit: StackFit.expand,
                             children: [
                               CachedNetworkImage(
-                                imageUrl: widget.media.fullPosterPath,
+                                imageUrl: widget.landscape
+                                    ? widget.media.fullBackdropPath
+                                    : widget.media.fullPosterPath,
                                 fit: BoxFit.cover,
                                 placeholder: (context, url) =>
                                     Container(color: SabuflixTheme.surface),
                                 errorWidget: (context, url, error) => Container(
                                   color: SabuflixTheme.surface,
-                                  child: const Icon(Icons.image_outlined,
-                                      color: SabuflixTheme.textMuted, size: 28),
+                                  child: const Icon(
+                                    Icons.image_outlined,
+                                    color: SabuflixTheme.textMuted,
+                                    size: 28,
+                                  ),
                                 ),
                               ),
                               if (watched)
@@ -170,15 +193,21 @@ class _MediaCardState extends State<MediaCard> {
                                     width: 28,
                                     height: 28,
                                     decoration: BoxDecoration(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.68),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.68,
+                                      ),
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.3)),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                      ),
                                     ),
-                                    child: const Icon(Icons.check_rounded,
-                                        color: Colors.white, size: 17),
+                                    child: const Icon(
+                                      Icons.check_rounded,
+                                      color: Colors.white,
+                                      size: 17,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -190,13 +219,16 @@ class _MediaCardState extends State<MediaCard> {
                   if (!compact) ...[
                     const SizedBox(height: 10),
                     Text(
-                      widget.media.title,
+                      widget.landscape
+                          ? widget.media.title.toUpperCase()
+                          : widget.media.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: SabuflixTheme.caption(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: SabuflixTheme.textPrimary),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: SabuflixTheme.textPrimary,
+                      ),
                     ),
                   ],
                 ],
