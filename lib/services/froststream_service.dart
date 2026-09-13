@@ -9,16 +9,16 @@ class FrostStreamService {
   );
 
   static final List<({String name, String brand, String baseUrl})> _sources = [
-    (name: 'FenixFlix', brand: 'FenixFlix', baseUrl: AddonService.fenixBase),
+    (name: 'Nebula', brand: 'Nebula', baseUrl: AddonService.fenixBase),
     (
       name: 'FrostStream',
-      brand: 'Sabuflix Direct',
-      baseUrl: 'https://froststream.cloutteam.com/stream',
+      brand: 'FrostStream',
+      baseUrl: 'https://froststream.cloutteam.com',
     ),
     (
-      name: 'BestCine',
-      brand: 'Sabuflix Cinema',
-      baseUrl: 'https://bestcine.alwaysdata.net',
+      name: 'Wali',
+      brand: 'Wali',
+      baseUrl: 'https://bestcine.dpdns.org',
     ),
     if (_penguPlayManifestUrl.isNotEmpty)
       (
@@ -91,32 +91,24 @@ class FrostStreamService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List streams = data['streams'] ?? [];
-        return streams
-            .whereType<Map>()
-            .toList()
-            .asMap()
-            .entries
-            .where((entry) {
-              final hints = entry.value['behaviorHints'];
-              return !kIsWeb || hints is! Map || hints['notWebReady'] != true;
-            })
-            .map((entry) {
-              final stream = Map<String, dynamic>.from(entry.value);
-              final rawLabel =
-                  '${stream['name'] ?? ''} ${stream['title'] ?? ''}';
-              final quality = _qualityFrom(rawLabel);
-              final audio = _audioFrom(rawLabel);
-              stream['displayName'] = source.brand;
-              stream['displayDescription'] = [
-                quality,
-                if (audio != null) audio,
-                'Opção ${(entry.key + 1).toString().padLeft(2, '0')}',
-              ].join('  •  ');
-              stream['displayQuality'] = quality;
-              stream['sourceName'] = source.name;
-              return stream;
-            })
-            .toList();
+        return streams.whereType<Map>().toList().asMap().entries.where((entry) {
+          final hints = entry.value['behaviorHints'];
+          return !kIsWeb || hints is! Map || hints['notWebReady'] != true;
+        }).map((entry) {
+          final stream = Map<String, dynamic>.from(entry.value);
+          final rawLabel = '${stream['name'] ?? ''} ${stream['title'] ?? ''}';
+          final quality = _qualityFrom(rawLabel);
+          final audio = _audioFrom(rawLabel);
+          stream['displayName'] = source.brand;
+          stream['displayDescription'] = [
+            quality,
+            if (audio != null) audio,
+            'Opção ${(entry.key + 1).toString().padLeft(2, '0')}',
+          ].join('  •  ');
+          stream['displayQuality'] = quality;
+          stream['sourceName'] = source.name;
+          return stream;
+        }).toList();
       }
     } catch (e) {
       debugPrint('Error fetching ${source.name}: $e');

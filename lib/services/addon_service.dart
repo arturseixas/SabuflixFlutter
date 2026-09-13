@@ -9,19 +9,36 @@ class AddonService {
   final http.Client? client;
   const AddonService({this.client});
 
-  /// HTML video tracks require WebVTT; native players also accept SRT.
+  /// HTML video tracks require WebVTT; native players also accept SRT and WebVTT via data track.
   Future<String> webSubtitle(String url) async {
     final response =
         await (client?.get(Uri.parse(url)) ?? http.get(Uri.parse(url)))
             .timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) throw StateError('Legenda indisponível');
-    final text =
-        utf8.decode(response.bodyBytes).replaceFirst('\uFEFF', '').trim();
+    String text;
+    try {
+      text = utf8.decode(response.bodyBytes);
+    } catch (_) {
+      text = latin1.decode(response.bodyBytes);
+    }
+    text = text
+        .replaceFirst('\uFEFF', '')
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .trim();
     if (text.startsWith('WEBVTT')) return text;
     if (!text.contains('-->')) {
       throw FormatException('Formato de legenda inválido');
     }
-    return 'WEBVTT\n\n${text.replaceAllMapped(RegExp(r'(\d{2}:\d{2}:\d{2}),(\d{3})'), (m) => '${m[1]}.${m[2]}')}\n';
+    final converted = text.replaceAllMapped(
+      RegExp(r'(\d{1,2}:\d{2}:\d{2})[,.](\d{2,3})'),
+      (m) {
+        final time = m[1]!.padLeft(8, '0');
+        final ms = m[2]!.padRight(3, '0');
+        return '$time.$ms';
+      },
+    );
+    return 'WEBVTT\n\n$converted\n';
   }
 
   Future<List<Map<String, dynamic>>> _fetch(String url, String key) async {
@@ -68,8 +85,11 @@ class AddonService {
           uri.host.isNotEmpty &&
           seen.add(url);
     }).toList();
-    bool portuguese(Map item) =>
-        ['por', 'pob', 'pt', 'pt-BR'].contains(item['lang']);
+    bool portuguese(Map item) {
+      final lang = item['lang']?.toString().toLowerCase().trim() ?? '';
+      return ['por', 'pob', 'pt', 'pt-br', 'pb', 'bra'].contains(lang);
+    }
+
     valid.sort(
       (a, b) => (portuguese(a) ? 0 : 1).compareTo(portuguese(b) ? 0 : 1),
     );

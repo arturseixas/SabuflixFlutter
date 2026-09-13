@@ -1,6 +1,6 @@
 [Setup]
 AppName=Sabuflix
-AppVersion=1.4.0
+AppVersion=1.4.1
 WizardStyle=modern
 DefaultDirName={localappdata}\Sabuflix
 DefaultGroupName=Sabuflix

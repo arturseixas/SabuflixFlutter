@@ -13,6 +13,7 @@ import '../providers/continue_watching_provider.dart';
 import '../providers/watched_provider.dart';
 import '../services/native_pip_service.dart';
 import '../services/addon_service.dart';
+import '../services/tmdb_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/formatters.dart';
 import '../utils/browser_playback.dart';
@@ -233,7 +234,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         if (!mounted) return;
         setState(() {
           _selectedAudioTrack = track.audio;
-          _selectedSubtitleTrack = track.subtitle;
+          if (_selectedSubtitleTrack == null || !_selectedSubtitleTrack!.uri) {
+            _selectedSubtitleTrack = track.subtitle;
+          }
         });
       });
 
@@ -247,8 +250,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _loadExternalSubtitles() async {
+    var imdbId = widget.media.imdbId;
+    if ((imdbId == null || imdbId.isEmpty) && widget.media.id > 0) {
+      try {
+        final details = await TMDBService().fetchMediaDetails(
+          widget.media.id,
+          widget.media.mediaType,
+        );
+        imdbId = details?.imdbId;
+      } catch (_) {}
+    }
+    if (imdbId == null || imdbId.isEmpty) return;
+
     final items = await const AddonService().subtitles(
-      imdbId: widget.media.imdbId ?? '',
+      imdbId: imdbId,
       type: widget.media.mediaType,
       season: widget.season,
       episode: widget.episode,
@@ -257,8 +272,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     setState(() {
       _externalSubtitles = items.asMap().entries.map((entry) {
         final item = entry.value;
-        final lang = item['lang']?.toString() ?? 'und';
-        final label = ['por', 'pob', 'pt', 'pt-BR'].contains(lang)
+        final lang = item['lang']?.toString().toLowerCase().trim() ?? 'und';
+        final label = ['por', 'pob', 'pt', 'pt-br', 'pb', 'bra'].contains(lang)
             ? 'Português'
             : lang.toUpperCase();
         return SubtitleTrack.uri(
@@ -276,7 +291,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Future<void> _selectSubtitle(SubtitleTrack track) async {
     try {
-      final selected = kIsWeb && track.uri
+      final selected = track.uri
           ? SubtitleTrack.data(await const AddonService().webSubtitle(track.id),
               title: track.title, language: track.language)
           : track;

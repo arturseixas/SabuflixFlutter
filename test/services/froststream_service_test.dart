@@ -19,5 +19,18 @@ void main() {
 
       expect(FrostStreamService.addonBaseUrl(baseUrl), baseUrl);
     });
+
+    test('extracts base URLs for Wali and FrostStream manifests', () {
+      expect(
+        FrostStreamService.addonBaseUrl(
+            'https://bestcine.dpdns.org/manifest.json'),
+        'https://bestcine.dpdns.org',
+      );
+      expect(
+        FrostStreamService.addonBaseUrl(
+            'https://froststream.cloutteam.com/manifest.json'),
+        'https://froststream.cloutteam.com',
+      );
+    });
   });
 }

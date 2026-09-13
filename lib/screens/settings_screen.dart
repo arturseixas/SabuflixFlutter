@@ -235,7 +235,7 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     ListTile(
                       leading: Icon(Icons.movie_outlined),
-                      title: Text('FenixFlix'),
+                      title: Text('Nebula'),
                       subtitle: Text(
                           'Filmes e séries · 4K, Full HD, HD e SD\nÁudio dublado e legendado'),
                     ),

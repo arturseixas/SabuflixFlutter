@@ -10,10 +10,10 @@ class CatalogProvider extends ChangeNotifier {
   final TMDBService _tmdbService;
   final Map<String, List<MediaItem>> fenixCatalogs = {};
   static const _fenixSections = [
-    ('Filmes populares · FenixFlix', 'movie', 'populares_fenix'),
-    ('Séries populares · FenixFlix', 'series', 'populares_fenix'),
-    ('Filmes recém-adicionados · FenixFlix', 'movie', 'recentes_servidor'),
-    ('Séries recém-adicionadas · FenixFlix', 'series', 'recentes_servidor'),
+    ('Filmes populares · Nebula', 'movie', 'populares_fenix'),
+    ('Séries populares · Nebula', 'series', 'populares_fenix'),
+    ('Filmes recém-adicionados · Nebula', 'movie', 'recentes_servidor'),
+    ('Séries recém-adicionadas · Nebula', 'series', 'recentes_servidor'),
   ];
   bool _loadingFenix = false;
 
@@ -78,7 +78,7 @@ class CatalogProvider extends ChangeNotifier {
       fenixCatalogs.values.any((items) => items.isNotEmpty);
 
   CatalogProvider({TMDBService? service})
-    : _tmdbService = service ?? TMDBService() {
+      : _tmdbService = service ?? TMDBService() {
     _initialize();
   }
 

@@ -17,6 +17,20 @@ void main() {
     expect(text, contains('Olá'));
   });
 
+  test('SRT subtitles with Latin-1 bytes and flexible hours are parsed cleanly',
+      () async {
+    // Latin-1 encoded bytes for "Não é possível"
+    final latin1Bytes =
+        latin1.encode('1\n0:01:05,50 --> 0:01:08,500\nNão é possível\n');
+    final service = AddonService(
+        client: MockClient((_) async => http.Response.bytes(latin1Bytes, 200)));
+    final text =
+        await service.webSubtitle('https://example.com/subtitle_latin1.srt');
+    expect(text, startsWith('WEBVTT\n\n'));
+    expect(text, contains('00:01:05.500 --> 00:01:08.500'));
+    expect(text, contains('Não é possível'));
+  });
+
   test(
       'episode subtitles preserve identity, reject invalid URLs and prioritize Portuguese',
       () async {
