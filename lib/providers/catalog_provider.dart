@@ -6,7 +6,7 @@ import '../models/media_item.dart';
 import '../services/tmdb_service.dart';
 
 class CatalogProvider extends ChangeNotifier {
-  static const _catalogCacheKey = 'sabuflix_catalog_cache_v1';
+  static const _catalogCacheKey = 'sabuflix_catalog_cache_v2';
   final TMDBService _tmdbService;
   final Map<String, List<MediaItem>> fenixCatalogs = {};
   static const _fenixSections = [
@@ -169,13 +169,18 @@ class CatalogProvider extends ChangeNotifier {
   Future<void> _restoreCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('sabuflix_catalog_cache_v1');
       final raw = prefs.getString(_catalogCacheKey);
       if (raw == null || raw.isEmpty) return;
       final data = Map<String, dynamic>.from(json.decode(raw) as Map);
       final fenix = data['fenix'];
       if (fenix is Map) {
         for (final entry in fenix.entries) {
-          fenixCatalogs[entry.key.toString()] = _decodeItems(entry.value);
+          final cleanKey = entry.key
+              .toString()
+              .replaceAll('FenixFlix', 'Nebula')
+              .replaceAll('fenixflix', 'Nebula');
+          fenixCatalogs[cleanKey] = _decodeItems(entry.value);
         }
       }
       _trending = _decodeItems(data['trending']);

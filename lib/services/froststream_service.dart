@@ -96,6 +96,14 @@ class FrostStreamService {
           return !kIsWeb || hints is! Map || hints['notWebReady'] != true;
         }).map((entry) {
           final stream = Map<String, dynamic>.from(entry.value);
+          if (stream['name'] is String) {
+            stream['name'] = stream['name'].toString().replaceAll(
+                RegExp(r'fenixflix', caseSensitive: false), 'Nebula');
+          }
+          if (stream['title'] is String) {
+            stream['title'] = stream['title'].toString().replaceAll(
+                RegExp(r'fenixflix', caseSensitive: false), 'Nebula');
+          }
           final rawLabel = '${stream['name'] ?? ''} ${stream['title'] ?? ''}';
           final quality = _qualityFrom(rawLabel);
           final audio = _audioFrom(rawLabel);

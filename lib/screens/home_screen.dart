@@ -72,7 +72,9 @@ class HomeScreen extends StatelessWidget {
                             ContinueWatchingRow(),
                             for (final section in catalog.fenixCatalogs.entries)
                               MediaRow(
-                                title: section.key,
+                                title: section.key
+                                    .replaceAll('FenixFlix', 'Nebula')
+                                    .replaceAll('fenixflix', 'Nebula'),
                                 mediaItems:
                                     settings.visibleItems(section.value),
                               ),
