@@ -6,14 +6,14 @@ import '../models/media_item.dart';
 import '../services/tmdb_service.dart';
 
 class CatalogProvider extends ChangeNotifier {
-  static const _catalogCacheKey = 'sabuflix_catalog_cache_v2';
+  static const _catalogCacheKey = 'sabuflix_catalog_cache_v3';
   final TMDBService _tmdbService;
   final Map<String, List<MediaItem>> fenixCatalogs = {};
   static const _fenixSections = [
-    ('Filmes populares · Nebula', 'movie', 'populares_fenix'),
-    ('Séries populares · Nebula', 'series', 'populares_fenix'),
-    ('Filmes recém-adicionados · Nebula', 'movie', 'recentes_servidor'),
-    ('Séries recém-adicionadas · Nebula', 'series', 'recentes_servidor'),
+    ('Filmes em destaque', 'movie', 'populares_fenix'),
+    ('Séries em destaque', 'series', 'populares_fenix'),
+    ('Filmes recém-adicionados', 'movie', 'recentes_servidor'),
+    ('Séries recém-adicionadas', 'series', 'recentes_servidor'),
   ];
   bool _loadingFenix = false;
 
@@ -21,6 +21,7 @@ class CatalogProvider extends ChangeNotifier {
     if (_loadingFenix) return;
     _loadingFenix = true;
     try {
+      final newCatalogs = <String, List<MediaItem>>{};
       await Future.wait(
         _fenixSections.map((section) async {
           final items = await _tmdbService.fetchFenixCatalog(
@@ -28,11 +29,17 @@ class CatalogProvider extends ChangeNotifier {
             section.$3,
           );
           if (_disposed || items.isEmpty) return;
-          fenixCatalogs[section.$1] = items;
-          notifyListeners();
+          newCatalogs[section.$1] = items;
         }),
       );
-      if (!_disposed) await _saveCache();
+      if (!_disposed) {
+        fenixCatalogs.removeWhere(
+          (k, _) => k.toLowerCase().contains('fenixflix'),
+        );
+        fenixCatalogs.addAll(newCatalogs);
+        notifyListeners();
+        await _saveCache();
+      }
     } finally {
       _loadingFenix = false;
     }
@@ -170,6 +177,7 @@ class CatalogProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('sabuflix_catalog_cache_v1');
+      await prefs.remove('sabuflix_catalog_cache_v2');
       final raw = prefs.getString(_catalogCacheKey);
       if (raw == null || raw.isEmpty) return;
       final data = Map<String, dynamic>.from(json.decode(raw) as Map);
@@ -178,8 +186,12 @@ class CatalogProvider extends ChangeNotifier {
         for (final entry in fenix.entries) {
           final cleanKey = entry.key
               .toString()
-              .replaceAll('FenixFlix', 'Nebula')
-              .replaceAll('fenixflix', 'Nebula');
+              .replaceAll(
+                RegExp(r'\s*·\s*(fenixflix|nebula)', caseSensitive: false),
+                '',
+              )
+              .replaceAll(RegExp(r'fenixflix', caseSensitive: false), '')
+              .trim();
           fenixCatalogs[cleanKey] = _decodeItems(entry.value);
         }
       }
