@@ -284,14 +284,17 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> applyJson(Map<String, dynamic> json) async {
     await setThemeMode(
         _enumFrom(ThemeMode.values, json['themeMode']?.toString(), _themeMode));
-    if (json['compactPosters'] is bool)
+    if (json['compactPosters'] is bool) {
       await setCompactPosters(json['compactPosters']);
-    if (json['hideUnreleased'] is bool)
+    }
+    if (json['hideUnreleased'] is bool) {
       await setHideUnreleased(json['hideUnreleased']);
+    }
     await setContinueWatchingSort(_enumFrom(ContinueWatchingSort.values,
         json['continueWatchingSort']?.toString(), _continueWatchingSort));
-    if (json['autoplayNext'] is bool)
+    if (json['autoplayNext'] is bool) {
       await setAutoplayNext(json['autoplayNext']);
+    }
     if (json['quickPlay'] is bool) await setQuickPlay(json['quickPlay']);
     await setPreferredQuality(_enumFrom(PreferredQuality.values,
         json['preferredQuality']?.toString(), _preferredQuality));
@@ -305,8 +308,9 @@ class SettingsProvider extends ChangeNotifier {
     if (json['playbackSpeed'] is num) {
       await setPlaybackSpeed((json['playbackSpeed'] as num).toDouble());
     }
-    if (json['volume'] is num)
+    if (json['volume'] is num) {
       await setVolume((json['volume'] as num).toDouble());
+    }
     if (json['seekStepSeconds'] is num) {
       await setSeekStepSeconds((json['seekStepSeconds'] as num).toInt());
     }

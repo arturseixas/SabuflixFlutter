@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:sabuflix/models/media_item.dart';
+import 'package:sabuflix/providers/cast_provider.dart';
 import 'package:sabuflix/providers/favorites_provider.dart';
 import 'package:sabuflix/providers/settings_provider.dart';
 import 'package:sabuflix/providers/watched_provider.dart';
@@ -27,6 +28,7 @@ Widget host(Widget child, {double scale = 1}) => MultiProvider(
           ChangeNotifierProvider(create: (_) => SettingsProvider()),
           ChangeNotifierProvider(create: (_) => WatchedProvider()),
           ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
+          ChangeNotifierProvider(create: (_) => CastProvider()),
         ],
         child: MaterialApp(
             theme: SabuflixTheme.themeData,

@@ -6,7 +6,9 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sabuflix/models/media_item.dart';
+import 'package:sabuflix/providers/cast_provider.dart';
 import 'package:sabuflix/providers/continue_watching_provider.dart';
+import 'package:sabuflix/providers/settings_provider.dart';
 import 'package:sabuflix/providers/watched_provider.dart';
 import 'package:sabuflix/screens/video_player_screen.dart';
 import 'package:sabuflix/theme/sabuflix_theme.dart';
@@ -20,6 +22,8 @@ void main() {
         providers: [
           ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
           ChangeNotifierProvider(create: (_) => WatchedProvider()),
+          ChangeNotifierProvider(create: (_) => SettingsProvider()),
+          ChangeNotifierProvider(create: (_) => CastProvider()),
         ],
         child: MaterialApp(
             theme: SabuflixTheme.themeData,

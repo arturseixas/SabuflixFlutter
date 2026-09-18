@@ -37,8 +37,9 @@ class CastDiscovery {
     ]) {
       source.listen(
         (device) {
-          if (!controller.isClosed && seen.add(device.id))
+          if (!controller.isClosed && seen.add(device.id)) {
             controller.add(device);
+          }
         },
         onError: (Object error) => debugPrint('Discovery error: $error'),
         onDone: done,

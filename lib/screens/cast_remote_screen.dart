@@ -189,8 +189,9 @@ class _CastRemoteScreenState extends State<CastRemoteScreen> {
                                   break;
                                 case 'disconnect':
                                   await cast.disconnect();
-                                  if (context.mounted)
+                                  if (context.mounted) {
                                     Navigator.maybePop(context);
+                                  }
                                   break;
                               }
                             },
@@ -427,8 +428,9 @@ class _CastRemoteScreenState extends State<CastRemoteScreen> {
                                       OutlinedButton.icon(
                                         onPressed: () async {
                                           await _run(cast.stop);
-                                          if (context.mounted)
+                                          if (context.mounted) {
                                             Navigator.maybePop(context);
+                                          }
                                         },
                                         icon: const Icon(Icons.stop_rounded,
                                             size: 20),

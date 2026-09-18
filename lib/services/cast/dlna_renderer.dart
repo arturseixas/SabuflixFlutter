@@ -82,8 +82,9 @@ class DlnaRenderer {
 
   Future<void> setVolume(double level) async {
     final url = device.renderingControlUrl;
-    if (url == null)
+    if (url == null) {
       throw const CastException('Esta TV não expõe controle de volume.');
+    }
     await _renderingControl('SetVolume', {
       'Channel': 'Master',
       'DesiredVolume': (level.clamp(0.0, 1.0) * 100).round().toString(),
