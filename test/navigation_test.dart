@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:sabuflix/models/media_item.dart';
+import 'package:sabuflix/providers/cast_provider.dart';
 import 'package:sabuflix/providers/catalog_provider.dart';
 import 'package:sabuflix/providers/continue_watching_provider.dart';
 import 'package:sabuflix/providers/downloads_provider.dart';
@@ -62,6 +63,7 @@ void main() {
               ChangeNotifierProvider(create: (_) => PlaylistProvider()),
               ChangeNotifierProvider(create: (_) => SearchProvider()),
               ChangeNotifierProvider(create: (_) => SettingsProvider()),
+              ChangeNotifierProvider(create: (_) => CastProvider()),
             ],
             child: Consumer<SettingsProvider>(
                 builder: (context, settings, _) => MaterialApp(

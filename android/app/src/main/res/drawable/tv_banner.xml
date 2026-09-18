@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV launcher banner (320x180dp): brand wordmark on the app's dark surface. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#0B0C0E"
+        android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#204FE0"
+        android:pathData="M40,54 h56 a12,12 0 0 1 12,12 v48 a12,12 0 0 1 -12,12 h-56 a12,12 0 0 1 -12,-12 v-48 a12,12 0 0 1 12,-12 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,72 l30,18 l-30,18 z" />
+    <!-- S A B U F L I X, drawn as simple block glyphs -->
+    <path
+        android:fillColor="#F5F4F0"
+        android:pathData="M130,78 h20 v6 h-14 v5 h14 v17 h-20 v-6 h14 v-5 h-14 z
+        M156,78 h8 l7,28 h-6 l-1.4,-6 h-7.2 l-1.4,6 h-6 z M160,85 l-2.4,9.6 h4.8 z
+        M176,78 h14 a6,6 0 0 1 6,6 v3 a5,5 0 0 1 -3,4.5 a6,6 0 0 1 3,5.5 v3 a6,6 0 0 1 -6,6 h-14 z M182,84 v5 h7 v-5 z M182,95 v5 h8 v-5 z
+        M202,78 h6 v20 a3,3 0 0 0 6,0 v-20 h6 v21 a9,9 0 0 1 -18,0 z
+        M226,78 h18 v6 h-12 v5 h11 v6 h-11 v11 h-6 z
+        M250,78 h6 v22 h12 v6 h-18 z
+        M272,78 h6 v28 h-6 z
+        M283,78 h7 l4,8 l4,-8 h7 l-7.5,14 l7.5,14 h-7 l-4,-8 l-4,8 h-7 l7.5,-14 z" />
+</vector>

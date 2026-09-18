@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/downloads_provider.dart';
 import '../providers/profile_provider.dart';
 import '../theme/sabuflix_theme.dart';
+import '../widgets/cast_button.dart';
+import '../widgets/cast_mini_bar.dart';
 import '../widgets/wordmark.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
@@ -106,6 +108,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ],
                 ),
                 actions: [
+                  const CastButton(),
+                  const SizedBox(width: 4),
                   Consumer<ProfileProvider>(
                     builder: (context, profiles, _) => IconButton(
                       tooltip:
@@ -144,7 +148,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ],
         ),
         bottomNavigationBar: desktop
-            ? null
+            ? const CastMiniBar()
             : DecoratedBox(
                 decoration: BoxDecoration(
                   color: SabuflixTheme.of(context).background,
@@ -155,23 +159,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
                 child: SafeArea(
                   top: false,
-                  child: SizedBox(
-                    height: 64,
-                    child: Row(
-                      children: [
-                        for (var i = 0; i < _labels.length; i++)
-                          Expanded(
-                            child: _MobileNavItem(
-                              label: _labels[i],
-                              icon: _icons[i],
-                              selectedIcon: _selectedIcons[i],
-                              selected: _index == i,
-                              badgeCount: i == 3 ? count : 0,
-                              onTap: () => _select(i),
-                            ),
-                          ),
-                      ],
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CastMiniBar(),
+                      SizedBox(
+                        height: 64,
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < _labels.length; i++)
+                              Expanded(
+                                child: _MobileNavItem(
+                                  label: _labels[i],
+                                  icon: _icons[i],
+                                  selectedIcon: _selectedIcons[i],
+                                  selected: _index == i,
+                                  badgeCount: i == 3 ? count : 0,
+                                  onTap: () => _select(i),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

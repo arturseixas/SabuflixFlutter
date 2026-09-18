@@ -47,7 +47,7 @@ class TMDBService {
   final http.Client? _client;
   final Duration timeout;
   TMDBService({http.Client? client, this.timeout = const Duration(seconds: 15)})
-    : _client = client;
+      : _client = client;
   Future<http.Response> _get(Uri uri) async {
     final response = await (_client?.get(uri) ?? http.get(uri)).timeout(
       timeout,
@@ -207,9 +207,8 @@ class TMDBService {
   }
 
   Future<MediaItem?> fetchMediaDetails(int id, String mediaType) async {
-    final append = mediaType == 'tv'
-        ? 'external_ids,content_ratings'
-        : 'release_dates';
+    final append =
+        mediaType == 'tv' ? 'external_ids,content_ratings' : 'release_dates';
     final endpoint = mediaType == 'tv'
         ? 'tv/$id?append_to_response=$append&'
         : 'movie/$id?append_to_response=$append&';

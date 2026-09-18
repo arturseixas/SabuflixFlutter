@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'theme/sabuflix_theme.dart';
+import 'providers/cast_provider.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/continue_watching_provider.dart';
 import 'providers/downloads_provider.dart';
@@ -43,6 +44,35 @@ class SabuflixApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DownloadsProvider()),
         ChangeNotifierProvider(create: (_) => ContinueWatchingProvider()),
         ChangeNotifierProvider(create: (_) => WatchedProvider()),
+        // Casting reports the TV's position back into "Continuar assistindo"
+        // and marks episodes as watched, exactly like the local player does.
+        ChangeNotifierProxyProvider2<ContinueWatchingProvider, WatchedProvider,
+            CastProvider>(
+          create: (_) => CastProvider(),
+          update: (_, continueWatching, watched, cast) {
+            cast!.progressSink = (playing, position, duration) {
+              continueWatching.record(
+                media: playing.media,
+                season: playing.season,
+                episode: playing.episode,
+                episodeTitle: playing.episodeTitle,
+                positionSeconds: position.inSeconds,
+                durationSeconds: duration.inSeconds,
+                sourceUrl: playing.url,
+              );
+              if (duration.inSeconds > 0 &&
+                  position.inSeconds / duration.inSeconds >= 0.95) {
+                if (playing.isEpisode) {
+                  watched.markEpisodeWatched(
+                      playing.media.id, playing.season!, playing.episode!);
+                } else {
+                  watched.markWatched(playing.media);
+                }
+              }
+            };
+            return cast;
+          },
+        ),
       ],
       child: Consumer<SettingsProvider>(
           builder: (context, settings, _) => MaterialApp(

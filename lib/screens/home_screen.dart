@@ -4,6 +4,7 @@ import '../theme/sabuflix_theme.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/settings_provider.dart';
+import '../widgets/cast_button.dart';
 import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/home_skeleton.dart';
@@ -48,8 +49,9 @@ class HomeScreen extends StatelessWidget {
                           centerTitle: false,
                           title: SabuflixWordmark(fontSize: 19),
                           actions: [
+                            const CastButton(),
                             Padding(
-                              padding: EdgeInsets.only(right: 16),
+                              padding: EdgeInsets.only(right: 12),
                               child: _AccountBadge(),
                             ),
                           ],
