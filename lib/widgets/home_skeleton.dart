@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../theme/sabuflix_theme.dart';
+import 'hero_banner.dart';
 
 /// Placeholder that mirrors the home layout while the catalogue loads, so the
 /// screen settles into place instead of snapping in from a spinner.
@@ -22,10 +23,25 @@ class HomeSkeleton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(isDesktop ? 40 : 20, 12, 20, 10),
+              child: Row(
+                children: [
+                  for (var i = 0; i < 3; i++)
+                    Container(
+                      width: 84,
+                      height: 32,
+                      margin: EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: SabuflixTheme.of(context).surface,
+                        borderRadius: SabuflixTheme.radiusMd,
+                      ),
+                    ),
+                ],
+              ),
+            ),
             Container(
-              height: isDesktop
-                  ? (MediaQuery.sizeOf(context).width * .46).clamp(480.0, 660.0)
-                  : 520,
+              height: heroHeightFor(context, MediaQuery.sizeOf(context).width),
               width: double.infinity,
               color: SabuflixTheme.of(context).surface,
             ),

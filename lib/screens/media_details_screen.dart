@@ -35,7 +35,12 @@ import 'video_player_screen.dart';
 class MediaDetailsScreen extends StatefulWidget {
   final MediaItem media;
 
-  const MediaDetailsScreen({super.key, required this.media});
+  /// Opens the source picker (or quick play) as soon as details arrive, for
+  /// the hero's "Assistir" button.
+  final bool autoPlay;
+
+  const MediaDetailsScreen(
+      {super.key, required this.media, this.autoPlay = false});
 
   @override
   State<MediaDetailsScreen> createState() => _MediaDetailsScreenState();
@@ -48,6 +53,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
   bool _loadingDetails = true;
   bool _loadingEpisodes = false;
   bool _resolvingQuickPlay = false;
+  bool _autoPlayed = false;
   String? _detailsError;
   MediaDetails? _details;
   List<dynamic> _episodes = [];
@@ -107,6 +113,33 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
         _seasonNumber = season;
         _availableSeasons = availableSeasons;
       });
+      if (widget.autoPlay && !_autoPlayed) {
+        _autoPlayed = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final profile = context.read<ProfileProvider>().currentProfile;
+          if (_ageValue(details.media.ageRating) >
+              _ageValue(profile?.maxAgeRating)) {
+            return;
+          }
+          if (details.media.mediaType == 'tv') {
+            final entry = _seriesEntryPoint(context, listen: false);
+            _play(
+                season: entry.season,
+                episode: entry.episode,
+                episodeTitle: entry.title,
+                startAt: entry.startAt);
+          } else {
+            final progress = context
+                .read<ContinueWatchingProvider>()
+                .forMedia(details.media.id, mediaType: 'movie');
+            _play(
+                startAt: progress != null && !progress.isFinished
+                    ? progress.position
+                    : Duration.zero);
+          }
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -284,10 +317,10 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
   /// What the big button does for a series: resume, continue after the last
   /// watched episode, or start from the first one.
   ({int season, int episode, String? title, Duration startAt, String label})
-      _seriesEntryPoint(BuildContext context) {
-    final progress = context
-        .watch<ContinueWatchingProvider>()
-        .forMedia(_media.id, mediaType: 'tv');
+      _seriesEntryPoint(BuildContext context, {bool listen = true}) {
+    final progress =
+        Provider.of<ContinueWatchingProvider>(context, listen: listen)
+            .forMedia(_media.id, mediaType: 'tv');
     if (progress != null && progress.isEpisode && !progress.isFinished) {
       return (
         season: progress.season!,
@@ -297,7 +330,8 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
         label: progress.resumeLabel,
       );
     }
-    final last = context.watch<WatchedProvider>().lastWatchedEpisode(_media.id);
+    final last = Provider.of<WatchedProvider>(context, listen: listen)
+        .lastWatchedEpisode(_media.id);
     if (last != null) {
       final next = PlaybackResolver.nextEpisodeFromSeasons(
           _media.seasons ?? const [], last.season, last.episode);

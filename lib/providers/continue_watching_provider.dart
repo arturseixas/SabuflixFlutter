@@ -43,9 +43,9 @@ class ContinueWatchingProvider extends ChangeNotifier {
     return null;
   }
 
-  Future<void> loadForProfile(String? profileId) async {
+  Future<void> loadForProfile(String? profileId, {bool force = false}) async {
     final key = profileId ?? 'default';
-    if (_hydrated && key == _profileKey) return;
+    if (_hydrated && key == _profileKey && !force) return;
     _profileKey = key;
     _isLoading = true;
     notifyListeners();

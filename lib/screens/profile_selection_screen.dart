@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/profile.dart';
 import '../providers/profile_provider.dart';
@@ -10,6 +11,7 @@ import '../providers/watched_provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/wordmark.dart';
+import 'home_screen.dart';
 import 'main_navigation_screen.dart';
 
 class ProfileSelectionScreen extends StatefulWidget {
@@ -21,8 +23,23 @@ class ProfileSelectionScreen extends StatefulWidget {
 class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
   bool _selecting = false;
 
+  Future<bool> _unlock(Profile profile, {String? reason}) async {
+    if (!profile.hasPin) return true;
+    final pin = await showDialog<String>(
+      context: context,
+      builder: (_) => _PinDialog(
+        title: reason ?? 'Perfil de ${profile.name}',
+        subtitle: 'Digite o PIN de 4 dígitos para continuar.',
+        validate: profile.checkPin,
+      ),
+    );
+    return pin != null;
+  }
+
   void _selectProfile(BuildContext context, Profile profile) async {
     if (_selecting) return;
+    if (!await _unlock(profile)) return;
+    if (!context.mounted) return;
     setState(() => _selecting = true);
     final profileProvider =
         Provider.of<ProfileProvider>(context, listen: false);
@@ -46,7 +63,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
     } catch (e) {
       if (context.mounted) {
         setState(() => _selecting = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content:
                 Text('Não foi possível abrir este perfil. Tente novamente.')));
       }
@@ -56,13 +73,18 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
     if (context.mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => MainNavigationScreen()),
+        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
       );
     }
   }
 
-  void _showAddEditProfileDialog(BuildContext context,
-      {Profile? profileToEdit}) {
+  Future<void> _showAddEditProfileDialog(BuildContext context,
+      {Profile? profileToEdit}) async {
+    if (profileToEdit != null &&
+        !await _unlock(profileToEdit, reason: 'Editar ${profileToEdit.name}')) {
+      return;
+    }
+    if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (context) => _ProfileDialog(profileToEdit: profileToEdit),
@@ -75,7 +97,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
       backgroundColor: SabuflixTheme.of(context).background,
       body: Stack(
         children: [
-          Positioned(
+          const Positioned(
             top: 30,
             left: 30,
             child: SafeArea(child: SabuflixWordmark(fontSize: 20)),
@@ -86,14 +108,13 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                 if (provider.isLoading) {
                   return Center(
                     child: CircularProgressIndicator(
-                      color: SabuflixTheme.of(context).accent,
-                    ),
+                        color: SabuflixTheme.of(context).accent),
                   );
                 }
 
                 return Center(
                   child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(24, 100, 24, 90),
+                    padding: const EdgeInsets.fromLTRB(24, 100, 24, 90),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -103,11 +124,9 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                               : 'Quem está assistindo?',
                           textAlign: TextAlign.center,
                           style: SabuflixTheme.of(context).headline(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w600,
-                          ),
+                              fontSize: 32, fontWeight: FontWeight.w600),
                         ),
-                        SizedBox(height: 48),
+                        const SizedBox(height: 48),
                         Wrap(
                           spacing: 24,
                           runSpacing: 24,
@@ -117,10 +136,8 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                               (p) => _ProfileAvatar(
                                 profile: p,
                                 onTap: () => _selectProfile(context, p),
-                                onEdit: () => _showAddEditProfileDialog(
-                                  context,
-                                  profileToEdit: p,
-                                ),
+                                onEdit: () => _showAddEditProfileDialog(context,
+                                    profileToEdit: p),
                               ),
                             ),
                             if (provider.profiles.length < 5)
@@ -172,6 +189,7 @@ class _ProfileAvatar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Stack(
+            clipBehavior: Clip.none,
             children: [
               Container(
                 width: 120,
@@ -183,11 +201,12 @@ class _ProfileAvatar extends StatelessWidget {
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 10,
-                      offset: Offset(0, 4),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: Icon(Icons.person, size: 64, color: Colors.white),
+                child: Icon(profileIcon(profile.avatar),
+                    size: 64, color: Colors.white),
               ),
               Positioned(
                 top: 4,
@@ -195,38 +214,56 @@ class _ProfileAvatar extends StatelessWidget {
                 child: GestureDetector(
                   onTap: onEdit,
                   child: Container(
-                    padding: EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.7),
                       shape: BoxShape.circle,
                     ),
-                    child:
-                        Icon(Icons.edit_rounded, color: Colors.white, size: 16),
+                    child: const Icon(Icons.edit_rounded,
+                        color: Colors.white, size: 16),
                   ),
                 ),
               ),
-              if (profile.maxAgeRating != '18')
+              if (profile.hasPin)
                 Positioned(
-                  bottom: -4,
-                  left: -4,
+                  bottom: 6,
+                  right: 6,
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      color: SabuflixTheme.brandBlue,
+                      color: Colors.black.withValues(alpha: 0.7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_rounded,
+                        color: Colors.white, size: 14),
+                  ),
+                ),
+              if (profile.isKids || profile.maxAgeRating != '18')
+                Positioned(
+                  bottom: -6,
+                  left: -6,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: profile.isKids
+                          ? const Color(0xFF34A853)
+                          : SabuflixTheme.brandBlue,
                       borderRadius: SabuflixTheme.radiusSm,
                     ),
                     child: Text(
-                      profile.maxAgeRating,
-                      style: TextStyle(
+                      profile.isKids ? 'INFANTIL' : profile.maxAgeRating,
+                      style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
-                          fontWeight: FontWeight.bold),
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: .4),
                     ),
                   ),
                 ),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             profile.name,
             style: SabuflixTheme.of(context).body(
@@ -265,7 +302,7 @@ class _AddProfileButton extends StatelessWidget {
             child: Icon(Icons.add_rounded,
                 size: 64, color: SabuflixTheme.of(context).textSecondary),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             'Adicionar',
             style: SabuflixTheme.of(context).body(
@@ -275,6 +312,77 @@ class _AddProfileButton extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Four-digit PIN prompt. Pops with the PIN when [validate] accepts it.
+class _PinDialog extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final bool Function(String pin) validate;
+  const _PinDialog(
+      {required this.title, required this.subtitle, required this.validate});
+
+  @override
+  State<_PinDialog> createState() => _PinDialogState();
+}
+
+class _PinDialogState extends State<_PinDialog> {
+  final _controller = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final pin = _controller.text.trim();
+    if (widget.validate(pin)) {
+      Navigator.pop(context, pin);
+    } else {
+      setState(() => _error = 'PIN incorreto. Tente novamente.');
+      _controller.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = SabuflixTheme.of(context);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.subtitle, style: colors.body(fontSize: 13)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            textAlign: TextAlign.center,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: colors.headline(fontSize: 28, letterSpacing: 8),
+            decoration: InputDecoration(
+                counterText: '', errorText: _error, hintText: '••••'),
+            onChanged: (value) {
+              if (value.length == 4) _submit();
+            },
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar')),
+        FilledButton(onPressed: _submit, child: const Text('Entrar')),
+      ],
     );
   }
 }
@@ -289,8 +397,13 @@ class _ProfileDialog extends StatefulWidget {
 
 class _ProfileDialogState extends State<_ProfileDialog> {
   late TextEditingController _nameController;
+  late TextEditingController _pinController;
   late String _maxAgeRating;
   late int _colorValue;
+  late String _avatar;
+  late bool _isKids;
+  late bool _usePin;
+  bool _changePin = false;
 
   final List<String> _ageOptions = ['Livre', '10', '12', '14', '16', '18'];
   final List<int> _colorOptions = [
@@ -300,42 +413,69 @@ class _ProfileDialogState extends State<_ProfileDialog> {
     0xFF34A853, // Green
     0xFF9C27B0, // Purple
     0xFFFF9800, // Orange
+    0xFF00BCD4, // Cyan
+    0xFFE91E63, // Pink
   ];
 
   @override
   void initState() {
     super.initState();
-    _nameController =
-        TextEditingController(text: widget.profileToEdit?.name ?? '');
-    _maxAgeRating = widget.profileToEdit?.maxAgeRating ?? '18';
-    _colorValue = widget.profileToEdit?.colorValue ?? _colorOptions[0];
+    final profile = widget.profileToEdit;
+    _nameController = TextEditingController(text: profile?.name ?? '');
+    _pinController = TextEditingController();
+    _maxAgeRating = profile?.maxAgeRating ?? '18';
+    _colorValue = profile?.colorValue ?? _colorOptions[0];
+    _avatar = profile?.avatar ?? 'person';
+    _isKids = profile?.isKids ?? false;
+    _usePin = profile?.hasPin ?? false;
+    _changePin = profile == null || !profile.hasPin;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
   void _save() {
     if (_nameController.text.trim().isEmpty) return;
-
     final provider = Provider.of<ProfileProvider>(context, listen: false);
+    final pin = _pinController.text.trim();
+    if (_usePin && _changePin && pin.length != 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('O PIN precisa ter 4 dígitos.')));
+      return;
+    }
+    final pinHash = !_usePin
+        ? null
+        : _changePin
+            ? Profile.hashPin(pin)
+            : widget.profileToEdit?.pinHash;
+    final rating = _isKids && _ageOptions.indexOf(_maxAgeRating) > 2
+        ? '12'
+        : _maxAgeRating;
 
     if (widget.profileToEdit == null) {
       provider.addProfile(Profile(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
-        avatarUrl:
-            'https://i.pravatar.cc/150?u=${DateTime.now().millisecondsSinceEpoch}',
-        maxAgeRating: _maxAgeRating,
+        avatarUrl: '',
+        maxAgeRating: rating,
         colorValue: _colorValue,
+        avatar: _avatar,
+        pinHash: pinHash,
+        isKids: _isKids,
       ));
     } else {
       provider.updateProfile(widget.profileToEdit!.copyWith(
         name: _nameController.text.trim(),
-        maxAgeRating: _maxAgeRating,
+        maxAgeRating: rating,
         colorValue: _colorValue,
+        avatar: _avatar,
+        pinHash: pinHash,
+        clearPin: !_usePin,
+        isKids: _isKids,
       ));
     }
 
@@ -352,117 +492,210 @@ class _ProfileDialogState extends State<_ProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = SabuflixTheme.of(context);
+    final ageOptions = _isKids ? _ageOptions.take(3).toList() : _ageOptions;
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: GlassContainer(
-        borderRadius: SabuflixTheme.radiusLg,
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.profileToEdit == null ? 'Novo Perfil' : 'Editar Perfil',
-                style: SabuflixTheme.of(context).headline(fontSize: 22)),
-            SizedBox(height: 24),
-            TextField(
-              controller: _nameController,
-              style: TextStyle(color: SabuflixTheme.of(context).textPrimary),
-              decoration: InputDecoration(
-                labelText: 'Nome do Perfil',
-                labelStyle:
-                    TextStyle(color: SabuflixTheme.of(context).textSecondary),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: SabuflixTheme.radiusSm,
-                  borderSide:
-                      BorderSide(color: SabuflixTheme.of(context).border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: SabuflixTheme.radiusSm,
-                  borderSide:
-                      BorderSide(color: SabuflixTheme.of(context).accent),
-                ),
-              ),
-            ),
-            SizedBox(height: 24),
-            Text('Classificação Máxima Permitida:',
-                style: SabuflixTheme.of(context)
-                    .body(color: SabuflixTheme.of(context).textSecondary)),
-            SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _ageOptions.map((age) {
-                final isSelected = _maxAgeRating == age;
-                return ChoiceChip(
-                  label: Text(age,
-                      style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : SabuflixTheme.of(context).textSecondary)),
-                  selected: isSelected,
-                  selectedColor: SabuflixTheme.of(context).accent,
-                  backgroundColor: SabuflixTheme.of(context).surface,
-                  onSelected: (selected) {
-                    if (selected) setState(() => _maxAgeRating = age);
-                  },
-                );
-              }).toList(),
-            ),
-            SizedBox(height: 24),
-            Text('Cor do Ícone:',
-                style: SabuflixTheme.of(context)
-                    .body(color: SabuflixTheme.of(context).textSecondary)),
-            SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: _colorOptions.map((c) {
-                final isSelected = _colorValue == c;
-                return GestureDetector(
-                  onTap: () => setState(() => _colorValue = c),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Color(c),
-                      shape: BoxShape.circle,
-                      border: isSelected
-                          ? Border.all(
-                              color: SabuflixTheme.of(context).textPrimary,
-                              width: 3)
-                          : null,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: GlassContainer(
+          borderRadius: SabuflixTheme.radiusLg,
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.profileToEdit != null)
-                  TextButton(
-                    onPressed: _delete,
-                    child: Text('Excluir',
-                        style: TextStyle(color: Colors.redAccent)),
-                  ),
-                Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancelar',
-                      style: TextStyle(
-                          color: SabuflixTheme.of(context).textSecondary)),
+                Text(
+                    widget.profileToEdit == null
+                        ? 'Novo perfil'
+                        : 'Editar perfil',
+                    style: colors.headline(fontSize: 22)),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Color(_colorValue),
+                        borderRadius: SabuflixTheme.radiusMd,
+                      ),
+                      child: Icon(profileIcon(_avatar),
+                          size: 36, color: Colors.white),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: _nameController,
+                        autofocus: widget.profileToEdit == null,
+                        maxLength: 20,
+                        style: TextStyle(color: colors.textPrimary),
+                        decoration: const InputDecoration(
+                            labelText: 'Nome do perfil', counterText: ''),
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _save,
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: SabuflixTheme.brandBlue),
-                  child: Text('Salvar', style: TextStyle(color: Colors.white)),
+                const SizedBox(height: 20),
+                Text('Ícone', style: colors.label(fontSize: 11)),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final key in profileAvatarKeys)
+                      InkWell(
+                        borderRadius: SabuflixTheme.radiusMd,
+                        onTap: () => setState(() => _avatar = key),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _avatar == key
+                                ? Color(_colorValue)
+                                : colors.secondaryFill,
+                            borderRadius: SabuflixTheme.radiusMd,
+                            border: Border.all(
+                                color: _avatar == key
+                                    ? Colors.white
+                                    : colors.border),
+                          ),
+                          child: Icon(profileIcon(key),
+                              color: _avatar == key
+                                  ? Colors.white
+                                  : colors.textSecondary),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text('Cor', style: colors.label(fontSize: 11)),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _colorOptions.map((c) {
+                    final isSelected = _colorValue == c;
+                    return GestureDetector(
+                      onTap: () => setState(() => _colorValue = c),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Color(c),
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(color: colors.textPrimary, width: 3)
+                              : null,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _isKids,
+                  onChanged: (value) => setState(() {
+                    _isKids = value;
+                    if (value && _ageOptions.indexOf(_maxAgeRating) > 2) {
+                      _maxAgeRating = '12';
+                    }
+                  }),
+                  title: const Text('Perfil infantil'),
+                  subtitle: const Text(
+                      'Início com animações e conteúdo para a família; classificação até 12 anos.'),
+                ),
+                const SizedBox(height: 8),
+                Text('Classificação máxima', style: colors.label(fontSize: 11)),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ageOptions.map((age) {
+                    final isSelected = _maxAgeRating == age;
+                    return ChoiceChip(
+                      label: Text(age),
+                      selected: isSelected,
+                      showCheckmark: false,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _maxAgeRating = age);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _usePin,
+                  onChanged: (value) => setState(() {
+                    _usePin = value;
+                    if (value && !(widget.profileToEdit?.hasPin ?? false)) {
+                      _changePin = true;
+                    }
+                  }),
+                  title: const Text('Proteger com PIN'),
+                  subtitle: const Text(
+                      'Pede um PIN de 4 dígitos para entrar neste perfil.'),
+                ),
+                if (_usePin)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _changePin
+                            ? TextField(
+                                controller: _pinController,
+                                obscureText: true,
+                                keyboardType: TextInputType.number,
+                                maxLength: 4,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                style: TextStyle(
+                                    color: colors.textPrimary,
+                                    letterSpacing: 6),
+                                decoration: const InputDecoration(
+                                    labelText: 'Novo PIN',
+                                    counterText: '',
+                                    hintText: '••••'),
+                              )
+                            : Text('PIN definido.',
+                                style: colors.body(fontSize: 13)),
+                      ),
+                      if (!_changePin)
+                        TextButton(
+                          onPressed: () => setState(() => _changePin = true),
+                          child: const Text('Alterar PIN'),
+                        ),
+                    ],
+                  ),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    if (widget.profileToEdit != null &&
+                        context.read<ProfileProvider>().profiles.length > 1)
+                      TextButton(
+                        onPressed: _delete,
+                        child: Text('Excluir',
+                            style: TextStyle(color: colors.error)),
+                      ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancelar',
+                          style: TextStyle(color: colors.textSecondary)),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _save,
+                      child: const Text('Salvar'),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
