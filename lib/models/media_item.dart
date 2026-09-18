@@ -17,6 +17,12 @@ class MediaItem {
   final String? imdbId;
   final List<dynamic>? seasons; // To store season details for TV shows
   final String? ageRating;
+  final String? tagline;
+
+  /// TMDB status: `Released`, `Returning Series`, `Ended`, `Canceled`…
+  final String? status;
+  final String? originalTitle;
+  final double popularity;
 
   MediaItem({
     required this.id,
@@ -37,7 +43,52 @@ class MediaItem {
     this.imdbId,
     this.seasons,
     this.ageRating,
+    this.tagline,
+    this.status,
+    this.originalTitle,
+    this.popularity = 0,
   });
+
+  bool get isSeries => mediaType == 'tv';
+
+  /// `Em exibição`, `Finalizada`… for series; `Lançado` / `Em breve` for films.
+  String? get statusLabel {
+    switch (status) {
+      case 'Returning Series':
+        return 'Em exibição';
+      case 'Ended':
+        return 'Finalizada';
+      case 'Canceled':
+        return 'Cancelada';
+      case 'In Production':
+      case 'Planned':
+      case 'Post Production':
+        return 'Em produção';
+      case 'Released':
+        return null;
+      default:
+        return null;
+    }
+  }
+
+  /// `1h 52min` for films, `3 temporadas` for series.
+  String? get lengthLabel {
+    if (isSeries) {
+      final seasons = numberOfSeasons;
+      if (seasons == null || seasons <= 0) return null;
+      return seasons == 1 ? '1 temporada' : '$seasons temporadas';
+    }
+    final minutes = runtime;
+    if (minutes == null || minutes <= 0) return null;
+    if (minutes < 60) return '$minutes min';
+    final rest = minutes % 60;
+    return rest == 0 ? '${minutes ~/ 60}h' : '${minutes ~/ 60}h ${rest}min';
+  }
+
+  bool get isUnreleased {
+    final date = DateTime.tryParse(releaseDate ?? '');
+    return date != null && date.isAfter(DateTime.now());
+  }
 
   String get storageKey => '${mediaType}_$id';
 
@@ -140,6 +191,13 @@ class MediaItem {
       imdbId: parsedImdbId ?? json['imdbId'],
       seasons: json['seasons'],
       ageRating: json['ageRating'],
+      tagline: json['tagline']?.toString(),
+      status: json['status']?.toString(),
+      originalTitle:
+          (json['original_title'] ?? json['original_name'])?.toString(),
+      popularity: (json['popularity'] is num)
+          ? (json['popularity'] as num).toDouble()
+          : 0.0,
     );
   }
 
@@ -163,6 +221,10 @@ class MediaItem {
       'imdbId': imdbId,
       'seasons': seasons,
       'ageRating': ageRating,
+      'tagline': tagline,
+      'status': status,
+      'original_title': originalTitle,
+      'popularity': popularity,
     };
   }
 
@@ -191,6 +253,10 @@ class MediaItem {
       trailerKey: trailerKey,
       imdbId: imdbId,
       ageRating: ageRating,
+      tagline: tagline,
+      status: status,
+      originalTitle: originalTitle,
+      popularity: popularity,
     );
   }
 
@@ -203,6 +269,8 @@ class MediaItem {
     String? imdbId,
     List<dynamic>? seasons,
     String? ageRating,
+    String? tagline,
+    String? status,
   }) {
     return MediaItem(
       id: id,
@@ -223,6 +291,10 @@ class MediaItem {
       imdbId: imdbId ?? this.imdbId,
       seasons: seasons ?? this.seasons,
       ageRating: ageRating ?? this.ageRating,
+      tagline: tagline ?? this.tagline,
+      status: status ?? this.status,
+      originalTitle: originalTitle,
+      popularity: popularity,
     );
   }
 }

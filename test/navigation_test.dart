@@ -26,15 +26,27 @@ class LocalCatalog extends TMDBService {
           {String mediaType = 'all', String timeWindow = 'week'}) async =>
       items;
   @override
-  Future<List<MediaItem>> fetchPopularMovies() async => items;
+  Future<List<MediaItem>> fetchPopularMovies({int page = 1}) async => items;
   @override
-  Future<List<MediaItem>> fetchPopularTV() async => [];
+  Future<List<MediaItem>> fetchPopularTV({int page = 1}) async => [];
   @override
-  Future<List<MediaItem>> fetchTopRatedMovies() async => [];
+  Future<List<MediaItem>> fetchTopRatedMovies({int page = 1}) async => [];
+  @override
+  Future<List<MediaItem>> fetchTopRatedTV({int page = 1}) async => [];
+  @override
+  Future<List<MediaItem>> fetchUpcomingMovies() async => [];
+  @override
+  Future<List<MediaItem>> fetchNowPlayingMovies() async => [];
+  @override
+  Future<List<MediaItem>> fetchOnTheAirTV() async => [];
+  @override
+  Future<List<MediaItem>> fetchBrazilian() async => [];
   @override
   Future<List<MediaItem>> fetchByGenre(int id,
-          {String mediaType = 'movie'}) async =>
+          {String mediaType = 'movie', int page = 1}) async =>
       [];
+  @override
+  Future<List<MediaItem>> fetchRecommendationsFor(MediaItem seed) async => [];
   @override
   Future<String?> fetchLogoPath(int id, String type) async => null;
 }

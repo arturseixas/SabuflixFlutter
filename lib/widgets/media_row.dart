@@ -8,7 +8,24 @@ import 'media_card.dart';
 class MediaRow extends StatefulWidget {
   final String title;
   final List<MediaItem> mediaItems;
-  const MediaRow({super.key, required this.title, required this.mediaItems});
+
+  /// Horizontal padding; `null` picks the standard page inset.
+  final double? inset;
+
+  /// Draws big ranking numbers next to each card (Top 10 shelves).
+  final bool ranked;
+
+  /// Optional "Ver tudo" action.
+  final VoidCallback? onSeeAll;
+
+  const MediaRow({
+    super.key,
+    required this.title,
+    required this.mediaItems,
+    this.inset,
+    this.ranked = false,
+    this.onSeeAll,
+  });
   @override
   State<MediaRow> createState() => _MediaRowState();
 }
@@ -43,15 +60,17 @@ class _MediaRowState extends State<MediaRow> {
       (p) => p.compactPosters,
     );
     final desktop = MediaQuery.sizeOf(context).width >= 800;
-    final inset = desktop ? 40.0 : 20.0;
+    final inset = widget.inset ?? (desktop ? 40.0 : 20.0);
     final width = desktop ? 340.0 : 270.0;
     final caption =
         compact ? 0.0 : 15 + MediaQuery.textScalerOf(context).scale(32);
+    final rankWidth = widget.ranked ? (desktop ? 64.0 : 48.0) : 0.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(inset, 40, inset, 18),
+          padding: EdgeInsets.fromLTRB(
+              inset, widget.inset == null ? 40 : 8, inset, 18),
           child: Row(
             children: [
               Expanded(
@@ -64,6 +83,14 @@ class _MediaRowState extends State<MediaRow> {
                   ),
                 ),
               ),
+              if (widget.onSeeAll != null)
+                TextButton(
+                  onPressed: widget.onSeeAll,
+                  style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 10)),
+                  child: const Text('Ver tudo'),
+                ),
               if (desktop) ...[
                 IconButton(
                   tooltip: 'Voltar em ${widget.title}',
@@ -86,12 +113,52 @@ class _MediaRowState extends State<MediaRow> {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: inset, vertical: 4),
             itemCount: widget.mediaItems.length,
-            separatorBuilder: (_, index) => SizedBox(width: 14),
-            itemBuilder: (_, index) => MediaCard(
-              media: widget.mediaItems[index],
-              width: width,
-              landscape: true,
-            ),
+            separatorBuilder: (_, index) =>
+                SizedBox(width: widget.ranked ? 6 : 14),
+            itemBuilder: (_, index) {
+              final card = MediaCard(
+                media: widget.mediaItems[index],
+                width: width,
+                landscape: true,
+              );
+              if (!widget.ranked) return card;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: rankWidth,
+                    height: width * 9 / 16,
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: desktop ? 84 : 64,
+                          height: 0.85,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -6,
+                          color: SabuflixTheme.of(context).background,
+                          shadows: [
+                            for (final offset in const [
+                              Offset(1.5, 0),
+                              Offset(-1.5, 0),
+                              Offset(0, 1.5),
+                              Offset(0, -1.5),
+                            ])
+                              Shadow(
+                                  offset: offset,
+                                  color:
+                                      SabuflixTheme.of(context).textSecondary),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  card,
+                ],
+              );
+            },
           ),
         ),
       ],

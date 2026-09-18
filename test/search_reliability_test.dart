@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ControlledSearch extends TMDBService {
   final requests = <String, Completer<List<MediaItem>>>{};
   @override
-  Future<List<MediaItem>> searchMedia(String query) =>
+  Future<List<MediaItem>> searchMedia(String query, {int page = 1}) =>
       (requests[query] = Completer<List<MediaItem>>()).future;
 }
 
