@@ -155,12 +155,10 @@ class SearchProvider extends ChangeNotifier {
   Future<void> filterByGenre(int genreId) => browse(genreId: genreId);
 
   /// Genre / year browsing through TMDB discover, honouring type and sort.
-  Future<void> browse(
-      {int? genreId, int? year, bool keepFilters = true}) async {
+  Future<void> browse({int? genreId}) async {
     _debounce?.cancel();
     final generation = ++_requestGeneration;
-    _selectedGenreId = genreId ?? (keepFilters ? _selectedGenreId : null);
-    _year = year ?? (keepFilters ? _year : null);
+    if (genreId != null) _selectedGenreId = genreId;
     _query = '';
     _errorMessage = null;
     _page = 1;
@@ -281,15 +279,12 @@ class SearchProvider extends ChangeNotifier {
 
   Future<void> setYear(int? value) async {
     if (_year == value) return;
-    if (value == null && _selectedGenreId == null) {
+    _year = value;
+    if (_selectedGenreId == null && value == null) {
       clearSearch();
       return;
     }
-    await browse(year: value, keepFilters: true);
-    if (value == null) {
-      _year = null;
-      notifyListeners();
-    }
+    await browse();
   }
 
   Future<void> _remember(String value) async {

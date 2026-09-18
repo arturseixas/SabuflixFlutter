@@ -141,8 +141,7 @@ class ChromecastClient {
         'media': {
           'contentId': request.url,
           'contentUrl': request.url,
-          'streamType':
-              request.contentType.contains('mpegURL') ? 'LIVE' : 'BUFFERED',
+          'streamType': 'BUFFERED',
           'contentType': request.contentType,
           'metadata': {
             'metadataType': 0,

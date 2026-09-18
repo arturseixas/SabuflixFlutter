@@ -20,7 +20,7 @@ import '../utils/formatters.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/wordmark.dart';
 import 'cast_picker_sheet.dart';
-import 'home_screen.dart';
+import '../utils/profile_icons.dart';
 import 'profile_selection_screen.dart';
 
 class SettingsScreen extends StatelessWidget {

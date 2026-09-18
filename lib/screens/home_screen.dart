@@ -9,6 +9,7 @@ import '../providers/settings_provider.dart';
 import '../providers/watched_provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/app_route.dart';
+import '../utils/profile_icons.dart';
 import '../widgets/cast_button.dart';
 import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
@@ -333,17 +334,3 @@ class _AccountBadge extends StatelessWidget {
     );
   }
 }
-
-/// Icon for a profile avatar key.
-IconData profileIcon(String key) => switch (key) {
-      'movie' => Icons.movie_rounded,
-      'star' => Icons.star_rounded,
-      'rocket' => Icons.rocket_launch_rounded,
-      'pets' => Icons.pets_rounded,
-      'gamepad' => Icons.sports_esports_rounded,
-      'favorite' => Icons.favorite_rounded,
-      'music' => Icons.music_note_rounded,
-      'sports' => Icons.sports_soccer_rounded,
-      'child' => Icons.child_care_rounded,
-      _ => Icons.person_rounded,
-    };

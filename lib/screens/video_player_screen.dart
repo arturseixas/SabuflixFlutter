@@ -117,6 +117,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _startingNext = false;
 
   // Episode sheet cache.
+  StateSetter? _sheetSetState;
   int? _sheetSeason;
   List<dynamic> _sheetEpisodes = [];
   bool _sheetLoading = false;
@@ -813,20 +814,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     final initial = widget.season ?? seasons.first;
     _sheetOpen = true;
     setState(() => _showControls = true);
+    if (_sheetSeason == null) {
+      // The sheet lives in the overlay, so it has to be refreshed through its
+      // own setState once the first season arrives.
+      _loadSheetSeason(initial, () => _sheetSetState?.call(() {}));
+    }
     showPlayerSheet<void>(
       context,
       StatefulBuilder(builder: (context, setSheetState) {
-        if (_sheetSeason != initial &&
-            _sheetEpisodes.isEmpty &&
-            !_sheetLoading) {
-          _loadSheetSeason(initial, () {
-            if (context.mounted) setSheetState(() {});
-          });
-        } else if (_sheetSeason == null) {
-          _loadSheetSeason(initial, () {
-            if (context.mounted) setSheetState(() {});
-          });
-        }
+        _sheetSetState = context.mounted ? setSheetState : null;
         return EpisodesSheet(
           season: _sheetSeason ?? initial,
           seasons: seasons,
@@ -849,6 +845,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       }),
     ).whenComplete(() {
       _sheetOpen = false;
+      _sheetSetState = null;
       if (mounted) _startHideTimer();
     });
   }

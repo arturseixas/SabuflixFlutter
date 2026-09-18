@@ -11,7 +11,7 @@ import '../providers/watched_provider.dart';
 import '../theme/sabuflix_theme.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/wordmark.dart';
-import 'home_screen.dart';
+import '../utils/profile_icons.dart';
 import 'main_navigation_screen.dart';
 
 class ProfileSelectionScreen extends StatefulWidget {
