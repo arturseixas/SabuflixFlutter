@@ -23,21 +23,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   static const _labels = [
     'Início',
     'Pesquisar',
-    'Descobrir',
+    'Explorar',
     'Biblioteca',
     'Ajustes',
   ];
   static const _icons = [
     Icons.home_outlined,
     Icons.search,
-    Icons.explore_outlined,
+    Icons.grid_view_outlined,
     Icons.video_library_outlined,
     Icons.settings_outlined,
   ];
   static const _selectedIcons = [
     Icons.home_rounded,
     Icons.search_rounded,
-    Icons.explore_rounded,
+    Icons.grid_view_rounded,
     Icons.video_library_rounded,
     Icons.settings_rounded,
   ];
@@ -70,12 +70,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         appBar: desktop
             ? AppBar(
                 backgroundColor: SabuflixTheme.of(context).background,
-                toolbarHeight: 76,
-                titleSpacing: 24,
+                toolbarHeight: 72,
+                titleSpacing: 40,
+                shape: Border(
+                  bottom: BorderSide(
+                      color: SabuflixTheme.of(context).border, width: .5),
+                ),
                 title: Row(
                   children: [
-                    SabuflixWordmark(fontSize: 21),
-                    SizedBox(width: 24),
+                    SabuflixWordmark(fontSize: 20),
+                    SizedBox(width: 36),
                     for (var i = 0; i < _labels.length; i++)
                       Flexible(
                         child: Padding(
@@ -84,20 +88,40 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             onPressed: () => _select(i),
                             style: TextButton.styleFrom(
                               foregroundColor: _index == i
-                                  ? SabuflixTheme.of(context).accent
-                                  : SabuflixTheme.of(context).textSecondary,
+                                  ? SabuflixTheme.of(context).textPrimary
+                                  : SabuflixTheme.of(context).textMuted,
                               backgroundColor: Colors.transparent,
+                              overlayColor: Colors.transparent,
                               padding: EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 18,
                               ),
+                              textStyle: SabuflixTheme.of(context).label(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -.2,
+                              ),
                             ),
                             child: Semantics(
                               selected: _index == i,
-                              child: Text(
-                                _labels[i],
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Container(
+                                padding: EdgeInsets.only(bottom: 4),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: _index == i
+                                          ? SabuflixTheme.of(context)
+                                              .textPrimary
+                                          : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  _labels[i],
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
                           ),
@@ -117,7 +141,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         ),
                       ),
                       icon: CircleAvatar(
-                        radius: 16,
+                        radius: 15,
                         backgroundColor: Color(
                           profiles.currentProfile?.colorValue ?? 0xFF4285F4,
                         ),
@@ -129,7 +153,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(width: 16),
+                  SizedBox(width: 32),
                 ],
               )
             : null,
@@ -200,7 +224,7 @@ class _MobileNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = selected
-        ? SabuflixTheme.of(context).accent
+        ? SabuflixTheme.of(context).textPrimary
         : SabuflixTheme.of(context).textMuted;
     return Semantics(
       button: true,
@@ -236,7 +260,8 @@ class _MobileNavItem extends StatelessWidget {
               duration: SabuflixTheme.durationFast,
               style: SabuflixTheme.of(context).caption(
                 fontSize: 10.5,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                letterSpacing: .1,
                 color: color,
               ),
               child: Text(label, maxLines: 1, overflow: TextOverflow.fade),

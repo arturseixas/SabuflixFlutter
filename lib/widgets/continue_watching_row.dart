@@ -22,6 +22,7 @@ class ContinueWatchingRow extends StatelessWidget {
         if (entries.isEmpty) return SizedBox.shrink();
 
         final isMobile = MediaQuery.of(context).size.width < 800;
+        final inset = isMobile ? 20.0 : 40.0;
         final cardWidth = isMobile ? 232.0 : 268.0;
         final rowHeight = cardWidth * 9 / 16 + 62;
 
@@ -29,11 +30,13 @@ class ContinueWatchingRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(24, 20, 24, 14),
+              padding: EdgeInsets.fromLTRB(inset, 20, inset, 16),
               child: Text(
-                'Continuar Assistindo',
-                style: SabuflixTheme.of(context)
-                    .title(fontSize: 19, fontWeight: FontWeight.w800),
+                'CONTINUAR ASSISTINDO',
+                style: SabuflixTheme.of(context).title(
+                    fontSize: isMobile ? 17 : 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.2),
               ),
             ),
             SizedBox(
@@ -41,11 +44,11 @@ class ContinueWatchingRow extends StatelessWidget {
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 physics: BouncingScrollPhysics(),
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: inset - 5),
                 itemCount: entries.length,
                 itemBuilder: (context, index) {
                   return Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 5),
                     child:
                         _ContinueCard(entry: entries[index], width: cardWidth),
                   );
@@ -135,14 +138,14 @@ class _ContinueCard extends StatelessWidget {
                           ),
                           SizedBox(height: 6),
                           ClipRRect(
-                            borderRadius: BorderRadius.all(Radius.circular(2)),
+                            borderRadius: BorderRadius.zero,
                             child: LinearProgressIndicator(
                               value: entry.progress,
-                              minHeight: 3,
+                              minHeight: 2,
                               backgroundColor:
                                   Colors.white.withValues(alpha: 0.3),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  SabuflixTheme.of(context).accent),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           ),
                         ],
@@ -162,12 +165,12 @@ class _ContinueCard extends StatelessWidget {
           ),
           SizedBox(height: 9),
           Text(
-            entry.media.title,
+            entry.media.title.toUpperCase(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: SabuflixTheme.of(context).caption(
                 fontSize: 13,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
                 color: SabuflixTheme.of(context).textPrimary),
           ),
           SizedBox(height: 2),

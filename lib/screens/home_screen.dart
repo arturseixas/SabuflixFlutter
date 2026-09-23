@@ -8,6 +8,7 @@ import '../widgets/continue_watching_row.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/home_skeleton.dart';
 import '../widgets/media_row.dart';
+import '../widgets/now_showing_grid.dart';
 import '../widgets/wordmark.dart';
 import 'profile_selection_screen.dart';
 
@@ -25,6 +26,17 @@ class HomeScreen extends StatelessWidget {
       if (catalog.heroItem != null) catalog.heroItem!,
       ...catalog.trending,
     ]);
+    // "Filme do dia": one pick from the head of the catalogue, rotating daily.
+    final now = DateTime.now();
+    final day = DateTime.utc(now.year, now.month, now.day)
+        .difference(DateTime.utc(2024))
+        .inDays;
+    final hero =
+        heroes.isEmpty ? null : heroes[day % heroes.length.clamp(1, 8)];
+    final showing = settings
+        .visibleItems(catalog.trending)
+        .where((m) => m.storageKey != hero?.storageKey)
+        .toList();
     return Scaffold(
       backgroundColor: SabuflixTheme.of(context).background,
       body: catalog.isLoading
@@ -45,8 +57,8 @@ class HomeScreen extends StatelessWidget {
                           floating: true,
                           backgroundColor: SabuflixTheme.of(context).background,
                           elevation: 0,
-                          centerTitle: false,
-                          title: SabuflixWordmark(fontSize: 19),
+                          centerTitle: true,
+                          title: SabuflixWordmark(fontSize: 18),
                           actions: [
                             Padding(
                               padding: EdgeInsets.only(right: 16),
@@ -61,9 +73,14 @@ class HomeScreen extends StatelessWidget {
                             onRetry: catalog.loadCatalog,
                           ),
                         ),
-                      if (heroes.isNotEmpty)
+                      if (hero != null)
+                        SliverToBoxAdapter(child: HeroBanner(media: hero)),
+                      if (showing.isNotEmpty)
                         SliverToBoxAdapter(
-                            child: HeroBanner(media: heroes.first)),
+                          child: NowShowingGrid(
+                            items: showing.take(isDesktop ? 6 : 4).toList(),
+                          ),
+                        ),
                       SliverToBoxAdapter(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,12 +109,12 @@ class HomeScreen extends StatelessWidget {
                                     settings.visibleItems(section.value),
                               ),
                             MediaRow(
-                              title: 'Em Alta Hoje',
+                              title: 'Em Alta',
                               mediaItems:
-                                  settings.visibleItems(catalog.trending),
+                                  showing.skip(isDesktop ? 6 : 4).toList(),
                             ),
                             MediaRow(
-                              title: 'Filmes Populares',
+                              title: 'Os Mais Vistos',
                               mediaItems: settings.visibleItems(
                                 catalog.popularMovies,
                               ),
@@ -108,7 +125,7 @@ class HomeScreen extends StatelessWidget {
                                   settings.visibleItems(catalog.popularTV),
                             ),
                             MediaRow(
-                              title: 'Mais Bem Avaliados',
+                              title: 'Aclamados pela Crítica',
                               mediaItems:
                                   settings.visibleItems(catalog.topRated),
                             ),

@@ -133,6 +133,9 @@ class _MediaCardState extends State<MediaCard> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: SabuflixTheme.radiusMd,
+            // Hover and focus are shown on the still itself.
+            hoverColor: Colors.transparent,
+            focusColor: Colors.transparent,
             onFocusChange: (focused) => setState(() => _isFocused = focused),
             onTap: () {
               Navigator.push(
@@ -149,7 +152,7 @@ class _MediaCardState extends State<MediaCard> {
                 children: [
                   Expanded(
                     child: AnimatedScale(
-                      scale: (_isHovered || _isFocused) ? 1.025 : 1.0,
+                      scale: (_isHovered || _isFocused) ? 1.015 : 1.0,
                       duration: MediaQuery.disableAnimationsOf(context)
                           ? Duration.zero
                           : SabuflixTheme.durationFast,
@@ -162,8 +165,8 @@ class _MediaCardState extends State<MediaCard> {
                           borderRadius: SabuflixTheme.radiusMd,
                           border: _isFocused
                               ? Border.all(
-                                  color: SabuflixTheme.of(context).accent,
-                                  width: 3)
+                                  color: SabuflixTheme.of(context).textPrimary,
+                                  width: 2)
                               : null,
                           boxShadow: [],
                         ),
@@ -188,6 +191,13 @@ class _MediaCardState extends State<MediaCard> {
                                   ),
                                 ),
                               ),
+                              // Hover dims the still, as on a gallery wall.
+                              AnimatedOpacity(
+                                opacity: _isHovered ? 1 : 0,
+                                duration: SabuflixTheme.durationFast,
+                                child:
+                                    const ColoredBox(color: Color(0x33000000)),
+                              ),
                               if (watched)
                                 Positioned(
                                   top: 8,
@@ -195,20 +205,13 @@ class _MediaCardState extends State<MediaCard> {
                                   child: Container(
                                     width: 28,
                                     height: 28,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.68,
-                                      ),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
                                       shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
                                     ),
                                     child: Icon(
                                       Icons.check_rounded,
-                                      color: Colors.white,
+                                      color: Colors.black,
                                       size: 17,
                                     ),
                                   ),
@@ -222,30 +225,31 @@ class _MediaCardState extends State<MediaCard> {
                   if (!compact) ...[
                     SizedBox(height: 10),
                     Text(
-                      widget.landscape
-                          ? widget.media.title.toUpperCase()
-                          : widget.media.title,
+                      widget.media.title.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: SabuflixTheme.of(context).caption(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: .2,
                         color: SabuflixTheme.of(context).textPrimary,
                       ),
                     ),
                     if (widget.landscape) ...[
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Text(
-                          [
-                            if (widget.media.releaseDate?.isNotEmpty ?? false)
-                              widget.media.formattedYear,
-                            if (widget.media.genres?.isNotEmpty ?? false)
-                              widget.media.genres!.take(2).join(' · '),
-                          ].join(' · '),
+                          widget.media.directorLine ??
+                              [
+                                if (widget.media.genres?.isNotEmpty ?? false)
+                                  widget.media.genres!.first,
+                                if (widget.media.originLine.isNotEmpty)
+                                  widget.media.originLine,
+                              ].join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              SabuflixTheme.of(context).caption(fontSize: 11)),
+                          style: SabuflixTheme.of(context).caption(
+                              fontSize: 12,
+                              color: SabuflixTheme.of(context).textMuted)),
                     ],
                   ],
                 ],

@@ -39,3 +39,11 @@ String formatEpisodeTag(int? season, int? episode) {
   if (season == null || episode == null) return '';
   return 'T$season E$episode';
 }
+
+/// `12345` -> `12.345`, with the pt-BR thousands separator.
+String formatCount(int value) {
+  final digits = value.abs().toString();
+  final grouped =
+      digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.');
+  return value < 0 ? '-$grouped' : grouped;
+}

@@ -43,10 +43,10 @@ class CategoriesScreen extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text('DESCUBRA',
+                  Text('EXPLORAR',
                       style: colors.display(fontSize: width >= 800 ? 48 : 34)),
                   const SizedBox(height: 12),
-                  Text('Outras histórias. Novos pontos de vista.',
+                  Text('Cinema de todo o mundo, organizado por gênero.',
                       style: colors.body(fontSize: 17)),
                 ]))),
         SliverPadding(
@@ -121,13 +121,13 @@ class CategoriesScreen extends StatelessWidget {
                                             style: colors.caption(
                                                 color: hasImage
                                                     ? Colors.white
-                                                    : colors.accent)),
+                                                    : colors.textPrimary)),
                                         const SizedBox(width: 8),
                                         Icon(Icons.arrow_forward,
                                             size: 18,
                                             color: hasImage
                                                 ? Colors.white
-                                                : colors.accent)
+                                                : colors.textPrimary)
                                       ]),
                                     ]))),
                       ]));

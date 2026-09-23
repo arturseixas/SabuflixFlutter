@@ -76,7 +76,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(TextField), findsOneWidget);
         expect(tester.takeException(), isNull);
-        for (final label in ['Descobrir', 'Biblioteca']) {
+        for (final label in ['Explorar', 'Biblioteca']) {
           await tester.tap(find.text(label).first);
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);

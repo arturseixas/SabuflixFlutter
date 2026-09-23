@@ -31,7 +31,10 @@ class _SearchScreenState extends State<SearchScreen> {
     final settings = context.watch<SettingsProvider>();
     final screenWidth = MediaQuery.sizeOf(context).width;
     final contentWidth = screenWidth;
-    final crossAxisCount = (contentWidth / 172).floor().clamp(2, 7);
+    final crossAxisCount = (contentWidth / 300).floor().clamp(1, 5);
+    final caption = settings.compactPosters
+        ? 0.0
+        : 16 + MediaQuery.textScalerOf(context).scale(34);
     final bottomInset = screenWidth < 800 ? 118.0 : 32.0;
     final results = settings.visibleItems(search.searchResults);
     final isIdle =
@@ -62,7 +65,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       onChanged: context.read<SearchProvider>().scheduleSearch,
                       onSubmitted: context.read<SearchProvider>().search,
                       decoration: InputDecoration(
-                        hintText: 'Filmes, séries e gêneros',
+                        hintText: 'Buscar filmes, séries, gêneros',
                         hintStyle: SabuflixTheme.of(context).body(
                             fontSize: 15,
                             color: SabuflixTheme.of(context).textMuted),
@@ -72,7 +75,8 @@ class _SearchScreenState extends State<SearchScreen> {
                         fillColor: Colors.transparent,
                         contentPadding: EdgeInsets.symmetric(vertical: 14),
                         prefixIcon: Icon(Icons.search_rounded,
-                            color: SabuflixTheme.of(context).accent, size: 22),
+                            color: SabuflixTheme.of(context).textPrimary,
+                            size: 22),
                         suffixIcon: search.query.isNotEmpty
                             ? IconButton(
                                 tooltip: 'Limpar busca',
@@ -157,14 +161,19 @@ class _SearchScreenState extends State<SearchScreen> {
                                 gridDelegate:
                                     SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: crossAxisCount,
-                                  childAspectRatio:
-                                      settings.compactPosters ? 0.72 : 0.65,
-                                  crossAxisSpacing: 14,
-                                  mainAxisSpacing: 16,
+                                  mainAxisExtent: (contentWidth -
+                                              40 -
+                                              16 * (crossAxisCount - 1)) /
+                                          crossAxisCount *
+                                          9 /
+                                          16 +
+                                      caption,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 24,
                                 ),
                                 itemCount: results.length,
-                                itemBuilder: (context, index) =>
-                                    MediaCard(media: results[index]),
+                                itemBuilder: (context, index) => MediaCard(
+                                    media: results[index], landscape: true),
                               ),
               ),
             ),
@@ -198,8 +207,9 @@ class _DiscoveryState extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child: Text('Buscas recentes',
-                      style: SabuflixTheme.of(context).title(fontSize: 18))),
+                  child: Text('BUSCAS RECENTES',
+                      style: SabuflixTheme.of(context)
+                          .title(fontSize: 17, fontWeight: FontWeight.w800))),
               TextButton(
                   onPressed: search.clearRecentSearches, child: Text('Limpar')),
             ],
@@ -223,21 +233,25 @@ class _DiscoveryState extends StatelessWidget {
           ),
           SizedBox(height: 30),
         ],
-        Text('Em alta agora',
-            style: SabuflixTheme.of(context).title(fontSize: 18)),
+        Text('EM ALTA AGORA',
+            style: SabuflixTheme.of(context)
+                .title(fontSize: 17, fontWeight: FontWeight.w800)),
         SizedBox(height: 14),
         if (trending.isEmpty)
           Text('O catálogo aparecerá aqui quando estiver disponível.',
               style: SabuflixTheme.of(context).body(fontSize: 13))
         else
           SizedBox(
-            height: settings.compactPosters ? 222 : 252,
+            height: 260 * 9 / 16 +
+                (settings.compactPosters
+                    ? 0
+                    : 16 + MediaQuery.textScalerOf(context).scale(34)),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: trending.length,
-              separatorBuilder: (_, __) => SizedBox(width: 15),
-              itemBuilder: (context, index) =>
-                  MediaCard(media: trending[index]),
+              separatorBuilder: (_, __) => SizedBox(width: 10),
+              itemBuilder: (context, index) => MediaCard(
+                  media: trending[index], width: 260, landscape: true),
             ),
           ),
       ],

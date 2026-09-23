@@ -44,23 +44,23 @@ class _MediaRowState extends State<MediaRow> {
     );
     final desktop = MediaQuery.sizeOf(context).width >= 800;
     final inset = desktop ? 40.0 : 20.0;
-    final width = desktop ? 340.0 : 270.0;
+    final width = desktop ? 360.0 : 280.0;
     final caption =
-        compact ? 0.0 : 15 + MediaQuery.textScalerOf(context).scale(32);
+        compact ? 0.0 : 16 + MediaQuery.textScalerOf(context).scale(34);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(inset, 40, inset, 18),
+          padding: EdgeInsets.fromLTRB(inset, 36, inset, 16),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   widget.title.toUpperCase(),
-                  style: SabuflixTheme.of(context).label(
-                    fontSize: desktop ? 15 : 13,
-                    color: SabuflixTheme.of(context).textPrimary,
-                    letterSpacing: 1.4,
+                  style: SabuflixTheme.of(context).title(
+                    fontSize: desktop ? 20 : 17,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.2,
                   ),
                 ),
               ),
@@ -86,7 +86,7 @@ class _MediaRowState extends State<MediaRow> {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: inset, vertical: 4),
             itemCount: widget.mediaItems.length,
-            separatorBuilder: (_, index) => SizedBox(width: 14),
+            separatorBuilder: (_, index) => SizedBox(width: desktop ? 16 : 10),
             itemBuilder: (_, index) => MediaCard(
               media: widget.mediaItems[index],
               width: width,
