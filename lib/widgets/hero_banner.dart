@@ -9,7 +9,10 @@ import '../screens/media_details_screen.dart';
 
 class HeroBanner extends StatelessWidget {
   final MediaItem media;
-  const HeroBanner({super.key, required this.media});
+
+  /// Eyebrow above the title; defaults to the daily pick.
+  final String? label;
+  const HeroBanner({super.key, required this.media, this.label});
   @override
   Widget build(BuildContext context) {
     final favorite = context.select<FavoritesProvider, bool>(
@@ -35,22 +38,24 @@ class HeroBanner extends StatelessWidget {
                   alignment:
                       desktop ? Alignment.centerRight : Alignment.topCenter,
                   placeholder: (_, url) =>
-                      const ColoredBox(color: SabuflixTheme.surface),
+                      const ColoredBox(color: Color(0xFF111111)),
                   errorWidget: (_, url, error) =>
-                      const ColoredBox(color: SabuflixTheme.surface),
+                      const ColoredBox(color: Color(0xFF111111)),
                 ),
               ),
-              DecoratedBox(
+              // Stills keep their own colour; a plain black scrim holds the
+              // type, and the banner ends on a hard edge like a print.
+              const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    stops: const [0, .32, .72, 1],
+                    stops: [0, .3, .62, 1],
                     colors: [
-                      Colors.black26,
+                      Color(0x59000000),
                       Colors.transparent,
-                      Colors.black.withValues(alpha: .75),
-                      SabuflixTheme.background,
+                      Color(0x99000000),
+                      Color(0xE6000000),
                     ],
                   ),
                 ),
@@ -60,8 +65,8 @@ class HeroBanner extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.black.withValues(alpha: .55),
-                        Colors.black.withValues(alpha: .22),
+                        Colors.black.withValues(alpha: .6),
+                        Colors.black.withValues(alpha: .2),
                         Colors.transparent,
                       ],
                       stops: const [0, .45, 1],
@@ -69,57 +74,76 @@ class HeroBanner extends StatelessWidget {
                   ),
                 ),
               Positioned(
-                left: desktop ? 40 : 20,
+                left: desktop ? 48 : 20,
                 right: desktop
                     ? constraints.maxWidth -
                         (constraints.maxWidth * .55).clamp(520.0, 720.0)
                     : 20,
-                bottom: 48,
+                bottom: desktop ? 56 : 32,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      media.mediaType == 'tv'
-                          ? 'SÉRIE EM DESTAQUE'
-                          : 'FILME EM DESTAQUE',
+                      label ??
+                          (media.mediaType == 'tv'
+                              ? 'SÉRIE DO DIA'
+                              : 'FILME DO DIA'),
                       style: SabuflixTheme.label(
-                        fontSize: 11,
-                        color: Colors.white70,
-                        letterSpacing: 1.8,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 2.2,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Text(
                       media.title.toUpperCase(),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: SabuflixTheme.display(
-                        fontSize: desktop ? 64 : 38,
-                        height: 1.08,
+                        fontSize: desktop ? 68 : 40,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1,
+                        letterSpacing: desktop ? -2 : -1.2,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 6,
-                      children: [
-                        if (media.releaseDate?.isNotEmpty ?? false)
-                          Text(
-                            media.formattedYear,
-                            style: SabuflixTheme.body(color: Colors.white70),
+                    const SizedBox(height: 14),
+                    if (media.directorLine != null) ...[
+                      Text(
+                        media.directorLine!,
+                        style: SabuflixTheme.body(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    Text.rich(
+                      TextSpan(children: [
+                        TextSpan(
+                          text: [
+                            if (media.genres?.isNotEmpty ?? false)
+                              media.genres!.take(2).join(', '),
+                            if (media.originLine.isNotEmpty) media.originLine,
+                          ].join('  ·  '),
+                        ),
+                        if (media.voteCount > 0) ...[
+                          const TextSpan(text: '    '),
+                          const WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Icon(Icons.star_rounded,
+                                size: 16, color: Colors.white),
                           ),
-                        if (media.voteCount > 0)
-                          Text(
-                            '★ ${media.formattedRating}',
-                            style: SabuflixTheme.body(color: Colors.white70),
-                          ),
-                        if (media.genres?.isNotEmpty ?? false)
-                          Text(
-                            media.genres!.take(2).join(' · '),
-                            style: SabuflixTheme.body(color: Colors.white70),
-                          ),
-                      ],
+                          TextSpan(text: ' ${media.starRating}'),
+                        ],
+                      ]),
+                      style: SabuflixTheme.body(
+                        fontSize: 14,
+                        color: const Color(0xFFD6D6D6),
+                      ),
                     ),
                     if (media.overview?.isNotEmpty ?? false) ...[
                       const SizedBox(height: 14),
@@ -129,7 +153,7 @@ class HeroBanner extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: SabuflixTheme.body(
                           fontSize: 15,
-                          color: const Color(0xFFE0E0E5),
+                          color: const Color(0xFFE6E6E6),
                         ),
                       ),
                     ],
@@ -151,7 +175,7 @@ class HeroBanner extends StatelessWidget {
                             ),
                           ),
                           icon: const Icon(
-                            Icons.info_outline_rounded,
+                            Icons.arrow_forward_rounded,
                             size: 21,
                           ),
                           label: const Text('Ver detalhes'),
@@ -185,10 +209,9 @@ class HeroBanner extends StatelessWidget {
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            backgroundColor:
-                                Colors.white.withValues(alpha: .08),
-                            side: BorderSide(
-                                color: Colors.white.withValues(alpha: .24)),
+                            backgroundColor: Colors.transparent,
+                            side: const BorderSide(
+                                color: Colors.white, width: 1.2),
                             minimumSize: const Size(150, 52),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,

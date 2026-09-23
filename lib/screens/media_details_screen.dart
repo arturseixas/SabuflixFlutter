@@ -17,6 +17,7 @@ import '../providers/downloads_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../providers/watched_provider.dart';
+import '../utils/formatters.dart';
 import '../utils/playback.dart';
 import 'video_player_screen.dart';
 
@@ -151,7 +152,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
         backgroundColor: Colors.transparent,
         builder: (ctx) {
           return GlassContainer(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.zero,
             padding: EdgeInsets.all(24),
             blur: 40,
             fillOpacity: 0.4,
@@ -325,7 +326,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
         backgroundColor: Colors.transparent,
         builder: (ctx) {
           return GlassContainer(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.zero,
             padding: EdgeInsets.all(24),
             blur: 40,
             fillOpacity: 0.4,
@@ -458,7 +459,9 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                             onPressed: _loadData,
                             child: Text('Tentar novamente'))))),
           SliverAppBar(
-            expandedHeight: isDesktop ? 480 : 280,
+            expandedHeight: isDesktop
+                ? (screenWidth * 9 / 16).clamp(320.0, 560.0)
+                : screenWidth * 9 / 16 + MediaQuery.paddingOf(context).top,
             pinned: true,
             backgroundColor: SabuflixTheme.of(context).background,
             leading: Padding(
@@ -483,14 +486,15 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                   ),
                   Container(
                     decoration: BoxDecoration(
+                      // Only a top scrim for the back button; the still ends on
+                      // a clean edge above the credits.
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        stops: [0.0, 0.8, 1.0],
+                        stops: [0.0, 0.3],
                         colors: [
+                          Colors.black.withValues(alpha: .45),
                           Colors.transparent,
-                          Colors.transparent,
-                          SabuflixTheme.of(context).background,
                         ],
                       ),
                     ),
@@ -501,126 +505,173 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+              padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 40 : 20, 20, isDesktop ? 40 : 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(media.title.toUpperCase(),
-                      style: SabuflixTheme.of(context)
-                          .display(fontSize: isDesktop ? 48 : 32)),
-                  SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(Icons.star_rounded,
-                          color: SabuflixTheme.of(context).gold, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        media.formattedRating,
+                      style: SabuflixTheme.of(context).display(
+                          fontSize: isDesktop ? 56 : 34,
+                          height: 1,
+                          letterSpacing: isDesktop ? -1.8 : -1.1)),
+                  if (media.distinctOriginalTitle != null) ...[
+                    SizedBox(height: 8),
+                    Text(media.distinctOriginalTitle!.toUpperCase(),
+                        style: SabuflixTheme.of(context).label(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: .8)),
+                  ],
+                  SizedBox(height: 16),
+                  if (media.directorLine != null) ...[
+                    Text(media.directorLine!,
                         style: SabuflixTheme.of(context).body(
-                            color: SabuflixTheme.of(context).textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: SabuflixTheme.of(context).textPrimary)),
+                    SizedBox(height: 6),
+                  ],
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        [
+                          if (media.genres?.isNotEmpty ?? false)
+                            media.genres!.take(3).join(', '),
+                          if (media.originLine.isNotEmpty) media.originLine,
+                          if (media.runtime != null && media.runtime! > 0)
+                            '${media.runtime} min',
+                          if (media.mediaType == 'tv' &&
+                              (media.numberOfSeasons ?? 0) > 0)
+                            media.numberOfSeasons == 1
+                                ? '1 temporada'
+                                : '${media.numberOfSeasons} temporadas',
+                        ].join('  ·  '),
+                        style: SabuflixTheme.of(context).body(fontSize: 14),
                       ),
-                      SizedBox(width: 10),
-                      Text('·',
-                          style: SabuflixTheme.of(context).body(
-                              fontSize: 14,
-                              color: SabuflixTheme.of(context).textMuted)),
-                      SizedBox(width: 10),
-                      Text(media.formattedYear,
-                          style: SabuflixTheme.of(context).body(fontSize: 14)),
-                      if (media.ageRating != null) ...[
-                        SizedBox(width: 10),
+                      if (media.ageRating != null)
                         Container(
                           padding:
-                              EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                           decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.3),
-                            borderRadius: SabuflixTheme.radiusSm,
                             border: Border.all(
-                                color: Colors.grey.withValues(alpha: 0.5)),
+                                color: SabuflixTheme.of(context).textSecondary),
                           ),
                           child: Text(
                             media.ageRating!,
-                            style: TextStyle(
-                                color: SabuflixTheme.of(context).textPrimary,
+                            style: SabuflixTheme.of(context).label(
                                 fontSize: 10,
-                                fontWeight: FontWeight.bold),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: .4,
+                                color: SabuflixTheme.of(context).textSecondary),
                           ),
                         ),
-                      ],
                     ],
                   ),
-                  SizedBox(height: 24),
+                  if (media.voteCount > 0) ...[
+                    SizedBox(height: 18),
+                    _AudienceRating(media: media),
+                  ],
+                  SizedBox(height: 28),
                   if (isBlocked)
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.15),
-                        borderRadius: SabuflixTheme.radiusMd,
-                        border: Border.all(
-                            color: Colors.redAccent.withValues(alpha: 0.3)),
+                        color: SabuflixTheme.of(context)
+                            .error
+                            .withValues(alpha: 0.12),
+                        border:
+                            Border.all(color: SabuflixTheme.of(context).error),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.warning_amber_rounded,
-                              color: Colors.redAccent),
+                              color: SabuflixTheme.of(context).error),
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'Este conteúdo possui classificação superior à permitida pelo seu perfil.',
                               style: SabuflixTheme.of(context).body(
-                                  color: Colors.redAccent,
+                                  color: SabuflixTheme.of(context).error,
                                   fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
                       ),
                     )
-                  else
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: isDesktop ? 240 : 210,
-                          child: ElevatedButton.icon(
-                            onPressed: _loadingDetails || _detailsError != null
-                                ? null
-                                : () {
-                                    if (savedProgress != null) {
-                                      resumeWatching(context, savedProgress);
-                                    } else if (media.mediaType == 'tv') {
-                                      _showStreamSelector(
-                                          season: _seasonNumber, episode: 1);
-                                    } else {
-                                      _showStreamSelector();
-                                    }
-                                  },
-                            icon: Icon(Icons.play_arrow_rounded,
-                                size: 22, color: Colors.white),
-                            label: Text(
-                              savedProgress != null
-                                  ? savedProgress.resumeLabel
-                                  : (media.mediaType == 'tv'
-                                      ? 'Assistir S$_seasonNumber:E1'
-                                      : 'Assistir Agora'),
+                  else ...[
+                    SizedBox(
+                      width: isDesktop ? 320 : double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _loadingDetails || _detailsError != null
+                            ? null
+                            : () {
+                                if (savedProgress != null) {
+                                  resumeWatching(context, savedProgress);
+                                } else if (media.mediaType == 'tv') {
+                                  _showStreamSelector(
+                                      season: _seasonNumber, episode: 1);
+                                } else {
+                                  _showStreamSelector();
+                                }
+                              },
+                        icon: Icon(Icons.play_arrow_rounded,
+                            size: 24, color: Colors.white),
+                        label: Text(
+                          savedProgress != null
+                              ? savedProgress.resumeLabel
+                              : (media.mediaType == 'tv'
+                                  ? 'Assistir S$_seasonNumber:E1'
+                                  : 'Assistir Agora'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    if (savedProgress != null) ...[
+                      SizedBox(height: 14),
+                      SizedBox(
+                        width: isDesktop ? 320 : double.infinity,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            LinearProgressIndicator(
+                              value: savedProgress.progress,
+                              minHeight: 2,
+                              backgroundColor: SabuflixTheme.of(context).border,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  SabuflixTheme.of(context).textPrimary),
+                            ),
+                            SizedBox(height: 7),
+                            Text(
+                              '${savedProgress.subtitleLabel} · ${savedProgress.remainingLabel}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: SabuflixTheme.of(context).body(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white),
+                              style: SabuflixTheme.of(context).caption(
+                                  fontSize: 12,
+                                  color:
+                                      SabuflixTheme.of(context).textSecondary),
                             ),
-                          ),
+                          ],
                         ),
-                        OutlinedButton.icon(
-                          onPressed: () =>
-                              favoritesProvider.toggleFavorite(media),
-                          icon: Icon(isFav ? Icons.check : Icons.add),
-                          label: Text(isFav ? 'Na minha lista' : 'Minha lista'),
+                      ),
+                    ],
+                    SizedBox(height: 20),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 8,
+                      children: [
+                        _ActionTile(
+                          icon: isFav
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_border_rounded,
+                          label: isFav ? 'Na lista' : 'Minha lista',
+                          selected: isFav,
+                          onTap: () => favoritesProvider.toggleFavorite(media),
                         ),
                         if (!kIsWeb)
                           _DownloadActionButton(
@@ -639,13 +690,18 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                   : null,
                             ),
                           ),
-                        OutlinedButton.icon(
-                          onPressed: () => _showPlaylistsSelector(media),
-                          icon: const Icon(Icons.featured_play_list_outlined),
-                          label: const Text('Playlists'),
+                        _ActionTile(
+                          icon: Icons.playlist_add_rounded,
+                          label: 'Playlists',
+                          onTap: () => _showPlaylistsSelector(media),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: () async {
+                        _ActionTile(
+                          icon: isWatched
+                              ? Icons.visibility_rounded
+                              : Icons.visibility_outlined,
+                          label: isWatched ? 'Assistido' : 'Já vi',
+                          selected: isWatched,
+                          onTap: () async {
                             await watchedProvider.toggle(media);
                             if (!isWatched && context.mounted) {
                               await context
@@ -653,68 +709,30 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                   .remove(media.id, mediaType: media.mediaType);
                             }
                           },
-                          icon: Icon(isWatched
-                              ? Icons.visibility_rounded
-                              : Icons.visibility_outlined),
-                          label: Text(
-                              isWatched ? 'Assistido' : 'Marcar assistido'),
                         ),
                       ],
                     ),
-                  if (!isBlocked && savedProgress != null) ...[
-                    SizedBox(height: 16),
-                    SizedBox(
-                      width: 260,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.all(Radius.circular(2)),
-                            child: LinearProgressIndicator(
-                              value: savedProgress.progress,
-                              minHeight: 3,
-                              backgroundColor: SabuflixTheme.of(context).border,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  SabuflixTheme.of(context).accent),
-                            ),
-                          ),
-                          SizedBox(height: 7),
-                          Text(
-                            '${savedProgress.subtitleLabel} · ${savedProgress.remainingLabel}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: SabuflixTheme.of(context).caption(
-                                fontSize: 12,
-                                color: SabuflixTheme.of(context).textSecondary),
-                          ),
-                        ],
+                  ],
+                  SizedBox(height: 36),
+                  if (media.tagline != null) ...[
+                    Container(
+                      padding: EdgeInsets.only(left: 16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          left: BorderSide(
+                              color: SabuflixTheme.of(context).textPrimary,
+                              width: 2),
+                        ),
+                      ),
+                      child: Text(
+                        '“${media.tagline}”',
+                        style: SabuflixTheme.of(context).title(
+                            fontSize: isDesktop ? 22 : 19,
+                            fontWeight: FontWeight.w700,
+                            height: 1.3),
                       ),
                     ),
-                  ],
-                  SizedBox(height: 24),
-                  if (media.genres != null && media.genres!.isNotEmpty) ...[
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: media.genres!
-                          .map(
-                            (g) => GlassContainer(
-                              borderRadius: SabuflixTheme.radiusPill,
-                              blur: 16,
-                              fillOpacity: 0.25,
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              child: Text(g,
-                                  style: SabuflixTheme.of(context).body(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: SabuflixTheme.of(context)
-                                          .textPrimary)),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    SizedBox(height: 24),
+                    SizedBox(height: 36),
                   ],
                   if (!isBlocked &&
                       (media.mediaType == 'tv' &&
@@ -722,9 +740,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Episódios',
-                            style:
-                                SabuflixTheme.of(context).title(fontSize: 19)),
+                        _SectionTitle('Episódios'),
                         Container(
                           padding:
                               EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -890,38 +906,43 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                       ),
                     SizedBox(height: 32),
                   ],
-                  Text('Sinopse',
-                      style: SabuflixTheme.of(context).title(fontSize: 19)),
-                  SizedBox(height: 10),
-                  Text(
-                    media.overview != null && media.overview!.isNotEmpty
-                        ? media.overview!
-                        : 'Nenhuma sinopse disponível em português.',
-                    style: SabuflixTheme.of(context)
-                        .body(fontSize: 15, height: 1.6),
+                  _SectionTitle('Sinopse'),
+                  SizedBox(height: 12),
+                  ConstrainedBox(
+                    // Keeps the synopsis at a readable measure on wide screens.
+                    constraints: BoxConstraints(maxWidth: 760),
+                    child: Text(
+                      media.overview != null && media.overview!.isNotEmpty
+                          ? media.overview!
+                          : 'Nenhuma sinopse disponível em português.',
+                      style: SabuflixTheme.of(context).body(
+                          fontSize: 16,
+                          height: 1.65,
+                          color: SabuflixTheme.of(context).textPrimary),
+                    ),
                   ),
-                  SizedBox(height: 32),
+                  SizedBox(height: 40),
                   if (_cast.isNotEmpty) ...[
-                    Text('Elenco Principal',
-                        style: SabuflixTheme.of(context).title(fontSize: 19)),
-                    SizedBox(height: 14),
+                    _SectionTitle('Elenco'),
+                    SizedBox(height: 16),
                     SizedBox(
-                      height: 145,
+                      height: 150,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: _cast.length,
                         itemBuilder: (context, index) {
                           final actor = _cast[index];
                           return Container(
-                            width: 95,
-                            margin: EdgeInsets.only(right: 16),
+                            width: 84,
+                            margin: EdgeInsets.only(right: 14),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                ClipOval(
+                                ClipRect(
                                   child: CachedNetworkImage(
                                     imageUrl: actor.fullProfilePath,
-                                    width: 72,
-                                    height: 72,
+                                    width: 84,
+                                    height: 84,
                                     fit: BoxFit.cover,
                                     errorWidget: (context, url, err) =>
                                         Container(
@@ -937,7 +958,6 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                   actor.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
                                   style: SabuflixTheme.of(context).body(
                                       color:
                                           SabuflixTheme.of(context).textPrimary,
@@ -948,7 +968,6 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                   actor.character,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
                                   style: SabuflixTheme.of(context).body(
                                       color:
                                           SabuflixTheme.of(context).textMuted,
@@ -962,15 +981,18 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                     ),
                     SizedBox(height: 32),
                   ],
-                  if (_similar.isNotEmpty) ...[
-                    MediaRow(
-                        title: 'Títulos Semelhantes', mediaItems: _similar),
-                    SizedBox(height: 40),
-                  ],
                 ],
               ),
             ),
           ),
+          if (_similar.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 48),
+                child: MediaRow(
+                    title: 'Você também pode gostar', mediaItems: _similar),
+              ),
+            ),
         ],
       ),
     );
@@ -1025,7 +1047,7 @@ class _DownloadActionButton extends StatelessWidget {
               break;
             case DownloadStatus.failed:
               icon = Icons.refresh_rounded;
-              label = 'Tentar de novo';
+              label = 'Repetir';
               onTap = () => downloads.resume(item.id);
               break;
           }
@@ -1033,11 +1055,11 @@ class _DownloadActionButton extends StatelessWidget {
 
         final isDone = item?.isCompleted ?? false;
 
-        return OutlinedButton.icon(
-          onPressed: onTap,
-          icon: Icon(icon,
-              color: isDone ? SabuflixTheme.of(context).success : null),
-          label: Text(label),
+        return _ActionTile(
+          icon: icon,
+          label: label,
+          selected: isDone,
+          onTap: onTap,
         );
       },
     );
@@ -1110,6 +1132,118 @@ class _EpisodeDownloadBadge extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Uppercase, letter-spaced section heading used across the film page.
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text.toUpperCase(),
+        style: SabuflixTheme.of(context).label(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.6,
+            color: SabuflixTheme.of(context).textPrimary));
+  }
+}
+
+/// Audience average on a five-star scale with its vote count.
+class _AudienceRating extends StatelessWidget {
+  final MediaItem media;
+  const _AudienceRating({required this.media});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = SabuflixTheme.of(context);
+    final stars = (media.voteAverage / 2).clamp(0.0, 5.0);
+    return Semantics(
+      label: 'Nota média ${media.starRating} de 5, '
+          '${media.voteCount} avaliações',
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 5; i++)
+              Icon(
+                stars >= i + .75
+                    ? Icons.star_rounded
+                    : stars >= i + .25
+                        ? Icons.star_half_rounded
+                        : Icons.star_outline_rounded,
+                size: 18,
+                color: palette.textPrimary,
+              ),
+            SizedBox(width: 10),
+            Text(media.starRating,
+                style:
+                    palette.title(fontSize: 18, fontWeight: FontWeight.w800)),
+            SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                '${formatCount(media.voteCount)} avaliações',
+                overflow: TextOverflow.ellipsis,
+                style: palette.caption(fontSize: 13, color: palette.textMuted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Icon-over-label action used in the row beneath the play button.
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    this.selected = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = SabuflixTheme.of(context);
+    final color =
+        onTap == null && !selected ? palette.textMuted : palette.textPrimary;
+    return Semantics(
+      button: true,
+      selected: selected,
+      enabled: onTap != null,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 80,
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 26, color: color),
+                SizedBox(height: 6),
+                Text(
+                  label,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: palette.caption(
+                      fontSize: 12, fontWeight: FontWeight.w700, color: color),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -3,23 +3,26 @@ import 'package:flutter/material.dart';
 class SabuflixTheme {
   SabuflixTheme._();
 
-  static const Color background = Color(0xFF0B0C0E);
-  static const Color surface = Color(0xFF15171A); // systemGray6
-  static const Color surfaceLight = Color(0xFF202327); // systemGray5
-  static const Color elevated = Color(0xFF2A2E33); // systemGray4
-  static const Color border = Color(0xFF30343A);
-  static const Color borderStrong = Color(0xFF626873); // separator, opaque
+  // Cinematheque palette: true black canvas, white type, a single electric
+  // blue reserved for the primary action — the way a curated streaming
+  // service lets the stills carry all the colour.
+  static const Color background = Color(0xFF000000);
+  static const Color surface = Color(0xFF111111);
+  static const Color surfaceLight = Color(0xFF1C1C1C);
+  static const Color elevated = Color(0xFF242424);
+  static const Color border = Color(0xFF262626);
+  static const Color borderStrong = Color(0xFF5C5C5C);
 
-  static const Color accent = Color(0xFF648CFF);
-  static const Color accentHover = Color(0xFF93AEFF);
-  static const Color accentMuted = Color(0xFF1645C0);
+  static const Color accent = Color(0xFF8C9BFF);
+  static const Color accentHover = Color(0xFFB4BEFF);
+  static const Color accentMuted = Color(0xFF0012B8);
 
-  static const Color gold = Color(0xFFFFD60A); // systemYellow, ratings only
-  static const Color success = Color(0xFF30D158); // systemGreen
+  static const Color gold = Color(0xFFFFFFFF); // ratings stay monochrome
+  static const Color success = Color(0xFF3DDC84);
 
-  static const Color textPrimary = Color(0xFFF5F4F0);
-  static const Color textSecondary = Color(0xFFBFC1C5);
-  static const Color textMuted = Color(0xFF9CA2AB);
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFB8B8B8);
+  static const Color textMuted = Color(0xFF999999);
 
   static TextStyle display({
     double fontSize = 40,
@@ -129,16 +132,16 @@ class SabuflixTheme {
     );
   }
 
-  static BorderRadius get radiusSm =>
-      const BorderRadius.all(Radius.circular(3));
+  // Square, print-like edges throughout.
+  static BorderRadius get radiusSm => BorderRadius.zero;
   static BorderRadius get radiusMd =>
-      const BorderRadius.all(Radius.circular(4));
+      const BorderRadius.all(Radius.circular(2));
   static BorderRadius get radiusLg =>
-      const BorderRadius.all(Radius.circular(6));
+      const BorderRadius.all(Radius.circular(2));
   static BorderRadius get radiusXl =>
-      const BorderRadius.all(Radius.circular(8));
-  static BorderRadius get radiusPill =>
       const BorderRadius.all(Radius.circular(4));
+  static BorderRadius get radiusPill =>
+      const BorderRadius.all(Radius.circular(2));
 
   static const Duration durationFast = Duration(milliseconds: 220);
   static const Duration durationMed = Duration(milliseconds: 380);
@@ -171,7 +174,7 @@ class SabuflixTheme {
 
   static ThemeData get themeData => _theme(Brightness.dark);
   static ThemeData get lightThemeData => _theme(Brightness.light);
-  static const brandBlue = Color(0xFF204FE0);
+  static const brandBlue = Color(0xFF001EFF);
 
   static ThemeData _theme(Brightness brightness) {
     final p = brightness == Brightness.light
@@ -181,8 +184,8 @@ class SabuflixTheme {
     final text = const TextStyle(
         fontFamily: 'Manrope',
         fontSize: 15,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -.4);
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.2);
     final primary = ElevatedButton.styleFrom(
       backgroundColor: brandBlue,
       foregroundColor: Colors.white,
@@ -239,8 +242,8 @@ class SabuflixTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
         foregroundColor: p.textPrimary,
-        backgroundColor: p.secondaryFill,
-        side: BorderSide(color: p.borderStrong),
+        backgroundColor: Colors.transparent,
+        side: BorderSide(color: p.textPrimary, width: 1.2),
         shape: shape,
         minimumSize: const Size(48, 52),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -248,7 +251,7 @@ class SabuflixTheme {
       )),
       textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-        foregroundColor: p.accent,
+        foregroundColor: p.textPrimary,
         shape: shape,
         minimumSize: const Size(48, 48),
         textStyle: text,
@@ -261,29 +264,30 @@ class SabuflixTheme {
       )),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: p.surface,
+        fillColor: p.surfaceLight,
         hintStyle: p.body(color: p.textMuted),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-            borderRadius: radiusMd, borderSide: BorderSide(color: p.border)),
+            borderRadius: radiusMd, borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(
-            borderRadius: radiusMd, borderSide: BorderSide(color: p.border)),
+            borderRadius: radiusMd, borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
             borderRadius: radiusMd,
-            borderSide: BorderSide(color: p.accent, width: 2)),
+            borderSide: BorderSide(color: p.textPrimary, width: 1.5)),
       ),
       chipTheme: ChipThemeData(
-          backgroundColor: p.surface,
-          selectedColor: brandBlue,
-          labelStyle: WidgetStateTextStyle.resolveWith((states) =>
-              text.copyWith(
-                  fontSize: 13,
-                  color: states.contains(WidgetState.selected)
-                      ? Colors.white
+          backgroundColor: Colors.transparent,
+          selectedColor: p.textPrimary,
+          // Chips resolve only the label *colour* against their state.
+          labelStyle: text.copyWith(
+              fontSize: 13,
+              color: WidgetStateColor.resolveWith((states) =>
+                  states.contains(WidgetState.selected)
+                      ? p.background
                       : p.textPrimary)),
-          secondaryLabelStyle: text.copyWith(fontSize: 13, color: Colors.white),
-          checkmarkColor: Colors.white,
+          secondaryLabelStyle: text.copyWith(fontSize: 13, color: p.background),
+          checkmarkColor: p.background,
           side: BorderSide(color: p.border),
           shape: shape,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
@@ -304,12 +308,12 @@ class SabuflixTheme {
           textStyle: p.body(color: p.textPrimary),
           shape: shape),
       sliderTheme: SliderThemeData(
-          activeTrackColor: brandBlue,
-          thumbColor: brandBlue,
+          activeTrackColor: p.textPrimary,
+          thumbColor: p.textPrimary,
           inactiveTrackColor: p.border,
           trackHeight: 3),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-          color: p.accent, linearTrackColor: p.border),
+          color: p.textPrimary, linearTrackColor: p.border),
       tooltipTheme: TooltipThemeData(
           decoration: BoxDecoration(color: p.elevated, borderRadius: radiusMd),
           textStyle: p.caption(color: p.textPrimary)),
@@ -329,33 +333,33 @@ class SabuPalette {
   const SabuPalette.light() : isLight = true;
   const SabuPalette.dark() : isLight = false;
   Color get background =>
-      isLight ? const Color(0xFFFAF9F6) : SabuflixTheme.background;
+      isLight ? const Color(0xFFFFFFFF) : SabuflixTheme.background;
   Color get surface =>
-      isLight ? const Color(0xFFFFFFFF) : SabuflixTheme.surface;
+      isLight ? const Color(0xFFF7F7F7) : SabuflixTheme.surface;
   Color get surfaceLight =>
-      isLight ? const Color(0xFFF0EFEB) : SabuflixTheme.surfaceLight;
+      isLight ? const Color(0xFFEEEEEE) : SabuflixTheme.surfaceLight;
   Color get elevated =>
       isLight ? const Color(0xFFFFFFFF) : SabuflixTheme.elevated;
-  Color get border => isLight ? const Color(0xFFDDDED9) : SabuflixTheme.border;
+  Color get border => isLight ? const Color(0xFFE2E2E2) : SabuflixTheme.border;
   Color get borderStrong =>
-      isLight ? const Color(0xFF868B91) : const Color(0xFF51565E);
+      isLight ? const Color(0xFF8A8A8A) : SabuflixTheme.borderStrong;
   Color get textPrimary =>
-      isLight ? const Color(0xFF16181C) : SabuflixTheme.textPrimary;
+      isLight ? const Color(0xFF000000) : SabuflixTheme.textPrimary;
   Color get textSecondary =>
-      isLight ? const Color(0xFF50565F) : SabuflixTheme.textSecondary;
+      isLight ? const Color(0xFF4A4A4A) : SabuflixTheme.textSecondary;
   Color get textMuted =>
-      isLight ? const Color(0xFF656C76) : SabuflixTheme.textMuted;
+      isLight ? const Color(0xFF626262) : SabuflixTheme.textMuted;
   Color get accent => isLight ? SabuflixTheme.brandBlue : SabuflixTheme.accent;
   Color get accentHover =>
-      isLight ? const Color(0xFF1236B0) : SabuflixTheme.accentHover;
+      isLight ? const Color(0xFF0016C0) : SabuflixTheme.accentHover;
   Color get accentMuted => SabuflixTheme.accentMuted;
-  Color get gold => isLight ? const Color(0xFF806000) : SabuflixTheme.gold;
+  Color get gold => isLight ? const Color(0xFF000000) : SabuflixTheme.gold;
   Color get success =>
       isLight ? const Color(0xFF18703A) : SabuflixTheme.success;
   Color get error =>
       isLight ? const Color(0xFFBA242B) : const Color(0xFFFF777D);
   Color get secondaryFill =>
-      isLight ? const Color(0xFFF1F2F0) : const Color(0xFF222529);
+      isLight ? const Color(0xFFF2F2F2) : const Color(0xFF1A1A1A);
   TextStyle display({
     double fontSize = 40,
     FontWeight fontWeight = FontWeight.w800,
