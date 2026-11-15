@@ -69,15 +69,15 @@ function layout() {
   const u = sw / W;
   LAYOUT = { u, portrait, sw, sh, sx, sy };
   Object.assign(stage.style, { left: sx + 'px', top: sy + 'px', width: sw + 'px', height: sh + 'px' });
-  document.documentElement.style.setProperty('--u', u + 'px');
+  document.documentElement.style.setProperty('--u', (sw / 320) + 'px');
   document.body.classList.toggle('portrait', portrait);
-  const fs = portrait ? 15 : clamp(Math.round(u * 6.4), 13, 23);
+  const fs = portrait ? 15 : clamp(Math.round(sw / 320 * 6.4), 13, 23);
   document.documentElement.style.setProperty('--fs', fs + 'px');
   if (portrait) {
     Object.assign(dock.style, { left: '0px', top: (sy + sh) + 'px', width: vw + 'px', bottom: '0px', height: 'auto' });
     if (hud.parentNode !== dock) dock.prepend(hud);
   } else {
-    Object.assign(dock.style, { left: (sx + 8 * u) + 'px', width: (sw - 16 * u) + 'px', top: 'auto', bottom: (vh - sy - sh + 5 * u) + 'px', height: 'auto' });
+    const cu = sw / 320; Object.assign(dock.style, { left: (sx + 8 * cu) + 'px', width: (sw - 16 * cu) + 'px', top: 'auto', bottom: (vh - sy - sh + 5 * cu) + 'px', height: 'auto' });
     if (hud.parentNode !== stage) stage.append(hud);
   }
   const dpr = window.devicePixelRatio || 1;
@@ -87,15 +87,17 @@ function layout() {
 }
 
 /* ---------- vista ---------- */
-const VIEW = { scene: 'facade', t: .12, main: null, second: null, drink: null, cups: 0, brew: null, tables: {}, bell: 0, closed: false, weather: 'sol', speaking: null, talk: false, finale: false };
+const VIEW = { scene: 'facade', t: .12, main: null, second: null, drink: null, brew: null, bell: 0, closed: false, weather: 'sol', speaking: null, talk: false, finale: false, actors: [], walkers: [] };
+const SEATS = [{ x: 2.6, y: 5.35, f: 'front' }, { x: 3.55, y: 6.35, f: 'back' }, { x: 6.4, y: 5.45, f: 'front' }, { x: 7.35, y: 6.45, f: 'back' }, { x: 9.3, y: 3.45, f: 'front' }, { x: 10.25, y: 4.45, f: 'back' }];
+function bestKit() { for (const k of ['espresso', 'sifao', 'chemex', 'aeropress', 'v60', 'prensa', 'moka', 'coador']) if (S.kits[k]) return k; return 'coador'; }
 function renderState() {
   const info = dayInfo();
   const giftsShown = {};
   for (const k in S.gifts) if (S.decor.interior.gifts[k] !== false) giftsShown[k] = 1;
-  const top = topMenu();
   return {
     cafeName: S.cafeName, coins: S.coins, weather: VIEW.weather, season: info.season, festa: info.festa, decor: S.decor, gifts: giftsShown,
-    flags: S.flags, _tables: VIEW.tables, _menuPreview: top, _bell: VIEW.bell, _closed: VIEW.closed, garden: S.garden.map(b => b ? { stage: bedStage(b) } : null), foundedYear: S.foundedYear,
+    flags: S.flags, _menuPreview: topMenu(), _closed: VIEW.closed, garden: S.garden.map(b => b ? { stage: bedStage(b) } : null), foundedYear: S.foundedYear,
+    _kitCounter: bestKit(), _drink: VIEW.drink ? { x: ROOM_SPOTS.counter.x, vis: VIEW.drink.vis, food: VIEW.drink.food, cups: VIEW.drink.cups } : null,
   };
 }
 let _menuCache = { k: '', v: [] };
@@ -107,54 +109,86 @@ function topMenu() {
   _menuCache = { k, v: ids.map(id => [RECEITAS[id].nome.length > 13 ? RECEITAS[id].nome.slice(0, 12) + '.' : RECEITAS[id].nome, String(RECEITAS[id].preco)]) };
   return _menuCache.v;
 }
-let lastT = 0, TIME = 0;
+/* quem trabalha no balcão: você */
+function baristaSpec() {
+  const hair = S.neto === 'neto' ? { style: 'curto', color: 'castanho' } : S.neto === 'nete' ? { style: 'cachos', color: 'castanho' } : { style: 'coque', color: 'castanho' };
+  return { age: 'young', skin: 2, hair, fringe: S.neto === 'nete' ? 'cacheado' : 'lado', clothes: { type: 'camiseta', color: C.leaf }, lashes: S.neto !== 'neto' };
+}
+function walkTo(a, x, y, speed) {
+  return new Promise(res => { a.path = { x, y, speed: speed || 2.4, res }; a.pose = 'walk'; });
+}
+function stepActors(dt) {
+  for (const a of VIEW.actors) {
+    if (a.path) {
+      const dx = a.path.x - a.x, dy = a.path.y - a.y, d = Math.hypot(dx, dy), stp = a.path.speed * dt;
+      a.facing = dx + dy > 0.001 ? 'front' : 'back';
+      if (d <= stp) { a.x = a.path.x; a.y = a.path.y; const r = a.path.res; a.path = null; a.pose = 'stand'; r(); }
+      else { a.x += dx / d * stp; a.y += dy / d * stp; a.frame = Math.floor(TIME * 6) % 2; }
+    }
+    a.blink = (TIME + (a.seed || 0)) % 4.3 < .14;
+  }
+  VIEW.actors = VIEW.actors.filter(a => !a.gone);
+}
+function setPatrons(idx) {
+  VIEW.actors = VIEW.actors.filter(a => a.role !== 'patron' || a.keep-- > 0);
+  const used = new Set(VIEW.actors.filter(a => a.seat != null).map(a => a.seat));
+  for (let i = 0; i < SEATS.length; i++) {
+    if (used.has(i) || r01(idx, i + 10) > .38) continue;
+    const sp = SEATS[i];
+    VIEW.actors.push({ role: 'patron', spec: randomSpec(rng(hashStr('pt' + S.dia + ':' + idx + ':' + i)), { cold: dayInfo().season === 'inverno' }), x: sp.x, y: sp.y, facing: sp.f, pose: 'sit', seat: i, keep: 0, seed: i });
+  }
+}
+function freeSeat() { const used = new Set(VIEW.actors.filter(a => a.seat != null).map(a => a.seat)); const free = SEATS.map((s, i) => i).filter(i => !used.has(i)); return free.length ? free[Math.floor(Math.random() * free.length)] : -1; }
+function ensureBarista() { if (!VIEW.actors.find(a => a.role === 'barista')) VIEW.actors.unshift({ role: 'barista', spec: baristaSpec(), x: ROOM_SPOTS.barista.x, y: ROOM_SPOTS.barista.y, facing: 'front', pose: 'stand', apron: true, seed: 2 }); }
+/* passantes na calçada da fachada */
+function stepWalkers(dt) {
+  const { BX, BY } = FAC;
+  if (VIEW.walkers.length < 3 && Math.random() < dt * .35) {
+    const alongX = Math.random() < .55, back = Math.random() < .5;
+    const spec = randomSpec(rng((Math.random() * 1e9) | 0), { cold: dayInfo().season === 'inverno' });
+    if (alongX) VIEW.walkers.push({ spec, x: back ? BX + 2 : -6, y: BY + 1.2, tx: back ? -6 : BX + 2, ty: BY + 1.2 });
+    else VIEW.walkers.push({ spec, x: BX + 1.25, y: back ? BY + 2 : -6.5, tx: BX + 1.25, ty: back ? -6.5 : BY + 2 });
+  }
+  for (const w of VIEW.walkers) {
+    const dx = w.tx - w.x, dy = w.ty - w.y, d = Math.hypot(dx, dy), stp = 1.3 * dt;
+    if (d < stp) { w.done = true; continue; }
+    w.x += dx / d * stp; w.y += dy / d * stp; w.facing = dx + dy > 0 ? 'front' : 'back'; w.frame = Math.floor(TIME * 5 + w.x) % 2;
+  }
+  VIEW.walkers = VIEW.walkers.filter(w => !w.done);
+}
+let lastT = 0, TIME = 0, PORTRAIT = null;
 function frame(now) {
   const dt = Math.min(.05, (now - lastT) / 1000 || 0); lastT = now; TIME += dt;
-  if (VIEW.bell > 0) VIEW.bell -= dt;
   const g = BUF, rs = renderState();
-  if (VIEW.scene === 'facade') drawFacade(g, rs, VIEW.t, TIME);
-  else if (VIEW.scene === 'cafe') drawCafe(g, rs);
+  if (VIEW.scene === 'facade') { stepWalkers(dt); drawStreet(g, rs, VIEW.t, TIME, VIEW.walkers); }
+  else if (VIEW.scene === 'cafe') {
+    stepActors(dt);
+    for (const a of VIEW.actors) a.talk = VIEW.talk && ((VIEW.speaking === 'main' && VIEW.main && a.id === VIEW.main.id && a.role === 'cust') || (VIEW.speaking === 'second' && VIEW.second && a.id === VIEW.second.id));
+    drawRoom(g, rs, VIEW.t, TIME, VIEW.actors);
+  }
   else if (VIEW.scene === 'brew') drawBrew(g, rs, dt);
   fxStep(g);
-  // luz da hora do dia
-  if (VIEW.scene !== 'brew') {
-    const tint = lightTint(VIEW.t);
-    if (tint !== '#ffffff') { g.globalCompositeOperation = 'multiply'; g.fillStyle = tint; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
-    if (VIEW.scene === 'cafe' && VIEW.t > .6) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = .08; ell(g, 160, 60, 90, 50, '#ffcf8a'); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
-  }
   SCREEN.drawImage(BUF.canvas, 0, 0, W, H, 0, 0, CANVAS.width, CANVAS.height);
+  drawPortrait();
   requestAnimationFrame(frame);
 }
-function charSprite(who, slot) {
-  const blink = (TIME + slot * 1.7) % 4.2 < .13;
-  const talk = VIEW.talk && VIEW.speaking === slot && Math.floor(TIME * 9) % 2 === 0;
-  return drawChar(who.spec, { expr: who.expr || 'neutro', blink, talk });
+/* retrato de quem fala, dentro do balão */
+function drawPortrait() {
+  if (!PORTRAIT) return;
+  const box = $('#dlg');
+  const who = VIEW.speaking === 'second' ? VIEW.second : VIEW.speaking === 'main' ? VIEW.main : null;
+  const show = !box.hidden && who;
+  box.classList.toggle('has-pt', !!show);
+  if (!show) return;
+  const blink = TIME % 4.2 < .13;
+  const talk = VIEW.talk && Math.floor(TIME * 9) % 2 === 0;
+  const c = drawChar(who.spec, { expr: who.expr || 'neutro', blink, talk });
+  const g = PORTRAIT;
+  g.fillStyle = C.tan; g.fillRect(0, 0, 64, 64);
+  dith(g, 0, 0, 64, 64, C.cream, 0);
+  g.drawImage(c, -4, -6);
+  g.fillStyle = C.ink; g.fillRect(0, 63, 64, 1);
 }
-function drawCafe(g, rs) {
-  drawInterior(g, rs, VIEW.t, TIME);
-  const slots = [];
-  if (VIEW.main) slots.push(['main', VIEW.main]);
-  if (VIEW.second) slots.push(['second', VIEW.second]);
-  const dual = slots.length === 2;
-  for (const [slot, who] of slots) {
-    who.enter = Math.min(1, (who.enter || 0) + .06);
-    const x = dual ? (slot === 'main' ? 128 : 196) : 160;
-    const y = 136 - CH_H + 6 + Math.round((1 - who.enter) * 6) + (Math.floor(TIME * 1.1 + (slot === 'main' ? 0 : 1)) % 2);
-    g.globalAlpha = who.leaving ? Math.max(0, 1 - who.leaving) : who.enter;
-    g.drawImage(charSprite(who, slot), x - CH_W / 2, y);
-    g.globalAlpha = 1;
-    if (who.leaving) who.leaving += .07;
-  }
-  drawCounter(g, rs, ownedKitForCounter(), TIME);
-  if (VIEW.drink) {
-    const x = dual ? 140 : 168;
-    drawDrink(g, x, 136, VIEW.drink.vis, TIME);
-    if (VIEW.drink.food) drawFood(g, x + 18, 137, VIEW.drink.food);
-  }
-  if (VIEW.cups >= 2) drawDrink(g, 196, 136, { cup: 'xicara', steam: true }, TIME + 1);
-}
-function ownedKitForCounter() { return S.kits.espresso ? 'espresso' : S.kits.moka ? 'moka' : 'coador'; }
-
 /* ---------- toasts, HUD ---------- */
 const UI = {
   toast(msg, icon) {
@@ -215,7 +249,10 @@ async function say(lines) {
     else if (L.kind === 'other') {
       if (VIEW.main && VIEW.main.id === L.id) { VIEW.main.expr = L.expr; VIEW.speaking = 'main'; name = VIEW.main.name; }
       else {
-        if (!VIEW.second || VIEW.second.id !== L.id) VIEW.second = { id: L.id, spec: specFor(L.id), name: REGULARES[L.id].nome, expr: L.expr, enter: 0 };
+        if (!VIEW.second || VIEW.second.id !== L.id) {
+          VIEW.second = { id: L.id, spec: specFor(L.id), name: REGULARES[L.id].nome, expr: L.expr };
+          if (VIEW.scene === 'cafe' && !VIEW.finale && !VIEW.actors.find(a => a.id === L.id && a.role === 'cust')) VIEW.actors.push({ role: 'cust', id: L.id, spec: specFor(L.id), x: ROOM_SPOTS.counter.x + 1.1, y: ROOM_SPOTS.counter.y + .1, facing: 'back', pose: 'stand', seed: 5 });
+        }
         VIEW.second.expr = L.expr; VIEW.speaking = 'second'; name = VIEW.second.name;
       }
     } else if (VIEW.main) { if (L.expr) VIEW.main.expr = L.expr; VIEW.speaking = 'main'; name = VIEW.main.name; }
@@ -493,77 +530,84 @@ function meterScore(v, zone) {
 }
 function scoreWord(s) { return s >= .9 ? 'Perfeito!' : s >= .75 ? 'Muito bom' : s >= .55 ? 'Quase' : 'Passou do ponto'; }
 
-/* desenha a bancada aproximada */
+/* close-up da bancada (240x135, mostrado em 2x) */
+function upCanvas(fn, w, h) { const c = mk(w, h); fn(c); quantize(c); return scale2x(c.canvas); }
+const _kitBig = new Map();
+function kitBig(id) {
+  if (_kitBig.has(id)) return _kitBig.get(id);
+  const c = upCanvas(g => { if (id === 'leiteira') { R(g, 12, 22, 16, 14, C.offwhite); hl(g, 12, 22, 16, C.paper); vl(g, 27, 22, 14, C.rosegrey); R(g, 28, 24, 9, 2, C.plum); dith(g, 13, 23, 14, 12, C.sky, 0); ell(g, 20, 22, 8, 1.5, C.rosegrey); } else drawKitIcon(g, 20, 38, id); outline(g, .5); }, 40, 40);
+  _kitBig.set(id, c); return c;
+}
 function drawBrew(g, rs, dt) {
   const B = VIEW.brew; if (!B) return;
-  const z = ZOOM;
-  const D = S.decor.interior;
-  const wallBase = { azulejo: '#f4efe6', listras: '#e7c58f', tijolo: '#b85a3a', floral: '#f1e2c3', madeira: '#a56540', verde: '#7fb7a0', rosa: '#e7a3a8' }[D.wall] || '#e7c58f';
-  wallPattern(z, 0, 0, 160, 52, D.wall === 'verde' || D.wall === 'rosa' ? 'liso' : D.wall, wallBase);
+  const z = ZOOM, D = S.decor.interior;
+  wallPatternFlat(z, D.wall || 'listras', 240, 54);
+  const wc = D.wall === 'madeira' ? C.wood1 : D.wall === 'azulejo' ? C.petrol : C.teal;
+  R(z, 0, 54, 240, 10, wc); hl(z, 0, 54, 240, C.tan); for (let x = 0; x < 240; x += 16) R(z, x + 2, 56, 12, 6, tone(wc, -1));
+  // janela com luz
+  R(z, 8, 6, 44, 36, ACCENT[S.decor.facade.trim] || C.green1); windowView(z, 10, 8, 40, 32, lightOf(VIEW.t, true), rs); R(z, 29, 8, 2, 32, ACCENT[S.decor.facade.trim] || C.green1);
   // prateleira com potes
-  R(z, 96, 22, 64, 3, '#7c4635'); hl(z, 96, 22, 64, '#a56540');
-  const jars = ['#b9822d', '#8a5231', '#f6e5c0', '#5a2e22', '#e9b23a'];
-  jars.forEach((c, i) => { R(z, 100 + i * 12, 13, 8, 9, 'rgba(220,240,248,0.6)'); R(z, 101 + i * 12, 16, 6, 6, c); R(z, 100 + i * 12, 12, 8, 2, '#c98b52'); });
-  const kinds = { madeira: ['#c98b52', '#a56540', '#7c4635'], escura: ['#7c4635', '#59302d', '#3a1f26'], azulejo: ['#efe8dc', '#9bb9da', '#3f6fa6'], marmore: ['#f2ede6', '#dad3cc', '#a9a0a3'] };
-  const k = kinds[D.counter] || kinds.madeira;
-  R(z, 0, 52, 160, 38, k[0]); hl(z, 0, 52, 160, tone(k[0], 1)); for (let y = 58; y < 90; y += 7) hl(z, 0, y, 160, k[1]);
-  dith(z, 0, 53, 160, 37, k[1], 0);
+  R(z, 140, 36, 96, 3, C.wood2); hl(z, 140, 36, 96, C.tan);
+  const jars = [[C.wood1, 'café'], [C.paper, 'açúcar'], [C.mustard, 'mel'], [C.wood0, 'cacau'], [C.leaf, 'erva']];
+  jars.forEach((j, i) => { const jx = 146 + i * 18; R(z, jx, 20, 12, 16, C.mint); R(z, jx + 1, 25, 10, 11, j[0]); R(z, jx, 18, 12, 3, C.wood3); P(z, jx + 2, 22, C.paper); vl(z, jx + 2, 26, 6, C.paper); });
+  // bancada
+  const cc = COUNTER_C[D.counter] || COUNTER_C.madeira;
+  R(z, 0, 64, 240, 71, cc[0]); hl(z, 0, 64, 240, tone(cc[0], 1)); hl(z, 0, 65, 240, cc[1]);
+  for (let y = 72; y < 135; y += 9) for (let x = (y * 7) % 23; x < 240; x += 37) hl(z, x, y, 18, cc[1]);
+  dith(z, 0, 66, 240, 69, cc[1], 0);
   // moedor manual
-  const grinding = B.anim === 'grind';
-  const gx = 22, gy = 70;
-  R(z, gx - 7, gy - 12, 14, 12, '#7c4635'); hl(z, gx - 7, gy - 12, 14, '#a56540'); R(z, gx - 2, gy - 6, 4, 3, '#3a1f26');
-  poly(z, [[gx - 6, gy - 12], [gx + 6, gy - 12], [gx + 4, gy - 18], [gx - 4, gy - 18]], '#c3cad6'); vl(z, gx, gy - 22, 4, '#555a70');
-  const ang = grinding ? TIME * 14 : .6; const cx2 = gx + Math.round(Math.cos(ang) * 7), cy2 = gy - 22 + Math.round(Math.sin(ang) * 3);
-  ln(z, gx, gy - 22, cx2, cy2, '#555a70'); ell(z, cx2, cy2, 1.5, 1.5, '#59302d');
-  if (grinding && Math.random() < .5) fxAdd({ x: (gx - 2 + Math.random() * 4) * 2, y: (gy - 4) * 2, vx: (Math.random() - .5) * .6, vy: .4, life: 1, decay: .05, kind: 'grounds' });
-  // chaleira
+  const grinding = B.anim === 'grind', gx = 34, gy = 102;
+  R(z, gx - 12, gy - 20, 24, 20, C.wood2); R(z, gx - 12, gy - 20, 24, 2, C.wood3); vl(z, gx + 11, gy - 20, 20, C.wood1); R(z, gx - 4, gy - 10, 8, 5, C.wood0); P(z, gx, gy - 8, C.sun);
+  poly(z, [[gx - 10, gy - 20], [gx + 10, gy - 20], [gx + 7, gy - 30], [gx - 7, gy - 30]], C.skylight); hl(z, gx - 7, gy - 30, 14, C.paper); vl(z, gx + 6, gy - 29, 9, C.sage);
+  vl(z, gx, gy - 37, 7, C.petrol);
+  const ang = grinding ? TIME * 14 : .6, cx2 = gx + Math.round(Math.cos(ang) * 11), cy2 = gy - 37 + Math.round(Math.sin(ang) * 4);
+  ln(z, gx, gy - 37, cx2, cy2, C.petrol); ell(z, cx2, cy2, 2, 2, C.wood1);
+  if (grinding && Math.random() < .6) fxAdd({ x: (gx - 3 + Math.random() * 6) * 2, y: (gy - 6) * 2, vx: (Math.random() - .5) * .6, vy: .5, life: 1, decay: .05, kind: 'grounds' });
+  // chaleira bico de ganso
   const heating = B.anim === 'heat', pouring = B.anim === 'pour';
-  let kx = 46, ky = 74;
-  if (pouring) { kx = 66; ky = 50; }
+  let kx = 80, ky = 104;
+  if (pouring) { kx = 112; ky = 62; }
   if (!B.kitDef || B.kitDef.temp || pouring) {
-    R(z, kx - 9, ky - 1, 18, 2, '#2f3142');
-    if (heating) { const fl = Math.floor(TIME * 12) % 2; R(z, kx - 6, ky - 2, 12, 1, fl ? '#ea8b58' : '#f7c232'); }
-    const tilt = pouring ? 1 : 0;
-    ell(z, kx, ky - 7, 8, 7 - tilt, '#c3cad6'); ell(z, kx - 2, ky - 9, 4, 3, '#eef2f5'); R(z, kx - 4, ky - 15, 8, 2, '#555a70');
-    ln(z, kx + 7, ky - 6, kx + 15 + tilt * 4, ky - 14 + tilt * 6, '#8d94a8'); ln(z, kx + 7, ky - 5, kx + 15 + tilt * 4, ky - 13 + tilt * 6, '#c3cad6');
-    ln(z, kx - 8, ky - 10, kx - 11, ky - 4, '#2f3142');
-    if (heating || (B.temp > .5)) steam(z, kx, ky - 15, TIME, 2);
-    if (pouring) { const sx = kx + 15 + tilt * 4, sy = ky - 14 + tilt * 6 + 1; for (let y = sy; y < 62; y++) P(z, sx + Math.round(Math.sin(y * .7 + TIME * 20) * .5), y, 'rgba(200,225,240,0.8)'); }
+    if (!pouring) { R(z, kx - 14, ky - 1, 28, 3, C.plum); if (heating) for (let i = -9; i < 10; i += 3) P(z, kx + i, ky - 2 - (Math.floor(TIME * 12 + i) % 2), Math.floor(TIME * 10 + i) % 2 ? C.orange : C.sun); }
+    const tilt = pouring ? 2 : 0;
+    ell(z, kx, ky - 10, 12, 10 - tilt, C.sage); ell(z, kx - 1, ky - 11, 11, 9 - tilt, C.mint); ell(z, kx - 4, ky - 14, 5, 3, C.paper); R(z, kx - 5, ky - 21 + tilt, 10, 3, C.petrol); R(z, kx - 1, ky - 24 + tilt, 2, 3, C.wood1);
+    ln(z, kx + 10, ky - 8, kx + 22 + tilt * 3, ky - 20 + tilt * 5, C.sage); ln(z, kx + 10, ky - 7, kx + 22 + tilt * 3, ky - 19 + tilt * 5, C.mint);
+    ln(z, kx - 11, ky - 16, kx - 16, ky - 6, C.wood1); ln(z, kx - 16, ky - 6, kx - 11, ky - 4, C.wood1);
+    if (heating || B.temp > .5) steam(z, kx + 22, ky - 22, TIME, 2);
+    if (pouring) { const sx = kx + 22 + tilt * 3, sy = ky - 19 + tilt * 5; for (let y = sy; y < 76; y++) P(z, sx + Math.round(Math.sin(y * .6 + TIME * 20) * .6), y, y % 3 ? C.skylight : C.paper); }
   }
   // kit
-  const kitX = 84, kitY = 78;
+  const kitX = 150, kitY = 104;
   if (B.kit) {
-    if (B.kit === 'leiteira') { // leiteira sobre a boca do fogão
-      R(z, kitX - 10, kitY - 1, 20, 2, '#2f3142'); if (B.anim === 'hold') { const fl = Math.floor(TIME * 12) % 2; R(z, kitX - 7, kitY - 2, 14, 1, fl ? '#ea8b58' : '#6ba3d7'); }
-      R(z, kitX - 8, kitY - 12, 16, 11, '#efe8dc'); hl(z, kitX - 8, kitY - 12, 16, '#ffffff'); vl(z, kitX + 7, kitY - 12, 11, '#c9c0bd'); R(z, kitX + 8, kitY - 10, 9, 2, '#2f3142'); dith(z, kitX - 7, kitY - 11, 14, 10, '#3f6fa6', 0);
-      if (B.meter > .5) steam(z, kitX, kitY - 13, TIME, 3);
-    } else drawKitIcon(z, kitX, kitY, B.kit, 1, TIME);
-    if (B.anim === 'hold' && B.kit === 'espresso') { for (let y = kitY - 10; y < kitY - 5; y++) if (Math.floor(TIME * 20 + y) % 3) P(z, kitX, y, PAL.coffee[2]); }
-    if ((B.anim === 'wait') && (B.kit === 'moka' || B.kit === 'ibrik' || B.kit === 'sifao')) { if (Math.random() < .3) AUD.sfx('gurgle'); steam(z, kitX, kitY - 22, TIME, 2 + Math.round(B.meter * 3)); R(z, kitX - 9, kitY, 18, 2, '#2f3142'); R(z, kitX - 6, kitY - 1, 12, 1, Math.floor(TIME * 12) % 2 ? '#ea8b58' : '#6ba3d7'); }
-    if (B.anim === 'steamer') { steam(z, 128, 50, TIME * 2, 4); vl(z, 128, 40, 14, '#8d94a8'); }
+    const flame = (B.anim === 'wait' && (B.kit === 'moka' || B.kit === 'ibrik' || B.kit === 'sifao')) || (B.anim === 'hold' && B.kit === 'leiteira');
+    if (flame || B.kit === 'moka' || B.kit === 'ibrik' || B.kit === 'leiteira') { R(z, kitX - 18, kitY - 2, 36, 4, C.plum); if (flame) for (let i = -12; i < 13; i += 3) P(z, kitX + i, kitY - 3 - (Math.floor(TIME * 12 + i) % 2), Math.floor(TIME * 10 + i) % 2 ? C.sky : C.orange); }
+    z.drawImage(kitBig(B.kit), kitX - 40, kitY - 80 + (B.kit === 'leiteira' ? 4 : 0));
+    if (B.anim === 'hold' && B.kit === 'espresso') for (let y = kitY - 22; y < kitY - 10; y++) if (Math.floor(TIME * 20 + y) % 3) P(z, kitX, y, C.wood1);
+    if (flame) { if (Math.random() < .25) AUD.sfx('gurgle'); steam(z, kitX, kitY - 54, TIME, 2 + Math.round(B.meter * 3)); }
+    if (B.kit === 'leiteira' && B.meter > .5) steam(z, kitX, kitY - 40, TIME, 3);
+    if (B.anim === 'steamer') { steam(z, 204, 50, TIME * 2, 4); vl(z, 204, 36, 22, C.sage); vl(z, 205, 36, 22, C.mint); }
   }
-  // xícara
-  if (B.cupVis) drawDrink(z, 128, 79, B.cupVis, B.phase === 'result' ? null : TIME);
-  g.drawImage(z.canvas, 0, 0, 160, 90, 0, 0, 320, 180);
-  // medidor
+  if (B.cupVis) { const c = upCanvas(cg => drawDrink(cg, 15, 38, B.cupVis, null), 30, 40); z.drawImage(c, 204 - 30, 106 - 76); if (B.cupVis.steam && B.phase !== 'result' && B.cupVis.layers && B.cupVis.layers.length) steam(z, 204, 106 - 76 + 40, TIME, 3); }
+  g.drawImage(z.canvas, 0, 0, 240, 135, 0, 0, W, H);
   if (B.meterOn) {
-    const mx = 70, my = 12, mw = 180;
-    R(g, mx - 3, my - 3, mw + 6, 14, PAL.ink); R(g, mx - 2, my - 2, mw + 4, 12, '#3a2130');
-    R(g, mx, my, mw, 8, '#59302d');
-    for (const zn of B.zones || []) { R(g, mx + zn[0] * mw, my, (zn[1] - zn[0]) * mw, 8, '#4a8648'); hl(g, mx + zn[0] * mw, my, (zn[1] - zn[0]) * mw, '#84b752'); }
+    const mx = 120, my = 16, mw = 240;
+    R(g, mx - 3, my - 3, mw + 6, 16, C.ink); R(g, mx - 2, my - 2, mw + 4, 14, C.plum);
+    R(g, mx, my, mw, 10, C.wood1);
+    for (const zn of B.zones || []) { R(g, mx + zn[0] * mw, my, (zn[1] - zn[0]) * mw, 10, C.leaf); hl(g, mx + zn[0] * mw, my, (zn[1] - zn[0]) * mw, C.lime); }
     const fillW = clamp(B.meter, 0, 1) * mw;
-    R(g, mx, my + 2, fillW, 4, B.meter > 1 ? '#cd5b3b' : '#f7c232'); hl(g, mx, my + 2, fillW, '#ffe274');
+    R(g, mx, my + 3, fillW, 4, B.meter > 1 ? C.orange : C.sun); hl(g, mx, my + 3, fillW, C.butter);
     const nx = mx + clamp(B.meter, 0, 1) * mw;
-    R(g, nx - 1, my - 3, 2, 14, PAL.cream);
-    if (B.unit === '°C') drawTxt(g, Math.round(70 + B.meter * 30) + '°C', mx + mw + 6, my - 3, 6, PAL.cream, null, false, PAL.ink);
-    if (B.label) drawTxt(g, B.label, mx, my + 10, 6, PAL.cream, null, true, PAL.ink);
+    R(g, nx - 1, my - 4, 3, 18, C.paper);
+    if (B.unit === '°C') drawTxt(g, Math.round(70 + B.meter * 30) + '°C', mx + mw + 8, my - 2, 6, C.paper, null, true, C.ink);
+    if (B.label) drawTxt(g, B.label, mx, my + 12, 6, C.paper, null, true, C.ink);
   }
   if (B.phase === 'result' && B.result) {
-    g.globalAlpha = .55; R(g, 0, 0, W, H, '#22131c'); g.globalAlpha = 1;
-    drawDrink(g, 160, 150, B.result.vis, TIME, true);
-    if (B.result.food) { const fg = mk(20, 16); drawFood(fg, 10, 14, B.result.food); g.drawImage(fg.canvas, 196, 120, 40, 32); }
-    const nm = B.result.nome;
-    drawTxt(g, nm, 160, 18, 10, '#fdf0cf', 'c', false, PAL.ink);
+    R(g, 0, 0, W, H, C.plum); for (let a = 0; a < 24; a++) { const an = a / 24 * Math.PI * 2 + TIME * .1; if (a % 2) poly(g, [[240, 140], [240 + Math.cos(an) * 400, 140 + Math.sin(an) * 400], [240 + Math.cos(an + .13) * 400, 140 + Math.sin(an + .13) * 400]], C.mauve); }
+    const c = upCanvas(cg => drawDrink(cg, 15, 38, B.result.vis, null), 30, 40);
+    g.drawImage(c, 240 - 60, 200 - 152, 120, 160);
+    if (B.result.food) { const fc = upCanvas(fg => drawFood(fg, 10, 14, B.result.food), 20, 16); g.drawImage(fc, 300, 150, 80, 64); }
+    if (B.result.vis.steam) steam(g, 240, 200 - 152 + 70, TIME, 4);
+    drawTxt(g, B.result.nome, 240, 22, 10, C.paper, 'c', false, C.ink);
   }
 }
 
@@ -584,7 +628,7 @@ function runMeter(cfg) {
       const s = meterScore(B.meter, cfg.zones[zi]);
       AUD.sfx(s >= .75 ? 'good' : 'meh');
       UI.toast(scoreWord(s));
-      fxBurst(160, 30, s >= .75 ? 'spark' : 'grounds', s >= .9 ? 14 : 6);
+      fxBurst(240, 44, s >= .75 ? 'spark' : 'grounds', s >= .9 ? 14 : 6);
       setTimeout(() => res(s), 380);
     };
     const loop = (now) => {
@@ -853,13 +897,17 @@ const DAYSTATS = { moedas: 0, gorjetas: 0, servidos: 0, tres: 0, coracoes: [], n
 async function runVisit(v, idx, total) {
   VIEW.t = .04 + .74 * (idx / Math.max(1, total));
   VIEW.weather = weatherFor(S.dia, dayInfo().season);
-  VIEW.tables = { 1: r01(idx, 1) < .6 ? { seed: idx * 7 + S.dia, two: r01(idx, 2) < .5 } : null, 2: r01(idx, 3) < .5 ? { seed: idx * 13 + S.dia } : null };
-  VIEW.scene = 'cafe'; VIEW.drink = null; VIEW.second = null; VIEW.cups = 0;
+  VIEW.scene = 'cafe'; VIEW.drink = null; VIEW.second = null;
+  ensureBarista(); setPatrons(idx);
   hud(true);
-  await wait(250);
-  VIEW.bell = .8; AUD.sfx('bell');
-  VIEW.main = { id: v.id, spec: v.spec, name: v.name, expr: 'neutro', enter: 0 };
-  await wait(550);
+  await wait(200);
+  AUD.sfx('bell');
+  VIEW.main = { id: v.id, spec: v.spec, name: v.name, expr: 'neutro' };
+  const actor = { role: 'cust', id: v.id, spec: v.spec, x: ROOM_SPOTS.door.x, y: ROOM_SPOTS.door.y, facing: 'back', pose: 'walk', seed: idx };
+  VIEW.actors.push(actor);
+  await walkTo(actor, ROOM_SPOTS.counter.x, ROOM_SPOTS.counter.y);
+  actor.facing = 'back';
+  await wait(150);
   const beat = v.beat;
   const lines = beat ? (beat.antes || []) : (v.antes || []);
   if (lines.length) await say(lines);
@@ -871,8 +919,7 @@ async function runVisit(v, idx, total) {
   const d = await brew(v);
   showTicket(null);
   VIEW.scene = 'cafe'; hud(true);
-  VIEW.drink = d; VIEW.cups = v.pedido.xicaras || 1;
-  if (v.tipo === 'reg' && v.id === 'bene' && (v.pedido.xicaras || 1) > 1) VIEW.cups = 2;
+  VIEW.drink = { vis: d.vis, food: d.food, cups: (v.pedido.xicaras || 1) };
   const av = avaliar(v, d);
   // pagamento
   const info = dayInfo();
@@ -896,7 +943,7 @@ async function runVisit(v, idx, total) {
   if (av.ok && v.pedido.tags) missao('humor');
   if (d.recipe && RECEITAS[d.recipe].tags.indexOf('leitoso') >= 0) missao('leitoso');
   if (d.nova) DAYSTATS.novas.push(d.nome);
-  for (let k = 0; k < Math.min(8, 2 + Math.floor((preco + gorjeta) / 3)); k++) fxAdd({ x: 168 + Math.random() * 8, y: 120, vx: (Math.random() - .3) * 1.4, vy: -1.2 - Math.random(), life: 1, decay: .02, kind: 'coin' });
+  for (let k = 0; k < Math.min(8, 2 + Math.floor((preco + gorjeta) / 3)); k++) fxAdd({ x: 236 + Math.random() * 8, y: 122, vx: (Math.random() - .3) * 1.4, vy: -1.2 - Math.random(), life: 1, decay: .02, kind: 'coin' });
   AUD.sfx('coin');
   UI.toast('+' + preco + (gorjeta ? ' e ' + gorjeta + ' de gorjeta' : ''), 'coin');
   const ups = addXP(8 + 4 * d.stars + (av.ok ? 4 : 0) + (beat ? 6 : 0));
@@ -916,7 +963,7 @@ async function runVisit(v, idx, total) {
       if (beat.escolha2) await fazerEscolha(v, beat.escolha2);
       aplicarBeat(v.id, beat, v.beatIndex);
     }
-    if (afinLevel(st.afin) > antes) { DAYSTATS.coracoes.push(C.nome); AUD.sfx('heart'); fxBurst(160, 60, 'heart', 8); UI.toast('Mais perto de ' + C.nome, 'heart'); }
+    if (afinLevel(st.afin) > antes) { DAYSTATS.coracoes.push(C.nome); AUD.sfx('heart'); fxBurst(236, 88, 'heart', 8); UI.toast('Mais perto de ' + C.nome, 'heart'); }
   } else if (v.tipo === 'pass') {
     await say([av.ok ? 'P[feliz]: ' + pick(R_OK) : 'P: ' + pick(R_ERR)].concat(v.depois));
     S.album[v.id] = dayInfo().txt; S.passanteHoje.visto = true; DAYSTATS.passante = v.name;
@@ -924,13 +971,23 @@ async function runVisit(v, idx, total) {
   } else {
     await say([av.ok ? '[feliz]' + pick(R_OK) : pick(R_ERR)]);
   }
-  if (ups.length) { for (const n of ups) { DAYSTATS.niveis.push(n); UI.toast('O café chegou ao nível ' + n + '!'); } AUD.sfx('level'); fxBurst(160, 40, 'petal', 24); }
+  if (ups.length) { for (const n of ups) { DAYSTATS.niveis.push(n); UI.toast('O café chegou ao nível ' + n + '!'); } AUD.sfx('level'); fxBurst(240, 70, 'petal', 24); }
   // despedida
   $('#dlg').hidden = true;
-  if (VIEW.main) VIEW.main.leaving = .01; if (VIEW.second) VIEW.second.leaving = .01;
-  AUD.sfx('door');
-  await wait(600);
-  VIEW.main = null; VIEW.second = null; VIEW.drink = null; VIEW.cups = 0;
+  VIEW.speaking = null;
+  const seat = Math.random() < .4 ? freeSeat() : -1;
+  const extra = VIEW.actors.filter(a => a.role === 'cust' && a !== actor);
+  VIEW.drink = null;
+  if (seat >= 0) {
+    const sp = SEATS[seat];
+    await walkTo(actor, sp.x, sp.y);
+    Object.assign(actor, { role: 'patron', pose: 'sit', facing: sp.f, seat, keep: 1 });
+  } else {
+    await walkTo(actor, ROOM_SPOTS.door.x, ROOM_SPOTS.door.y);
+    AUD.sfx('door'); actor.gone = true;
+  }
+  for (const a of extra) a.gone = true;
+  VIEW.main = null; VIEW.second = null;
   hud(true);
   save();
 }
@@ -968,7 +1025,8 @@ async function titulo() {
   VIEW.scene = 'facade'; VIEW.t = .1; VIEW.closed = false; hud(false);
   const has = load();
   return new Promise(res => {
-    dock([el('div', { class: 'title' }, [el('h1', { text: 'Café Girassol' }), el('p', { text: 'Um café de bairro, dez fregueses e o que cada um traz na xícara.' })]),
+    dock([el('div', { class: 'title' }, [el('h1', { text: 'Café Girassol' }), el('p', { text: 'Um café de bairro, dez fregueses e o que cada um traz na xícara.' }),
+      el('div', { class: 'swatches', title: 'Paleta Girassol: as 36 cores do jogo' }, PAL_LIST.map(c => el('i', { style: 'background:' + c })))]),
       el('div', { class: 'btnline' }, [
         has ? el('button', { class: 'btn primary big', onclick: () => { AUD.init(); $('#ctrl').hidden = true; res('continuar'); } }, 'Continuar') : null,
         el('button', { class: 'btn' + (has ? '' : ' primary big'), onclick: () => { AUD.init(); $('#ctrl').hidden = true; res('novo'); } }, has ? 'Novo jogo' : 'Começar'),
@@ -1089,12 +1147,14 @@ async function fimDoDia() {
 }
 async function finale() {
   VIEW.scene = 'cafe'; VIEW.t = .95; VIEW.finale = true;
-  VIEW.tables = { 1: { seed: 3, two: true }, 2: { seed: 8, two: false } };
-  VIEW.main = { id: 'cris', spec: specFor('cris'), name: 'Cris', expr: 'feliz', enter: 0 };
+  VIEW.actors = []; ensureBarista();
+  const spots = SEATS.map(s => [s.x, s.y, s.f, 'sit']).concat([[3.7, 3.75, 'back', 'stand'], [4.8, 3.85, 'back', 'stand'], [8.6, 3.2, 'front', 'stand'], [1.6, 4.4, 'front', 'stand']]);
+  REG_ORDER.forEach((id, i) => { const p = spots[i]; VIEW.actors.push({ role: 'cust', id, spec: specFor(id), x: p[0], y: p[1], facing: p[2], pose: p[3], seed: i }); });
+  VIEW.main = { id: 'cris', spec: specFor('cris'), name: 'Cris', expr: 'feliz' };
   hud(false);
   for (const raw of FINAL) {
     const L = parseLine(raw);
-    if (L.kind === 'other' && (!VIEW.main || VIEW.main.id !== L.id)) { VIEW.main = { id: L.id, spec: specFor(L.id), name: REGULARES[L.id].nome, expr: L.expr, enter: .4 }; VIEW.second = null; }
+    if (L.kind === 'other' && (!VIEW.main || VIEW.main.id !== L.id)) { VIEW.main = { id: L.id, spec: specFor(L.id), name: REGULARES[L.id].nome, expr: L.expr }; VIEW.second = null; }
     await say([raw]);
   }
   await lerCarta('vo');
@@ -1130,7 +1190,8 @@ function bindInput() {
 }
 
 async function main() {
-  CANVAS = $('#screen'); BUF = mk(W, H); ZOOM = mk(160, 90);
+  CANVAS = $('#screen'); BUF = mk(W, H); ZOOM = mk(240, 135);
+  const pc = $('#portrait'); PORTRAIT = pc.getContext('2d'); PORTRAIT.imageSmoothingEnabled = false;
   makeIcons(); layout(); bindInput();
   requestAnimationFrame(frame);
   const modo = await titulo();

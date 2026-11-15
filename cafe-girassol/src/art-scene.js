@@ -1,557 +1,504 @@
 'use strict';
-/* Cenários: interior, fachada, kits, xícaras e partículas. */
+/* Cenas isométricas: o salão do café e a esquina da Rua dos Ipês. Tudo na paleta Girassol. */
 
-/* ---------- opções de decoração (cores) ---------- */
-const DECOR_COLORS = {
-  wall: { amarelo: '#f2c14e', terracota: '#d8734f', verde: '#7fb7a0', azul: '#6f9fcf', rosa: '#e7a3a8', creme: '#f1e2c3', lilas: '#a993c9' },
-  accent: { verde: '#2b5b40', vinho: '#7a2638', azul: '#24526b', marrom: '#59302d', mostarda: '#c4891c', branco: '#efe8dc', preto: '#2a242f' },
-};
+const ROOM = { o: { x: 216, y: 98 }, RX: 11, RY: 8, WH: 76 };
+const ACCENT = { verde: C.green1, vinho: C.wine, azul: C.petrol, marrom: C.wood1, mostarda: C.mustard, branco: C.offwhite, preto: C.plum };
+const WALL_C = { amarelo: C.sun, terracota: C.orange, verde: C.sage, azul: C.sky, rosa: C.rose, creme: C.cream, lilas: C.lilac };
+const WALL_IN = { listras: [C.cream, C.tan], azulejo: [C.offwhite, C.sky], tijolo: [C.terra, C.wood3], floral: [C.cream, C.rose], madeira: [C.wood2, C.wood3], verde: [C.sage, C.mint], rosa: [C.rose, C.skin0] };
+const COUNTER_C = { madeira: [C.tan, C.wood3, C.wood2, C.wood1], escura: [C.wood2, C.wood1, C.wood0, C.ink], azulejo: [C.offwhite, C.skylight, C.sky, C.petrol], marmore: [C.paper, C.offwhite, C.rosegrey, C.mauve] };
 
-/* ---------- céu e luz por hora ---------- */
-function skyAt(t, weather) {
-  // t: 0 manhã cedo … 0.5 tarde … 0.8 pôr do sol … 1 noite
-  const top = mixN([[0, '#7fb2e0'], [.45, '#5f9bd6'], [.72, '#6b7fc4'], [.86, '#41356b'], [1, '#141634']], t);
-  const bot = mixN([[0, '#ffe2b6'], [.45, '#cfe8f4'], [.72, '#f7b07a'], [.86, '#d0607a'], [1, '#2a2552']], t);
-  if (weather === 'chuva') return [mix(top, '#5a6478', .55), mix(bot, '#8a93a3', .55)];
-  if (weather === 'nublado') return [mix(top, '#8e9bb0', .4), mix(bot, '#c9ccd2', .4)];
-  return [top, bot];
-}
-function lightTint(t) {
-  return mixN([[0, '#fff1d8'], [.4, '#ffffff'], [.7, '#ffe6c4'], [.84, '#f0b796'], [1, '#6e6aa0']], t);
-}
+function lightOf(t, inside) { return t < .16 ? 'manha' : t < .6 ? 'dia' : t < .84 ? 'tarde' : inside ? 'noiteDentro' : 'noite'; }
 
-/* ---------- prédios de fundo (vista da janela e da rua) ---------- */
-function drawSkyline(g, x0, y0, w, h, t, seed, weather) {
-  const [top, bot] = skyAt(t, weather);
-  const cols = [];
-  for (let i = 0; i < 6; i++) cols.push(mix(top, bot, i / 5));
-  vgrad(g, x0, y0, w, h, cols);
-  const night = t > .82;
-  if (night) { const r = rng(seed + 9); for (let i = 0; i < w * h / 160; i++) P(g, x0 + r() * w, y0 + r() * h * .5, r() < .3 ? '#fff4b8' : '#c9c3e6'); }
-  else if (weather !== 'chuva') { // nuvens
-    const r = rng(seed + 3);
-    for (let i = 0; i < 3; i++) { const cx = x0 + r() * w, cy = y0 + 6 + r() * h * .3; const cc = mix('#ffffff', bot, .25); ell(g, cx, cy, 10 + r() * 8, 3, cc); ell(g, cx + 5, cy - 2, 6, 3, cc); ell(g, cx - 4, cy + 1, 8, 2, mix(cc, top, .3)); }
+/* escurece/clareia um canvas inteiro andando na rampa da paleta */
+function shadeCanvas(g, step) {
+  const c = g.canvas, im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+  const map = PAL_LIST.map(h => h2r(tone(h, step)));
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const p = map[QLUT[(d[i] >> 3) << 10 | (d[i + 1] >> 3) << 5 | (d[i + 2] >> 3)]];
+    d[i] = p[0]; d[i + 1] = p[1]; d[i + 2] = p[2];
   }
-  if (t > .3 && t < .86 && weather === 'sol') { const sx = x0 + w * (.85 - t * .6), sy = y0 + h * (.15 + t * .45); ell(g, sx, sy, 5, 5, mix('#fff4b8', bot, .1)); }
-  // prédios
-  const r = rng(seed);
-  const far = mix(top, '#6a6f9a', .5), near = mix(bot, '#7a5a6a', .55);
-  let x = x0 - 4;
-  while (x < x0 + w) { const bw = 10 + r() * 16, bh = h * (.3 + r() * .35); R(g, x, y0 + h - bh, bw, bh, far); x += bw + 1; }
-  x = x0 - 6;
-  while (x < x0 + w) {
-    const bw = 14 + r() * 18, bh = h * (.18 + r() * .28), by = y0 + h - bh;
-    const bc = night ? tone(near, -1) : near;
-    R(g, x, by, bw, bh, bc); hl(g, x, by, bw, tone(bc, 1));
-    for (let wy = by + 3; wy < y0 + h - 3; wy += 5) for (let wx = x + 2; wx < x + bw - 3; wx += 5) {
-      const lit = night ? r() < .55 : false;
-      R(g, wx, wy, 2, 3, lit ? '#ffd27a' : tone(bc, -1));
-    }
-    x += bw + 2;
+  g.putImageData(im, 0, 0);
+}
+/* Scale2x: dobra o tamanho suavizando diagonais, usado nos close-ups */
+function scale2x(src) {
+  const w = src.width, h = src.height, sd = src.getContext('2d').getImageData(0, 0, w, h).data;
+  const out = mk(w * 2, h * 2), od = out.createImageData(w * 2, h * 2), o = od.data;
+  const px = (x, y) => { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); const i = (y * w + x) * 4; return (sd[i] << 24 | sd[i + 1] << 16 | sd[i + 2] << 8 | sd[i + 3]) >>> 0; };
+  const put = (x, y, v) => { const i = (y * w * 2 + x) * 4; o[i] = v >>> 24; o[i + 1] = v >>> 16 & 255; o[i + 2] = v >>> 8 & 255; o[i + 3] = v & 255; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const P0 = px(x, y), A = px(x, y - 1), B = px(x + 1, y), Cc = px(x - 1, y), D = px(x, y + 1);
+    let e0 = P0, e1 = P0, e2 = P0, e3 = P0;
+    if (A !== D && Cc !== B) { if (Cc === A) e0 = Cc; if (A === B) e1 = B; if (Cc === D) e2 = Cc; if (D === B) e3 = B; }
+    put(x * 2, y * 2, e0); put(x * 2 + 1, y * 2, e1); put(x * 2, y * 2 + 1, e2); put(x * 2 + 1, y * 2 + 1, e3);
   }
+  out.putImageData(od, 0, 0);
+  return out.canvas;
 }
 
-/* ---------- padrões de parede/piso ---------- */
-function wallPattern(g, x0, y0, w, h, kind, base) {
-  const b = base;
-  R(g, x0, y0, w, h, b);
-  if (kind === 'azulejo') {
-    const c1 = '#f4efe6', c2 = '#3f6fa6', c3 = '#9bb9da';
-    for (let y = y0; y < y0 + h; y += 12) for (let x = x0; x < x0 + w; x += 12) {
-      R(g, x, y, 12, 12, c1); hl(g, x, y, 12, c3); vl(g, x, y, 12, c3);
-      const cx = x + 6, cy = y + 6;
-      P(g, cx, cy, c2); P(g, cx - 1, cy, c2); P(g, cx + 1, cy, c2); P(g, cx, cy - 1, c2); P(g, cx, cy + 1, c2);
-      P(g, cx - 3, cy - 3, c3); P(g, cx + 3, cy - 3, c3); P(g, cx - 3, cy + 3, c3); P(g, cx + 3, cy + 3, c3);
-      P(g, x + 1, y + 1, c2); P(g, x + 11, y + 1, c2); P(g, x + 1, y + 11, c2); P(g, x + 11, y + 11, c2);
-      P(g, cx, cy - 4, c2); P(g, cx, cy + 4, c2); P(g, cx - 4, cy, c2); P(g, cx + 4, cy, c2);
-    }
-  } else if (kind === 'listras') {
-    for (let x = x0; x < x0 + w; x += 10) R(g, x, y0, 4, h, tone(b, 1));
-    for (let x = x0 + 6; x < x0 + w; x += 10) vl(g, x, y0, h, tone(b, -1));
-  } else if (kind === 'tijolo') {
-    const m = tone(b, 2);
-    for (let y = y0, row = 0; y < y0 + h; y += 5, row++) {
-      hl(g, x0, y, w, m);
-      for (let x = x0 + (row % 2 ? 0 : 6); x < x0 + w; x += 12) vl(g, x, y, 5, m);
-      for (let x = x0 + (row % 2 ? 2 : 8); x < x0 + w; x += 24) R(g, x, y + 1, 4, 1, tone(b, 1));
-    }
-  } else if (kind === 'floral') {
-    const r = rng(77);
-    for (let y = y0 + 3; y < y0 + h; y += 9) for (let x = x0 + ((y / 9 | 0) % 2) * 6; x < x0 + w; x += 12) {
-      const c = r() < .5 ? '#e7a3a8' : '#f2c14e';
-      P(g, x, y, c); P(g, x - 1, y, c); P(g, x + 1, y, c); P(g, x, y - 1, c); P(g, x, y + 1, c); P(g, x, y, '#fff4b8');
-      P(g, x + 2, y + 2, '#4a8648'); P(g, x + 3, y + 2, '#4a8648');
-    }
-  } else if (kind === 'madeira') {
-    for (let x = x0; x < x0 + w; x += 7) { vl(g, x, y0, h, tone(b, -1)); const r = rng(x); for (let k = 0; k < 4; k++) vl(g, x + 2 + (r() * 4 | 0), y0 + r() * h, 3, tone(b, 1)); }
-  } else { // liso com rodameio
-    dith(g, x0, y0, w, h, tone(b, 1), 0);
+/* ======================= TEXTURAS DE PAREDE ======================= */
+function wallPatternFlat(g, kind, w, top) {
+  const [b1, b2] = WALL_IN[kind] || WALL_IN.listras;
+  for (let y = 0; y < top; y++) for (let x = 0; x < w; x++) {
+    let c = b1;
+    if (kind === 'listras') { const m = x % 9; c = m < 4 ? b1 : m < 8 ? b2 : tone(b2, -1); }
+    else if (kind === 'azulejo') { const u = x % 12, v = y % 12; c = C.offwhite; if (u === 0 || v === 0) c = C.skylight; else { const du = Math.abs(u - 6), dv = Math.abs(v - 6); if (du + dv === 3) c = C.sky; if (du + dv <= 1) c = C.petrol; if ((u === 1 || u === 11) && (v === 1 || v === 11)) c = C.sky; if ((du === 0 && dv === 5) || (dv === 0 && du === 5)) c = C.petrol; } }
+    else if (kind === 'tijolo') { const row = Math.floor(y / 5), off = row % 2 ? 0 : 6; c = (y % 5 === 0 || (x + off) % 12 === 0) ? C.tan : ((Math.floor((x + off) / 12) + row) % 3 === 0 ? C.wood3 : C.terra); if (c === C.terra && (x * 7 + y * 3) % 11 === 0) c = C.orange; }
+    else if (kind === 'floral') { const cx = (x + (Math.floor(y / 10) % 2) * 5) % 10, cy = y % 10; c = C.cream; if (cx === 5 && cy === 5) c = C.butter; else if (Math.abs(cx - 5) + Math.abs(cy - 5) === 1) c = (Math.floor(x / 10) + Math.floor(y / 10)) % 2 ? C.rose : C.sun; else if (cx === 7 && cy === 7) c = C.leaf; }
+    else if (kind === 'madeira') { const m = x % 7; c = m === 0 ? C.wood1 : ((x * 13 + Math.floor(y / 6) * 7) % 23 === 0 ? C.wood1 : (m < 3 ? C.wood3 : C.wood2)); }
+    else { c = ((x * 3 + y * 5) % 13 === 0) ? tone(b1, 1) : b1; }
+    P(g, x, y, c);
   }
 }
-function floorPattern(g, x0, y0, w, h, kind) {
-  if (kind === 'ladrilho') {
-    const a = '#b84a3a', b = '#f0e2c6', c = '#3f6f6a';
-    for (let y = y0; y < y0 + h; y += 8) for (let x = x0 - ((y - y0) % 16 ? 4 : 0); x < x0 + w; x += 8) {
-      R(g, x, y, 8, 8, b); R(g, x + 2, y + 2, 4, 4, a); P(g, x, y, c); P(g, x + 7, y, c); P(g, x, y + 7, c); P(g, x + 7, y + 7, c); P(g, x + 3, y + 3, c); P(g, x + 4, y + 4, c);
-    }
-  } else if (kind === 'xadrez') {
-    for (let y = y0, j = 0; y < y0 + h; y += 6, j++) for (let x = x0, i = 0; x < x0 + w; x += 10, i++) R(g, x, y, 10, 6, (i + j) % 2 ? '#2a242f' : '#efe8dc');
-  } else if (kind === 'cimento') {
-    R(g, x0, y0, w, h, '#a99f9a'); dith(g, x0, y0, w, h, '#b9b0aa', 0); const r = rng(5); for (let i = 0; i < 20; i++) hl(g, x0 + r() * w, y0 + r() * h, 3 + r() * 6, '#968c88');
-  } else { // taco
-    const c = ['#a56540', '#8a5133', '#b97a4a'];
-    for (let y = y0, j = 0; y < y0 + h; y += 4, j++) for (let x = x0 - (j % 3) * 5; x < x0 + w; x += 15) {
-      R(g, x, y, 15, 4, c[(j + (x / 15 | 0)) % 3]); hl(g, x, y, 15, tone(c[0], 1)); vl(g, x, y, 4, '#59302d');
-    }
-  }
-  // brilho do piso perto da janela
-  dith(g, x0, y0, w, 1, '#000000', 1);
+function wallTex(S, side, light) {
+  const D = S.decor.interior, kind = D.wall || 'listras';
+  const w = side === 'right' ? ROOM.RX * 16 : ROOM.RY * 16, h = ROOM.WH;
+  const g = mk(w, h + 1);
+  const wain = 24, top = h - wain;
+  wallPatternFlat(g, kind, w, top);
+  const wc = kind === 'madeira' ? C.wood1 : kind === 'azulejo' ? C.petrol : C.teal;
+  R(g, 0, top, w, wain + 1, wc);
+  for (let x = 0; x < w; x += 16) { R(g, x + 2, top + 4, 12, wain - 9, tone(wc, -1)); R(g, x + 3, top + 5, 10, wain - 11, wc); hl(g, x + 3, top + 5, 10, tone(wc, 1)); }
+  R(g, 0, top - 2, w, 2, C.wood2); hl(g, 0, top - 2, w, C.tan);
+  R(g, 0, h - 4, w, 5, C.wood1); hl(g, 0, h - 4, w, C.wood2);
+  R(g, 0, 0, w, 3, C.wood1); hl(g, 0, 2, w, C.wood2);
+  if (side === 'right') decorRightWall(g, S, light, top);
+  else decorLeftWall(g, S, light, top);
+  if (side === 'left') shadeCanvas(g, -1);
+  return g.canvas;
 }
-
-/* ---------- objetos de decoração e presentes ---------- */
-function drawPlant(g, x, y, kind, sway) {
-  // vaso com base em (x,y)
-  R(g, x - 5, y - 8, 10, 8, '#b85a3a'); R(g, x - 6, y - 9, 12, 2, '#d8734f'); vl(g, x + 4, y - 8, 8, '#8a3a2a');
-  const s = sway || 0;
-  if (kind === 'samambaia') {
-    for (let i = 0; i < 7; i++) { const an = -Math.PI + i * Math.PI / 6; ln(g, x, y - 9, x + Math.cos(an) * 11 + s, y - 9 + Math.sin(an) * 9 + 6, i % 2 ? '#4a8648' : '#2b5b40'); }
-    ell(g, x, y - 13, 7, 4, '#4a8648'); P(g, x - 3, y - 15, '#84b752'); P(g, x + 2, y - 14, '#84b752');
-  } else if (kind === 'costela') { // costela-de-adão
-    for (let i = 0; i < 4; i++) { const lx = x + (i - 1.5) * 6 + s, ly = y - 18 - (i % 2) * 5; ln(g, x, y - 9, lx, ly, '#2b5b40'); ell(g, lx, ly, 4, 3, i % 2 ? '#4a8648' : '#2b5b40'); P(g, lx - 1, ly - 1, '#84b752'); P(g, lx + 1, ly, '#1d3a34'); }
-  } else if (kind === 'cacto') {
-    R(g, x - 2, y - 22, 5, 14, '#4a8648'); vl(g, x + 2, y - 22, 14, '#2b5b40'); R(g, x - 6, y - 17, 3, 5, '#4a8648'); R(g, x - 6, y - 14, 4, 2, '#4a8648'); R(g, x + 4, y - 19, 3, 6, '#2b5b40'); P(g, x, y - 23, '#e7a3a8'); P(g, x - 1, y - 18, '#c3da78');
-  } else if (kind === 'girassol') {
-    for (let i = 0; i < 3; i++) { const fx = x + (i - 1) * 5 + s, fy = y - 18 - (i === 1 ? 6 : 0); ln(g, x + (i - 1), y - 9, fx, fy, '#2b5b40'); flower(g, fx, fy, 1); }
-    P(g, x - 3, y - 12, '#4a8648'); P(g, x + 3, y - 13, '#4a8648');
-  } else if (kind === 'orquidea') {
-    ln(g, x, y - 9, x + 3 + s, y - 24, '#2b5b40'); for (let i = 0; i < 3; i++) { const fx = x + 3 + s + i * 2, fy = y - 24 + i * 4; R(g, fx - 1, fy, 3, 2, '#c58ad0'); P(g, fx, fy - 1, '#e7c3ef'); P(g, fx, fy + 1, '#8b4b7b'); }
-    ell(g, x - 2, y - 10, 5, 1.5, '#2b5b40');
-  } else { // lavanda
-    for (let i = -2; i <= 2; i++) { vl(g, x + i * 2, y - 18 + Math.abs(i), 9 - Math.abs(i), '#4a8648'); R(g, x + i * 2, y - 21 + Math.abs(i), 1, 4, '#8b6fc0'); }
-  }
-}
-function flower(g, x, y, big) {
-  const p = PAL.sun[2], p2 = PAL.sun[1];
-  if (big) {
-    for (let a = 0; a < 8; a++) { const an = a * Math.PI / 4; P(g, x + Math.round(Math.cos(an) * 3), y + Math.round(Math.sin(an) * 3), a % 2 ? p2 : p); P(g, x + Math.round(Math.cos(an) * 2), y + Math.round(Math.sin(an) * 2), p); }
-    R(g, x - 1, y - 1, 3, 3, '#5e3120'); P(g, x - 1, y - 1, '#8a5231');
-  } else { P(g, x, y, '#5e3120'); P(g, x - 1, y, p); P(g, x + 1, y, p); P(g, x, y - 1, p); P(g, x, y + 1, p2); }
-}
-function drawSunflowerStage(g, x, y, stage, sway) {
-  // planta de girassol no canteiro: estágios 0 semente … 4 florido
-  const s = sway || 0;
-  if (stage <= 0) { P(g, x, y - 1, '#5e3120'); P(g, x + 1, y - 1, '#3b1d17'); return; }
-  if (stage === 1) { vl(g, x, y - 4, 4, '#4a8648'); P(g, x - 1, y - 4, '#84b752'); P(g, x + 1, y - 5, '#84b752'); return; }
-  const hgt = stage === 2 ? 10 : stage === 3 ? 18 : 24;
-  ln(g, x, y, x + s, y - hgt, '#2b5b40'); vl(g, x + 1, y - hgt + 4, hgt - 5, '#4a8648');
-  ell(g, x - 3, y - hgt * .5, 3, 1.5, '#4a8648'); ell(g, x + 4, y - hgt * .65, 3, 1.5, '#2b5b40');
-  if (stage === 3) { ell(g, x + s, y - hgt - 1, 2.5, 2.5, '#84b752'); P(g, x + s, y - hgt - 3, PAL.sun[2]); }
-  if (stage >= 4) {
-    const fx = x + s, fy = y - hgt - 3;
-    for (let a = 0; a < 12; a++) { const an = a * Math.PI / 6; ell(g, fx + Math.cos(an) * 4.2, fy + Math.sin(an) * 4.2, 1.6, 1.6, a % 2 ? PAL.sun[2] : PAL.sun[3]); }
-    ell(g, fx, fy, 3, 3, '#5e3120'); P(g, fx - 1, fy - 1, '#8a5231'); dith(g, fx - 2, fy - 2, 5, 5, '#3b1d17', 0);
-  }
-}
-
-const GIFT_DRAW = {
-  relogio(g, x, y, t) { // relógio de parede do Seu Bené
-    R(g, x - 7, y - 2, 14, 24, '#59302d'); R(g, x - 6, y - 1, 12, 22, '#7c4635'); ell(g, x, y + 5, 5, 5, '#fdf0cf'); P(g, x, y + 5, PAL.ink);
-    const a = (t || 0) * Math.PI * 2; ln(g, x, y + 5, x + Math.round(Math.cos(a) * 3), y + 5 + Math.round(Math.sin(a) * 3), PAL.ink); vl(g, x, y + 2, 3, PAL.ink);
-    R(g, x - 3, y + 12, 6, 8, '#3a1f26'); const sw = Math.round(Math.sin((t || 0) * 60) * 2); vl(g, x + sw, y + 12, 5, PAL.gold); ell(g, x + sw, y + 18, 1.5, 1.5, PAL.gold);
-    poly(g, [[x - 8, y - 2], [x, y - 7], [x + 8, y - 2]], '#59302d');
-  },
-  poema(g, x, y) { R(g, x - 9, y, 18, 22, '#c98b52'); R(g, x - 7, y + 2, 14, 18, PAL.paper); for (let i = 0; i < 6; i++) hl(g, x - 5, y + 5 + i * 2.4, 6 + (i * 5) % 5, '#766d78'); P(g, x + 4, y + 17, '#a2352f'); },
-  desenho(g, x, y) { R(g, x - 10, y, 20, 16, PAL.ink2); R(g, x - 9, y + 1, 18, 14, PAL.paper); R(g, x - 8, y + 2, 8, 6, '#a7d2ee'); R(g, x + 1, y + 2, 7, 6, '#f7c232'); R(g, x - 8, y + 9, 16, 5, '#ea8b58'); ell(g, x - 4, y + 5, 2, 2, PAL.ink); P(g, x + 4, y + 4, PAL.ink); P(g, x + 5, y + 4, PAL.ink); hl(g, x - 6, y + 11, 6, PAL.ink); },
-  cartao(g, x, y) { R(g, x - 8, y, 16, 11, '#6ba3d7'); R(g, x - 8, y + 6, 16, 5, '#f3dcab'); ell(g, x + 4, y + 3, 2, 2, '#ffe274'); hl(g, x - 7, y + 6, 14, '#e2f2fa'); R(g, x - 1, y - 1, 2, 2, '#cd5b3b'); },
-  fotovo(g, x, y) { R(g, x - 8, y, 16, 20, PAL.gold); R(g, x - 7, y + 1, 14, 18, '#a56540'); R(g, x - 6, y + 2, 12, 16, '#e3c59a'); ell(g, x, y + 8, 3, 3.5, '#8a5231'); ell(g, x, y + 6, 4, 3, '#dad3cc'); R(g, x - 4, y + 12, 8, 6, '#7a2638'); P(g, x - 1, y + 8, PAL.ink); P(g, x + 1, y + 8, PAL.ink); flower(g, x + 4, y + 14, 0); },
-  fotos(g, x, y) { // varal de polaroids da Dani
-    for (let i = 0; i < 46; i++) P(g, x - 23 + i, y + Math.round(Math.sin(i / 46 * Math.PI) * 3), '#7c4635');
-    const c = ['#6ba3d7', '#e7a3a8', '#84b752', '#f7c232', '#cd5b3b'];
-    for (let i = 0; i < 5; i++) { const px = x - 20 + i * 10, py = y + Math.round(Math.sin((i * 10 + 3) / 46 * Math.PI) * 3) + 1; R(g, px - 3, py, 7, 8, PAL.paper); R(g, px - 2, py + 1, 5, 4, c[i]); P(g, px, py - 1, '#a2352f'); }
-  },
-  radio(g, x, y) { R(g, x - 9, y - 12, 18, 12, '#7c4635'); poly(g, [[x - 9, y - 9], [x, y - 15], [x + 9, y - 9]], '#7c4635'); R(g, x - 7, y - 9, 8, 7, '#c98b52'); for (let i = 0; i < 3; i++) hl(g, x - 7, y - 8 + i * 2, 8, '#59302d'); ell(g, x + 5, y - 6, 2, 2, '#e3b271'); P(g, x + 5, y - 6, PAL.ink); hl(g, x - 9, y - 1, 18, '#3a1f26'); },
-  violao(g, x, y) { ell(g, x, y + 16, 6, 6, '#c98b52'); ell(g, x, y + 8, 4.5, 4.5, '#c98b52'); ell(g, x, y + 13, 2, 2, '#3a1f26'); R(g, x - 1, y - 8, 3, 14, '#59302d'); R(g, x - 2, y - 11, 5, 4, '#3a1f26'); vl(g, x + 4, y + 10, 10, '#a56540'); hl(g, x - 2, y + 18, 5, '#3a1f26'); },
-  vaso(g, x, y, t) { R(g, x - 3, y - 9, 7, 9, '#6cc0b1'); vl(g, x + 3, y - 9, 9, '#398290'); hl(g, x - 3, y - 9, 7, '#c2ead6'); for (let i = 0; i < 3; i++) { const fx = x + (i - 1) * 5, fy = y - 17 - (i === 1 ? 4 : 0); ln(g, x, y - 9, fx, fy, '#2b5b40'); flower(g, fx, fy, 1); } },
-  orquidea(g, x, y) { drawPlant(g, x, y, 'orquidea', 0); },
-  cortina(g, x, y, w, h) { for (let side = 0; side < 2; side++) { const x0 = side ? x + w - 12 : x; for (let i = 0; i < 12; i++) { const c = i % 3 === 0 ? '#e9dcc0' : '#fdf0cf'; vl(g, x0 + i, y, h - (side ? (11 - i) : i) * .5, c); } for (let k = 0; k < 3; k++) flower(g, x0 + 4 + (k % 2) * 4, y + 8 + k * 12, 0); } R(g, x - 2, y - 2, w + 4, 2, '#7c4635'); },
-};
-
-/* ---------- interior ---------- */
-function drawInterior(g, S, t, time) {
-  const D = S.decor.interior, F = S.decor.facade;
-  const wallKinds = { azulejo: '#f4efe6', listras: '#e7c58f', tijolo: '#b85a3a', floral: '#f1e2c3', madeira: '#a56540', verde: '#7fb7a0', rosa: '#e7a3a8' };
-  const wk = D.wall || 'listras';
-  wallPattern(g, 0, 0, W, 116, wk === 'verde' || wk === 'rosa' ? 'liso' : wk, wallKinds[wk] || '#e7c58f');
-  // rodameio
-  R(g, 0, 84, W, 32, D.wall === 'madeira' ? '#7c4635' : tone(wallKinds[wk] || '#e7c58f', -1));
-  hl(g, 0, 84, W, tone(wallKinds[wk] || '#e7c58f', -2)); hl(g, 0, 85, W, tone(wallKinds[wk] || '#e7c58f', 1));
-  for (let x = 4; x < W; x += 16) R(g, x, 88, 12, 24, tone(wallKinds[wk] || '#e7c58f', D.wall === 'madeira' ? -2 : -1)), R(g, x, 88, 12, 1, tone(wallKinds[wk] || '#e7c58f', -2));
-  // teto e moldura
-  R(g, 0, 0, W, 6, '#59302d'); hl(g, 0, 6, W, '#3a1f26'); hl(g, 0, 5, W, '#7c4635');
-  // janela grande (rua)
-  const wx = 10, wy = 18, ww = 104, wh = 72;
-  drawSkyline(g, wx, wy, ww, wh - 18, t, 11, S.weather);
-  // calçada/rua vistas pela janela
-  R(g, wx, wy + wh - 18, ww, 18, '#8d94a8'); for (let x = wx; x < wx + ww; x += 4) P(g, x + ((x / 4) % 2), wy + wh - 14, '#c3cad6');
-  hl(g, wx, wy + wh - 18, ww, '#c3cad6');
-  // praça: violonista (Rafa) na praça quando aparece
-  if (S.flags && S.flags.rafaPlaza && t < .9) { const bx = wx + 70, by = wy + wh - 13; drawMini(g, bx, by, 902, false, Math.floor(time * 2) % 2); R(g, bx + 3, by - 12, 5, 4, '#c98b52'); }
-  // passantes
-  const pass = Math.floor(time / 9);
-  const px = wx + ((time * 9) % (ww + 30)) - 15;
-  if (t < .92) drawMini(g, px, wy + wh - 6, 300 + pass, false, Math.floor(time * 4) % 2);
-  // chuva
-  if (S.weather === 'chuva') { const r = rng(Math.floor(time * 12)); for (let i = 0; i < 40; i++) { const rx = wx + r() * ww, ry = wy + r() * wh; vl(g, rx, ry, 3, '#c9d6ea'); } }
-  // reflexo no vidro
-  ln(g, wx + 8, wy + 44, wx + 34, wy + 4, 'rgba(255,255,255,0.25)'); ln(g, wx + 14, wy + 46, wx + 40, wy + 6, 'rgba(255,255,255,0.18)');
-  // caixilho
-  const fc = DECOR_COLORS.accent[F.trim] || '#2b5b40';
-  R(g, wx - 4, wy - 4, ww + 8, 4, fc); R(g, wx - 4, wy + wh, ww + 8, 5, tone(fc, -1)); R(g, wx - 4, wy, 4, wh, fc); R(g, wx + ww, wy, 4, wh, tone(fc, -1));
-  R(g, wx + ww / 2 - 1, wy, 3, wh, fc); R(g, wx, wy + 26, ww, 2, fc);
-  hl(g, wx - 4, wy - 4, ww + 8, tone(fc, 1)); hl(g, wx - 6, wy + wh + 4, ww + 12, tone(fc, -2));
-  // nome do café ao contrário no vidro (visto de dentro)
-  const nm = (S.cafeName || 'Café Girassol').toUpperCase();
-  const tc = txt(nm, 6, '#f7c232', true);
-  g.save(); g.translate(wx + ww / 2 + Math.min(ww - 10, tc.width) / 2, wy + 28); g.scale(-1, 1); g.globalAlpha = .65; g.drawImage(tc, 0, 0, Math.min(ww - 10, tc.width), tc.height); g.restore();
-  if (S.gifts.cortina && D.gifts.cortina !== false) GIFT_DRAW.cortina(g, wx - 2, wy - 2, ww + 4, wh + 2);
-  // parapeito com plantas e presentes
-  R(g, wx - 6, wy + wh + 4, ww + 12, 3, '#c98b52'); hl(g, wx - 6, wy + wh + 4, ww + 12, '#e3b271');
-  const sway = Math.round(Math.sin(time * 1.3));
-  if (D.plants !== 'nenhuma') drawPlant(g, wx + 8, wy + wh + 4, D.plants || 'samambaia', sway);
-  if (S.gifts.vaso && D.gifts.vaso !== false) GIFT_DRAW.vaso(g, wx + ww - 10, wy + wh + 4, t);
-  if (S.gifts.orquidea && D.gifts.orquidea !== false) GIFT_DRAW.orquidea(g, wx + ww / 2 + 14, wy + wh + 4);
-  if (S.gifts.radio && D.gifts.radio !== false) GIFT_DRAW.radio(g, wx + ww / 2 - 16, wy + wh + 4);
-  // quadro/cardápio no centro
-  const bx = 122, by = 12;
-  R(g, bx, by, 78, 50, '#7c4635'); R(g, bx + 2, by + 2, 74, 46, '#2f3b37'); dith(g, bx + 2, by + 2, 74, 46, '#36443f', 0);
-  drawTxt(g, 'Cardápio', bx + 39, by + 1, 6, '#fdf0cf', 'c', true);
+function gift(S, k) { return S.gifts[k] && S.decor.interior.gifts[k] !== false; }
+function decorRightWall(g, S, light, top) {
+  const bx = 12, by = 6, bw = 78, bh = 44;
+  R(g, bx, by, bw, bh, C.wood1); R(g, bx + 1, by + 1, bw - 2, bh - 2, C.wood2); R(g, bx + 3, by + 3, bw - 6, bh - 6, C.green0);
+  dith(g, bx + 3, by + 3, bw - 6, bh - 6, C.navy, 0);
+  drawTxt(g, 'Cardápio', bx + bw / 2, by + 2, 6, C.sun, 'c', true);
   const menu = S._menuPreview || [];
-  for (let i = 0; i < Math.min(4, menu.length); i++) {
-    const m = menu[i], col = i === 0 ? '#f7c232' : '#d9e3d6';
-    drawTxt(g, m[0], bx + 5, by + 11 + i * 9, 6, col);
-    drawTxt(g, m[1], bx + 73, by + 11 + i * 9, 6, col, 'r');
-  }
-  flower(g, bx + 71, by + 5, 1);
-  // presentes na parede
-  const showG = k => S.gifts[k] && D.gifts[k] !== false;
-  if (showG('fotos')) GIFT_DRAW.fotos(g, wx + ww / 2, wy + 3);
-  if (!showG('relogio') && !showG('poema') && D.art !== 'nenhum') { // quadro
-    R(g, 204, 22, 20, 26, PAL.gold); R(g, 205, 23, 18, 24, '#24526b'); ell(g, 214, 33, 6, 6, '#f7c232'); ell(g, 214, 33, 2, 2, '#5e3120'); vl(g, 214, 39, 7, '#4a8648');
-  }
-  if (S.gifts.fotovo) GIFT_DRAW.fotovo(g, 124, 66);
-  if (showG('relogio')) GIFT_DRAW.relogio(g, 212, 20, time / 60);
-  if (showG('poema')) GIFT_DRAW.poema(g, 230, 18);
-  if (showG('cartao')) GIFT_DRAW.cartao(g, 212, 50);
-  if (showG('desenho')) GIFT_DRAW.desenho(g, 230, 50);
-  // porta
-  const dx = 244, dy = 26, dw = 40, dh = 90;
-  R(g, dx - 3, dy - 3, dw + 6, dh + 3, tone(fc, -1)); R(g, dx, dy, dw, dh, DECOR_COLORS.accent[F.door] || '#7a2638');
-  const doorC = DECOR_COLORS.accent[F.door] || '#7a2638';
-  R(g, dx + 5, dy + 6, dw - 10, 40, '#000'); drawSkyline(g, dx + 5, dy + 6, dw - 10, 40, t, 23, S.weather);
-  R(g, dx + 5, dy + 40, dw - 10, 6, '#8d94a8');
-  hl(g, dx + 5, dy + 6, dw - 10, tone(doorC, -2)); R(g, dx + 6, dy + 54, dw - 12, 30, tone(doorC, -1)); R(g, dx + 7, dy + 55, dw - 14, 28, doorC); hl(g, dx + 7, dy + 55, dw - 14, tone(doorC, 1));
-  R(g, dx + dw - 8, dy + 48, 3, 4, PAL.gold);
-  // sininho
-  const ring = S._bell > 0 ? Math.round(Math.sin(time * 40) * 2) : 0;
-  vl(g, dx + dw / 2, dy - 6, 4, PAL.ink2); poly(g, [[dx + dw / 2 - 3 + ring, dy + 2], [dx + dw / 2 + ring, dy - 3], [dx + dw / 2 + 3 + ring, dy + 2]], PAL.gold); P(g, dx + dw / 2 + ring, dy + 2, '#a35f12');
-  const openSign = 'ABERTO';
-  R(g, dx + 7, dy + 14, 26, 9, PAL.paper); drawTxt(g, openSign, dx + 20, dy + 13, 6, '#a2352f', 'c');
-  // planta à direita da porta
-  drawPlant(g, 300, 112, D.plants2 || 'costela', sway);
-  if (S.gifts.violao && D.gifts.violao !== false) GIFT_DRAW.violao(g, 302, 44);
-  // luminárias pendentes
-  drawLamps(g, D.lamps, time, t);
-  // piso
-  floorPattern(g, 0, 116, W, 22, D.floor || 'taco');
-  hl(g, 0, 116, W, '#3a1f26');
-  // mesas de fundo com clientes
-  drawTable(g, 36, 124, D.tables, S, 1, time);
-  drawTable(g, 222, 126, D.tables, S, 2, time);
-  // gato
-  if (S.flags && S.flags.gato) S._gatoInterior = true;
+  for (let i = 0; i < Math.min(4, menu.length); i++) { const col = i === 0 ? C.butter : C.offwhite; drawTxt(g, menu[i][0], bx + 6, by + 12 + i * 8, 6, col); drawTxt(g, menu[i][1], bx + bw - 6, by + 12 + i * 8, 6, col, 'r'); }
+  flower(g, bx + bw - 9, by + 6, 1);
+  R(g, bx + 8, by + bh - 1, 10, 2, C.offwhite);
+  if (gift(S, 'cartao')) GIFT_DRAW.cartao(g, bx + 8, by + bh - 12);
+  const sx = 96, sy = 34;
+  if (gift(S, 'fotos')) GIFT_DRAW.fotos(g, sx + 24, sy - 28);
+  else drawTxt(g, 'desde ' + (S.foundedYear || 1974), sx + 24, sy - 30, 6, C.wood2, 'c', true);
+  R(g, sx, sy, 50, 3, C.wood2); hl(g, sx, sy, 50, C.tan); R(g, sx + 4, sy + 3, 2, 4, C.wood1); R(g, sx + 44, sy + 3, 2, 4, C.wood1);
+  const jars = [[C.wood1, C.wood0], [C.paper, C.offwhite], [C.tan, C.wood3], [C.leaf, C.green1]];
+  for (let i = 0; i < 4; i++) { const jx = sx + 2 + i * 8; R(g, jx, sy - 9, 6, 9, C.mint); R(g, jx + 1, sy - 6, 4, 6, jars[i][0]); dith(g, jx + 1, sy - 6, 4, 6, jars[i][1], 2); R(g, jx, sy - 10, 6, 2, C.wood3); P(g, jx + 1, sy - 8, C.paper); }
+  if (gift(S, 'radio')) GIFT_DRAW.radio(g, sx + 42, sy);
+  else for (let i = 0; i < 3; i++) { R(g, sx + 36, sy - 3 - i * 3, 8, 3, C.paper); hl(g, sx + 36, sy - 3 - i * 3, 8, C.offwhite); }
+  if (gift(S, 'relogio')) GIFT_DRAW.relogio(g, 156, 8, light === 'tarde' ? .7 : light === 'manha' ? .1 : .3);
+  else { ell(g, 156, 16, 7, 7, C.wood1); ell(g, 156, 16, 6, 6, C.paper); P(g, 156, 16, C.ink); vl(g, 156, 11, 5, C.ink); hl(g, 157, 16, 3, C.ink); for (let a = 0; a < 12; a += 3) P(g, 156 + Math.round(Math.cos(a / 6 * Math.PI) * 5), 16 + Math.round(Math.sin(a / 6 * Math.PI) * 5), C.mauve); }
+  if (gift(S, 'poema')) GIFT_DRAW.poema(g, 158, 38);
+  else { R(g, 150, 36, 16, 20, C.sun); R(g, 151, 37, 14, 18, C.petrol); flower(g, 158, 44, 1); vl(g, 158, 47, 6, C.leaf); }
+  if (gift(S, 'violao')) GIFT_DRAW.violao(g, 170, 12);
 }
-function drawLamps(g, kind, time, t) {
-  const xs = [34, 96, 230];
-  const on = t > .6;
+function windowView(g, x, y, w, h, light, S) {
+  const sky = ({ manha: [C.skylight, C.butter], dia: [C.sky, C.skylight], tarde: [C.rose, C.peach], noite: [C.navy, C.plum], noiteDentro: [C.navy, C.plum] }[light] || [C.sky, C.skylight]).slice();
+  const night = light.startsWith('noite');
+  if (S.weather === 'chuva') { sky[0] = night ? C.navy : C.rosegrey; sky[1] = night ? C.mauve : C.offwhite; }
+  for (let j = 0; j < h; j++) { const t = j / h; const c = t < .45 ? sky[0] : t < .55 ? ((x + j) % 2 ? sky[0] : sky[1]) : sky[1]; hl(g, x, y + j, w, c); }
+  if (night) { const r = rng(8); for (let i = 0; i < 10; i++) P(g, x + r() * w, y + r() * h * .4, C.butter); }
+  const r = rng(31); let bx = x;
+  while (bx < x + w) { const bw = 6 + Math.floor(r() * 9), bh = Math.min(h - 10, 8 + Math.floor(r() * 14)); const c = night ? C.plum : C.rosegrey; R(g, bx, y + h - 8 - bh, Math.min(bw, x + w - bx), bh, c); for (let wy = y + h - 6 - bh; wy < y + h - 10; wy += 4) for (let wx = bx + 1; wx < Math.min(bx + bw - 1, x + w); wx += 3) P(g, wx, wy, night && r() < .6 ? C.butter : tone(c, -1)); bx += bw + 1; }
+  R(g, x, y + h - 8, w, 3, C.leaf); R(g, x, y + h - 5, w, 5, C.offwhite); for (let i = x; i < x + w; i += 2) P(g, i, y + h - 3, C.plum);
+  if (S.flags && S.flags.rafaPlaza && !night && w > 30) { R(g, x + w - 14, y + h - 14, 3, 6, C.sun); R(g, x + w - 14, y + h - 17, 3, 3, C.skin1); R(g, x + w - 12, y + h - 11, 4, 3, C.wood3); }
+  if (S.weather === 'chuva') for (let i = 0; i < w * h / 40; i++) { const rx = x + ((i * 37) % w), ry = y + ((i * 53) % (h - 2)); vl(g, rx, ry, 2, C.skylight); }
+}
+function decorLeftWall(g, S, light, top) {
+  const D = S.decor.interior, F = S.decor.facade, trim = ACCENT[F.trim] || C.green1, door = ACCENT[F.door] || C.wine;
+  const dx = 18, dw = 26, dTop = 22, dh = ROOM.WH - dTop;
+  R(g, dx - 2, dTop - 2, dw + 4, dh + 2, trim); R(g, dx, dTop, dw, dh, door);
+  windowView(g, dx + 4, dTop + 4, dw - 8, 20, light, S);
+  R(g, dx + 3, dTop + 27, dw - 6, 22, tone(door, -1)); R(g, dx + 4, dTop + 28, dw - 8, 20, door); hl(g, dx + 4, dTop + 28, dw - 8, tone(door, 1));
+  R(g, dx + dw - 6, dTop + 26, 2, 3, C.sun);
+  R(g, dx + 6, dTop + 9, 14, 7, C.paper); drawTxt(g, 'ABERTO', dx + 13, dTop + 7, 6, C.terra, 'c');
+  ln(g, dx + 8, dTop + 9, dx + 13, dTop + 5, C.ink); ln(g, dx + 18, dTop + 9, dx + 13, dTop + 5, C.ink);
+  vl(g, dx + dw / 2, dTop - 7, 3, C.ink); R(g, dx + dw / 2 - 2, dTop - 4, 5, 3, C.sun); P(g, dx + dw / 2, dTop - 1, C.mustard);
+  if (gift(S, 'desenho')) GIFT_DRAW.desenho(g, dx + dw / 2, 1);
+  const wx = 52, wy = 10, ww = 58, wh = 44;
+  windowView(g, wx, wy, ww, wh, light, S);
+  const nm = (S.cafeName || 'Café Girassol').toUpperCase();
+  const tc = txt(nm, 6, C.sun, true);
+  if (tc.width <= ww - 6) { g.save(); g.translate(wx + ww / 2 + Math.floor(tc.width / 2), wy + 19); g.scale(-1, 1); g.drawImage(tc, 0, 0); g.restore(); }
+  R(g, wx - 3, wy - 3, ww + 6, 3, trim); R(g, wx - 3, wy + wh, ww + 6, 3, tone(trim, -1)); R(g, wx - 3, wy, 3, wh, trim); R(g, wx + ww, wy, 3, wh, trim);
+  R(g, wx + ww / 2 - 1, wy, 2, wh, trim); R(g, wx, wy + 16, ww, 2, trim); hl(g, wx - 3, wy - 3, ww + 6, tone(trim, 1));
+  ln(g, wx + 4, wy + 14, wx + 12, wy + 4, C.paper); ln(g, wx + 34, wy + 40, wx + 44, wy + 22, C.paper);
+  R(g, wx - 5, wy + wh + 2, ww + 10, 3, C.wood3); hl(g, wx - 5, wy + wh + 2, ww + 10, C.tan);
+  if (gift(S, 'cortina')) GIFT_DRAW.cortina(g, wx - 2, wy - 2, ww + 4, wh + 2);
+  if (D.plants && D.plants !== 'nenhuma') drawPlant(g, wx + 7, wy + wh + 2, D.plants, 0);
+  if (gift(S, 'vaso')) GIFT_DRAW.vaso(g, wx + ww - 8, wy + wh + 2);
+  if (gift(S, 'orquidea')) drawPlant(g, wx + ww / 2 + 8, wy + wh + 2, 'orquidea', 0);
+  if (S.gifts.fotovo) GIFT_DRAW.fotovo(g, 119, 24);
+}
+
+/* ======================= PISO ======================= */
+const LAMPS = [[2.6, 2.5, 52], [5.6, 2.5, 52], [2.6, 6.3, 50], [6.4, 6.4, 50]];
+function floorColor(kind, x, y, light) {
+  let c;
+  if (kind === 'xadrez') c = ((Math.floor(x * 2) + Math.floor(y * 2)) & 1) ? C.navy : C.offwhite;
+  else if (kind === 'ladrilho') {
+    const u = ((x * 16) % 16 + 16) % 16, v = ((y * 16) % 16 + 16) % 16, du = Math.abs(u - 8), dv = Math.abs(v - 8), r2 = du * du + dv * dv;
+    c = C.cream; if (u < 1 || v < 1) c = C.tan; else if (r2 < 5) c = C.terra; else if (r2 < 13 && (du < 1.5 || dv < 1.5)) c = C.teal; else if (r2 > 40 && du > 5 && dv > 5) c = C.mustard; else if (Math.abs(du - dv) < .8 && r2 < 30) c = C.terra;
+  } else if (kind === 'cimento') { const u = x * 16, v = y * 16; c = (u % 32 < .9 || v % 32 < .9) ? C.mauve : (((u * 7 + v * 13) | 0) % 17 === 0 ? C.offwhite : C.rosegrey); }
+  else {
+    const v = y * 16, row = Math.floor(v / 4), off = (row * 9) % 24, u = x * 16 + off, seg = Math.floor(u / 24);
+    c = (v % 4 < 1 || u % 24 < 1) ? C.wood1 : ((row + seg) % 3 === 0 ? C.wood3 : C.wood2);
+    if (c === C.wood2 && ((u * 5 + v * 3) | 0) % 19 === 0) c = C.wood3;
+  }
+  if (!light.startsWith('noite') && x < 3.4 && y > 1.3 + x * .35 && y < 4.4 + x * .35 && x > .6) { const k = (y - x * .35); if (!(k > 2.75 && k < 2.95)) c = tone(c, 1); }
+  if (x > .15 && x < 1.75 && y > 5.2 && y < 7.1) { const bx = Math.min(x - .15, 1.75 - x), by = Math.min(y - 5.2, 7.1 - y); c = (bx < .12 || by < .12) ? C.wine : ((Math.floor(x * 8) + Math.floor(y * 8)) % 4 === 0 ? C.sun : C.terra); }
+  if (light.startsWith('noite')) for (const L of LAMPS) { const dx = x - L[0], dy = y - L[1]; if (dx * dx + dy * dy < .9) c = tone(c, 1); }
+  return c;
+}
+
+/* ======================= SALÃO ======================= */
+const _bake = { key: '', bg: {}, spr: null };
+function interiorKey(S) { return JSON.stringify([S.decor, S.gifts, S.flags.rafaPlaza, S.weather, S._menuPreview, S.cafeName, S._kitCounter]); }
+function bakeRoomBg(S, light) {
+  const g = mk(W, H), o = ROOM.o, { RX, RY, WH } = ROOM;
+  R(g, 0, 0, W, H, C.sage);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (((x + 2 * y) % 32 === 0 || (x - 2 * y + 640) % 32 === 0) && (x + y) % 2 === 0) P(g, x, y, C.teal);
+  const pL = isoXY(o, 0, RY, 0), pB = isoXY(o, RX, RY, 0), pR = isoXY(o, RX, 0, 0);
+  texPara(g, pL, [pB[0] - pL[0], pB[1] - pL[1]], [0, 9], (s, t) => t < .12 ? C.wood2 : C.wood1);
+  texPara(g, pB, [pR[0] - pB[0], pR[1] - pB[1]], [0, 9], (s, t) => t < .12 ? C.wood1 : C.wood0);
+  const kind = S.decor.interior.floor || 'xadrez';
+  texPara(g, isoXY(o, 0, 0, 0), [RX * 16, RX * 8], [-RY * 16, RY * 8], (s, t) => floorColor(kind, s * RX, t * RY, light));
+  for (let x = 0; x < RX * 16; x += 2) P(g, o.x + x, o.y + Math.floor(x / 2) + 1, C.ink);
+  for (let x = 0; x < RY * 16; x += 2) P(g, o.x - x - 1, o.y + Math.floor(x / 2) + 1, C.ink);
+  const rt = wallTex(S, 'right', light), lt = wallTex(S, 'left', light);
+  for (let u = 0; u < rt.width; u++) g.drawImage(rt, u, 0, 1, rt.height, o.x + u, o.y + Math.floor(u / 2) - WH, 1, rt.height);
+  for (let u = 0; u < lt.width; u++) g.drawImage(lt, u, 0, 1, lt.height, o.x - RY * 16 + u, o.y + Math.floor((RY * 16 - u) / 2) - WH, 1, lt.height);
+  const t1 = isoXY(o, 0, 0, WH);
+  texPara(g, [t1[0], t1[1] - 3], [RX * 16, RX * 8], [0, 3], () => C.cream);
+  texPara(g, [t1[0] - RY * 16, t1[1] + RY * 8 - 3], [RY * 16, -RY * 8], [0, 3], () => C.cream);
+  R(g, pR[0], pR[1] - WH - 3, 3, WH + 3, C.tan); vl(g, pR[0] + 2, pR[1] - WH - 1, WH + 1, C.wood3);
+  R(g, pL[0] - 3, pL[1] - WH - 3, 3, WH + 3, C.tan); vl(g, pL[0] - 3, pL[1] - WH - 1, WH + 1, C.cream);
+  isoBox(g, o, 0, 1.5, 0, .55, 3.0, 9, { top: C.terra, left: C.wood2, right: C.wood1, edge: C.ink });
+  isoBox(g, o, .05, 1.6, 9, .45, 2.8, 2, { top: C.orange, left: C.terra, right: C.wine });
+  quantize(g);
+  return g.canvas;
+}
+function bakeRoomSprites(S) {
+  const o = ROOM.o, out = [];
+  const D = S.decor.interior, cc = COUNTER_C[D.counter] || COUNTER_C.madeira;
+  {
+    const g = mk(W, H);
+    const panel = (s, t, u, v) => { if (D.counter === 'azulejo') return ((Math.floor(u / 5) + Math.floor(v / 5)) % 2) ? C.offwhite : C.skylight; const m = u % 22; if (m < 1) return cc[3]; if (m === 1 || v < 2) return cc[1]; return v > 16 ? cc[3] : cc[2]; };
+    isoBox(g, o, 1.25, 2.05, 0, 6.3, .8, 19, { left: panel, right: cc[3], top: cc[2], edge: C.ink });
+    isoBox(g, o, 1.1, 1.95, 19, 6.6, 1.0, 3, { top: (s, t, u, v) => (D.counter === 'marmore' && ((u * 3 + v * 7) | 0) % 23 === 0) ? cc[2] : (t > .85 ? cc[1] : cc[0]), left: cc[1], right: cc[2], edge: C.ink, hi: tone(cc[0], 1) });
+    const gx = 5.0, gy = 2.1;
+    isoBox(g, o, gx, gy, 22, 1.3, .75, 2, { top: C.offwhite, left: C.rosegrey, right: C.mauve });
+    for (const [k, dx] of [['paodequeijo', .25], ['bolo', .65], ['broa', 1.05]]) { const p = isoR(o, gx + dx, gy + .4, 26); drawFood(g, p[0], p[1] + 2, k); }
+    const A = isoR(o, gx, gy + .75, 24), B = isoR(o, gx + 1.3, gy + .75, 24), Cc = isoR(o, gx + 1.3, gy, 24), Dd = isoR(o, gx, gy, 24);
+    for (const [p, q] of [[A, B], [B, Cc], [Dd, A], [Dd, Cc]]) ln(g, p[0], p[1] - 12, q[0], q[1] - 12, C.paper);
+    for (const p of [A, B, Cc]) vl(g, p[0], p[1] - 12, 12, C.skylight);
+    ln(g, A[0] + 3, A[1] - 3, A[0] + 9, A[1] - 9, C.paper);
+    { const p = isoR(o, 6.95, 2.45, 22); R(g, p[0] - 6, p[1] - 9, 12, 9, C.petrol); R(g, p[0] - 6, p[1] - 9, 12, 2, C.sage); R(g, p[0] - 4, p[1] - 14, 8, 5, C.navy); R(g, p[0] - 3, p[1] - 13, 6, 3, C.teal); for (let i = 0; i < 3; i++) P(g, p[0] - 4 + i * 3, p[1] - 5, [C.terra, C.sun, C.mint][i]); }
+    { const p = isoR(o, 3.15, 2.35, 22); R(g, p[0] - 3, p[1] - 6, 6, 6, C.offwhite); R(g, p[0] - 3, p[1] - 7, 6, 1, C.rosegrey); P(g, p[0], p[1] - 8, C.rosegrey); }
+    { const p = isoR(o, 4.25, 2.3, 22); for (let i = 0; i < 3; i++) { R(g, p[0] - 4, p[1] - 3 - i * 3, 8, 3, C.paper); hl(g, p[0] - 4, p[1] - 3 - i * 3, 8, C.offwhite); P(g, p[0] + 3, p[1] - 2 - i * 3, C.rosegrey); } }
+    { const p = isoR(o, 2.0, 2.4, 22); const k = mk(40, 40); drawKitIcon(k, 20, 38, S._kitCounter || 'coador'); g.drawImage(k.canvas, p[0] - 20, p[1] - 38); }
+    if (gift(S, 'vaso')) { const p = isoR(o, 7.45, 2.3, 22); GIFT_DRAW.vaso(g, p[0], p[1]); }
+    quantize(g);
+    out.push({ c: g.canvas, y: 2.9, x: 4 });
+  }
+  const tables = [[2.6, 6.3], [6.4, 6.4], [9.3, 4.4]];
+  tables.forEach((T, i) => {
+    const [tx, ty] = T;
+    const iron = D.tables === 'ferro';
+    const topC = iron ? C.offwhite : C.wood3, topS = iron ? C.rosegrey : C.wood2, legC = iron ? C.plum : C.wood1;
+    const chair = (cx, cy, backSide) => {
+      const g = mk(W, H);
+      const w = .5, d = .5, x = cx - w / 2, y = cy - d / 2;
+      for (const [lx, ly] of [[x + .05, y + d - .05], [x + w - .05, y + d - .05], [x + w - .05, y + .05], [x + .05, y + .05]]) { const p = isoR(o, lx, ly, 0); vl(g, p[0], p[1] - 9, 9, legC); }
+      isoBox(g, o, x, y, 9, w, d, 2, { top: topC, left: topS, right: legC, edge: C.ink });
+      if (backSide === 'back') isoBox(g, o, x, y, 11, w, .08, 11, { top: topC, left: topS, right: legC, edge: C.ink });
+      if (backSide === 'right') isoBox(g, o, x + w - .08, y, 11, .08, d, 11, { top: topC, left: topS, right: legC, edge: C.ink });
+      quantize(g);
+      return g.canvas;
+    };
+    out.push({ c: chair(tx, ty - .95, 'back'), y: ty - .95, x: tx, seat: { table: i, slot: 0, x: tx, y: ty - .95, facing: 'front' } });
+    out.push({ c: chair(tx + .95, ty + .05, 'right'), y: ty + .05, x: tx + .95, seat: { table: i, slot: 1, x: tx + .95, y: ty + .05, facing: 'back' } });
+    const g = mk(W, H), p = isoR(o, tx, ty, 0);
+    isoShadow(g, p[0], p[1], 12);
+    vl(g, p[0], p[1] - 16, 16, legC); vl(g, p[0] + 1, p[1] - 16, 16, tone(legC, -1)); ell(g, p[0], p[1], 6, 3, legC);
+    ell(g, p[0], p[1] - 17, 16, 8, C.ink); ell(g, p[0], p[1] - 18, 15, 7.5, topS); ell(g, p[0], p[1] - 19, 15, 7.5, topC); ell(g, p[0] - 4, p[1] - 21, 6, 2, tone(topC, 1));
+    if (S.gifts.toalha) { ell(g, p[0], p[1] - 19, 10, 5, C.paper); for (let k = -9; k <= 9; k += 3) P(g, p[0] + k, p[1] - 15 + Math.round(Math.abs(k) / 4), C.paper); }
+    R(g, p[0] - 1, p[1] - 23, 2, 4, C.mint); P(g, p[0] - 1, p[1] - 25, C.rose); P(g, p[0], p[1] - 26, C.rose);
+    quantize(g);
+    out.push({ c: g.canvas, y: ty + .01, x: tx, table: i });
+  });
+  for (const [px, py, k] of [[.55, .55, D.plants2 || 'costela'], [10.3, 7.2, 'samambaia'], [.6, 4.75, D.plants2 === 'girassol' ? 'girassol' : 'costela']]) {
+    const g = mk(W, H), p = isoR(o, px, py, 0);
+    isoShadow(g, p[0], p[1], 8);
+    bigPlant(g, p[0], p[1], k);
+    quantize(g);
+    out.push({ c: g.canvas, y: py, x: px });
+  }
+  return out;
+}
+function bigPlant(g, x, y, kind) {
+  poly(g, [[x - 7, y - 12], [x + 7, y - 12], [x + 5, y], [x - 5, y]], C.terra);
+  R(g, x - 8, y - 14, 16, 3, C.orange); hl(g, x - 8, y - 14, 16, C.peach); vl(g, x + 4, y - 11, 10, C.wine); vl(g, x - 5, y - 11, 9, C.orange);
+  ell(g, x, y - 14, 6, 1.5, C.wood0);
+  if (kind === 'girassol') { for (let i = 0; i < 3; i++) { const fx = x - 6 + i * 6, fy = y - 34 + (i === 1 ? -6 : 0); ln(g, x, y - 14, fx, fy, C.green1); ell(g, fx - 3, (y - 14 + fy) / 2, 3, 1.5, C.leaf); flower(g, fx, fy, 1); } return; }
+  if (kind === 'samambaia') { for (let i = 0; i < 9; i++) { const a = -Math.PI + i * Math.PI / 8; const ex = x + Math.cos(a) * 16, ey = y - 18 + Math.sin(a) * 10 + 8; ln(g, x, y - 16, ex, ey, i % 2 ? C.leaf : C.green1); P(g, ex, ey + 1, C.lime); } ell(g, x, y - 20, 9, 5, C.leaf); for (let i = 0; i < 6; i++) P(g, x - 6 + i * 2, y - 22 + (i % 2), C.lime); return; }
+  for (const [dx, dy] of [[-9, -30], [6, -36], [-2, -42], [10, -24], [-12, -20]]) { ln(g, x, y - 14, x + dx, y + dy + 4, C.green1); ell(g, x + dx, y + dy, 6, 4, C.green1); ell(g, x + dx - 1, y + dy - 1, 5, 3, C.leaf); P(g, x + dx - 2, y + dy - 2, C.lime); hl(g, x + dx + 1, y + dy, 3, C.green1); P(g, x + dx + 4, y + dy + 1, C.sage); }
+}
+function roomBg(S, light) {
+  const k = interiorKey(S);
+  if (_bake.key !== k) { _bake.key = k; _bake.bg = {}; _bake.spr = bakeRoomSprites(S); }
+  if (!_bake.bg[light]) { const base = bakeRoomBg(S, light); _bake.bg[light] = light === 'dia' ? base : lit(base, light, [C.butter]); }
+  return _bake.bg[light];
+}
+function drawLamps(g, S, light, time) {
+  const o = ROOM.o, kind = S.decor.interior.lamps || 'pendente';
+  const on = light === 'tarde' || light.startsWith('noite');
   if (kind === 'pisca') {
-    for (let i = 0; i < W; i++) { const y = 10 + Math.round(Math.sin(i / W * Math.PI * 4) * 3 + 3); P(g, i, y, '#3a2130'); if (i % 8 === 0) { const c = ['#f7c232', '#cd5b3b', '#6cc0b1', '#e7a3a8'][(i / 8 + Math.floor(time * 2)) % 4]; R(g, i, y + 1, 2, 2, c); } }
+    const a = isoXY(o, 0, 0, ROOM.WH - 6);
+    for (let u = 0; u < ROOM.RX * 16; u++) { const y = a[1] + u / 2 + Math.round(Math.sin(u / 22 * Math.PI) * 4) + 4; P(g, a[0] + u, y, C.plum); if (u % 9 === 4) R(g, a[0] + u, y + 1, 2, 2, [C.sun, C.orange, C.mint, C.rose][(Math.floor(u / 9) + Math.floor(time * 2)) % 4]); }
+    for (let u = 0; u < ROOM.RY * 16; u++) { const y = a[1] + u / 2 + Math.round(Math.sin(u / 22 * Math.PI) * 4) + 4; P(g, a[0] - u, y, C.plum); if (u % 9 === 4) R(g, a[0] - u, y + 1, 2, 2, [C.sun, C.orange, C.mint, C.rose][(Math.floor(u / 9) + Math.floor(time * 2) + 1) % 4]); }
     return;
   }
-  for (const x of xs) {
-    vl(g, x, 6, kind === 'lustre' ? 6 : 12, PAL.ink2);
-    if (kind === 'lustre') {
-      R(g, x - 8, 12, 16, 2, PAL.gold); for (let k = -2; k <= 2; k++) { vl(g, x + k * 4, 14, 3, PAL.gold); ell(g, x + k * 4, 18, 1.5, 2, on ? '#fff4b8' : '#f7e3a0'); }
+  const L = c => litColor(c, light === 'dia' ? null : light);
+  for (const [lx, ly, lz] of LAMPS) {
+    const p = isoR(o, lx, ly, lz);
+    const top = isoR(o, lx, ly, ROOM.WH + 34)[1]; vl(g, p[0], top, p[1] - 6 - top, L(C.plum)); R(g, p[0] - 2, top, 5, 1, L(C.plum));
+    if (kind === 'lustre') { R(g, p[0] - 7, p[1] - 6, 14, 2, L(C.mustard)); for (let k = -2; k <= 2; k++) { vl(g, p[0] + k * 3, p[1] - 4, 3, L(C.mustard)); P(g, p[0] + k * 3, p[1] - 1, on ? C.butter : C.cream); } }
+    else { poly(g, [[p[0] - 7, p[1]], [p[0] - 3, p[1] - 7], [p[0] + 3, p[1] - 7], [p[0] + 7, p[1]]], L(C.green1)); hl(g, p[0] - 7, p[1], 14, L(C.green0)); hl(g, p[0] - 3, p[1] - 7, 6, L(C.leaf)); ln(g, p[0] - 5, p[1] - 2, p[0] - 2, p[1] - 6, L(C.leaf)); R(g, p[0] - 2, p[1] + 1, 4, 2, on ? C.butter : C.cream); }
+    if (on) { g.fillStyle = C.butter; for (let a = 0; a < 16; a++) { const an = a / 16 * Math.PI * 2, r = 9 + (Math.floor(time * 3 + a) % 2); g.fillRect(Math.round(p[0] + Math.cos(an) * r), Math.round(p[1] + 3 + Math.sin(an) * r * .5), 1, 1); } }
+  }
+}
+function drawCatIso(g, x, y, time) {
+  const c = C.orange, d = C.terra, br = Math.round((Math.sin(time * 1.5) + 1) / 2);
+  ell(g, x, y - 3 - br, 7, 3 + br, c); ell(g, x + 6, y - 5, 3.5, 3, c); P(g, x + 4, y - 9, c); P(g, x + 8, y - 9, c); P(g, x + 4, y - 8, d); P(g, x + 8, y - 8, d);
+  P(g, x + 5, y - 5, C.ink); P(g, x + 7, y - 5, C.ink); for (let i = -5; i < 3; i += 3) vl(g, x + i, y - 6, 2, d); P(g, x + 6, y - 3, C.paper);
+  ln(g, x - 7, y - 2, x - 10, y - 1, c); ln(g, x - 10, y - 1, x - 9, y - 4, c);
+  if (Math.floor(time / 2) % 3 === 0) drawTxt(g, 'z', x + 10, y - 18 - Math.floor(time * 2) % 3, 6, C.paper);
+}
+function drawRoom(g, S, t, time, actors) {
+  const light = lightOf(t, true), Lk = light === 'dia' ? null : light;
+  g.drawImage(roomBg(S, light), 0, 0);
+  const o = ROOM.o, list = [];
+  for (const sp of _bake.spr) list.push({ y: sp.y, x: sp.x, draw: () => g.drawImage(lit(sp.c, Lk, [C.butter]), 0, 0) });
+  for (const a of actors) {
+    if (a.alpha != null && a.alpha < .5) continue;
+    list.push({ y: a.y + (a.pose === 'sit' ? .03 : 0), x: a.x, draw: () => {
+      const p = isoR(o, a.x, a.y, 0);
+      const c = lit(drawPerson(a.spec, { facing: a.facing, pose: a.pose, frame: a.frame, apron: a.apron, blink: a.blink }), Lk, [C.butter]);
+      g.drawImage(c, p[0] - 12, p[1] - 39 - (a.pose === 'sit' ? 6 : 0));
+      if (a.talk) { R(g, p[0] - 1, p[1] - 52, 3, 1, C.paper); R(g, p[0] - 2, p[1] - 51, 5, 3, C.paper); P(g, p[0] - 1, p[1] - 50, C.ink); P(g, p[0] + 1, p[1] - 50, C.ink); P(g, p[0], p[1] - 48, C.paper); }
+    } });
+  }
+  if (S.flags && S.flags.gato) list.push({ y: 3.0, x: .3, draw: () => { const p = isoR(o, .3, 3.0, 11); drawCatIso(g, p[0], p[1], time); } });
+  if (S._drink) list.push({ y: 2.95, x: S._drink.x, draw: () => { const p = isoR(o, S._drink.x, 2.45, 22); drawDrink(g, p[0], p[1], S._drink.vis, time); if (S._drink.food) drawFood(g, p[0] + 12, p[1] + 1, S._drink.food); if (S._drink.cups > 1) { const q = isoR(o, S._drink.x + .7, 2.45, 22); drawDrink(g, q[0], q[1], { cup: 'xicara', steam: true }, time + 1); } } });
+  list.sort((a, b) => a.y - b.y || a.x - b.x);
+  for (const it of list) it.draw();
+  drawLamps(g, S, light, time);
+}
+const ROOM_SPOTS = { door: { x: .35, y: 6.2 }, counter: { x: 3.7, y: 3.75 }, barista: { x: 4.1, y: 1.15 } };
+
+/* ======================= FACHADA (diorama da esquina) ======================= */
+const FAC = { o: { x: 216, y: 122 }, BX: 9, BY: 6, HT: 112 };
+function skyBands(light, weather) {
+  let b = ({ manha: [C.sky, C.skylight, C.butter, C.peach], dia: [C.sky, C.sky, C.skylight, C.mint], tarde: [C.lilac, C.rose, C.peach, C.butter], noite: [C.navy, C.navy, C.plum, C.lilac] }[light] || [C.sky, C.skylight, C.mint, C.paper]).slice();
+  if (weather === 'chuva') b = light === 'noite' ? [C.navy, C.navy, C.mauve, C.mauve] : [C.rosegrey, C.rosegrey, C.offwhite, C.offwhite];
+  else if (weather === 'nublado' && light !== 'noite') b = [b[0], C.skylight, C.offwhite, C.offwhite];
+  return b;
+}
+function drawSky(g, light, weather) {
+  const b = skyBands(light, weather), n = b.length, bh = 150 / n;
+  for (let i = 0; i < n; i++) { const y0 = Math.round(i * bh), y1 = i === n - 1 ? H : Math.round((i + 1) * bh); R(g, 0, y0, W, y1 - y0, b[i]); if (i) { dith(g, 0, y0 - 2, W, 1, b[i], 2); dith(g, 0, y0 - 1, W, 1, b[i], 1); dith(g, 0, y0, W, 1, b[i - 1], 2); } }
+  const r = rng(77);
+  if (light === 'noite') { for (let i = 0; i < 70; i++) P(g, r() * W, r() * 110, r() < .3 ? C.butter : C.skylight); ell(g, 420, 34, 7, 7, C.paper); ell(g, 423, 32, 6, 6, b[0]); }
+  else if (weather !== 'chuva') {
+    if (light !== 'tarde') ell(g, 60, 30, 8, 8, C.butter);
+    const cc = light === 'tarde' ? [C.skin0, C.peach] : [C.paper, C.skylight];
+    for (let i = 0; i < 5; i++) { const cx = 30 + i * 110 + r() * 40, cy = 16 + r() * 40; ell(g, cx, cy, 22, 5, cc[1]); ell(g, cx - 8, cy - 4, 10, 5, cc[0]); ell(g, cx + 7, cy - 3, 12, 5, cc[0]); ell(g, cx + 2, cy - 7, 8, 4, cc[0]); hl(g, cx - 18, cy + 4, 36, cc[1]); }
+  }
+  const hill = light === 'noite' ? C.navy : light === 'tarde' ? C.mauve : C.sage;
+  for (let x = 0; x < W; x++) { const y = 118 + Math.round(Math.sin(x / 50) * 8 + Math.sin(x / 17) * 3); R(g, x, y, 1, H - y, hill); }
+  const far = light === 'noite' ? C.plum : light === 'tarde' ? C.rosegrey : C.teal;
+  let x = 0; while (x < W) { const bw = 10 + Math.floor(r() * 18), bh = 18 + Math.floor(r() * 40); R(g, x, 150 - bh, bw, bh + 120, far); for (let wy = 152 - bh; wy < 150; wy += 5) for (let wx = x + 2; wx < x + bw - 2; wx += 4) if (r() < (light === 'noite' ? .45 : .15)) P(g, wx, wy, light === 'noite' ? C.butter : tone(far, 1)); x += bw + 2; }
+}
+function groundColor(x, y) {
+  const { BX, BY } = FAC;
+  const inL = y >= BY && y < BY + 1.8 && x < BX + 1.8, inR = x >= BX && x < BX + 1.8 && y < BY + 1.8;
+  if (inL || inR) {
+    const useL = inL && !(inR && y < BY + .2);
+    const along = useL ? x * 16 : y * 16, across = useL ? (y - BY) * 16 : (x - BX) * 16;
+    const wv = (across + Math.sin(along / 11) * 5 + 60) % 7;
+    return wv < 2 ? C.mauve : (((along * 3 + across * 5) | 0) % 13 === 0 ? C.offwhite : C.paper);
+  }
+  const inCurbL = y >= BY + 1.8 && y < BY + 2.05 && x < BX + 2.05, inCurbR = x >= BX + 1.8 && x < BX + 2.05 && y < BY + 2.05;
+  if (inCurbL || inCurbR) return (y >= BY + 1.8 && y < BY + 1.87) || (x >= BX + 1.8 && x < BX + 1.87) ? C.paper : C.rosegrey;
+  let c = ((x * 16 * 7 + y * 16 * 13) | 0) % 9 === 0 ? C.plum : C.mauve;
+  if (y > BY + 2 && Math.abs(y - (BY + 4.2)) < .06 && Math.floor(x * 1.5) % 2 === 0) c = C.butter;
+  if (x > BX + 2 && Math.abs(x - (BX + 4.2)) < .06 && Math.floor(y * 1.5) % 2 === 0) c = C.butter;
+  if (x > BX + 2.2 && x < BX + 6 && y > BY - 1.2 && y < BY + 1.6 && Math.floor(y * 3) % 2 === 0) c = C.offwhite;
+  return c;
+}
+function facadeTex(S, side, light) {
+  const F = S.decor.facade, wall = WALL_C[F.wall] || C.sun, trim = ACCENT[F.trim] || C.green1, door = ACCENT[F.door] || C.wine;
+  const w = side === 'left' ? FAC.BX * 16 : FAC.BY * 16, h = FAC.HT;
+  const g = mk(w, h + 1);
+  const night = light === 'noite';
+  const glass = night ? C.butter : C.skylight, glass2 = night ? C.sun : C.sky;
+  R(g, 0, 0, w, h + 1, wall);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if ((x * 5 + y * 3) % 11 === 0) P(g, x, y, tone(wall, 1)); else if ((x * 7 + y * 11) % 29 === 0) P(g, x, y, tone(wall, -1));
+  R(g, 0, 0, w, 10, trim); hl(g, 0, 9, w, tone(trim, -1)); hl(g, 0, 0, w, tone(trim, 1));
+  for (let x = 4; x < w; x += 10) R(g, x, 3, 6, 4, tone(trim, -1));
+  R(g, 0, 50, w, 3, trim); hl(g, 0, 50, w, tone(trim, 1));
+  const nWin = side === 'left' ? 3 : 2, step = w / nWin;
+  for (let i = 0; i < nWin; i++) {
+    const wx = Math.round(step * i + step / 2 - 9), wy = 16;
+    R(g, wx - 5, wy - 1, 4, 24, trim); R(g, wx + 19, wy - 1, 4, 24, trim);
+    for (let k = 0; k < 24; k += 3) { hl(g, wx - 5, wy - 1 + k, 4, tone(trim, -1)); hl(g, wx + 19, wy - 1 + k, 4, tone(trim, -1)); }
+    R(g, wx - 1, wy - 2, 20, 26, C.paper); R(g, wx, wy, 18, 22, glass); R(g, wx, wy + 12, 18, 10, glass2); vl(g, wx + 9, wy, 22, C.paper); hl(g, wx, wy + 11, 18, C.paper);
+    if (!night) ln(g, wx + 2, wy + 9, wx + 6, wy + 2, C.paper); else R(g, wx + 1, wy + 14, 6, 8, C.mustard);
+    R(g, wx - 2, wy + 22, 22, 4, C.terra); hl(g, wx - 2, wy + 22, 22, C.orange); for (let k = 0; k < 6; k++) flower(g, wx + 1 + k * 3, wy + 21, 0);
+  }
+  if (side === 'left') {
+    R(g, w / 2 - 14, 0, 28, 10, tone(trim, -1)); drawTxt(g, String(S.foundedYear || 1974), w / 2, -1, 6, C.paper, 'c', true);
+    const nm = S.cafeName || 'Café Girassol', sx0 = 6, sw = 108, sy = 53;
+    const sz = fitTxt(nm, sw - 10, 10), sb = sz === 8, ty = sy + (sz >= 10 ? -5 : -1);
+    if (F.sign === 'neon') { R(g, sx0, sy, sw, 14, C.ink); const on = night || light === 'tarde'; drawTxt(g, nm, sx0 + sw / 2, ty, sz, on ? C.rose : C.mauve, 'c', sb, on ? C.wine : null); }
+    else if (F.sign === 'pintado') drawTxt(g, nm, sx0 + sw / 2, ty, sz, tone(trim, -1), 'c', sb, tone(wall, -1));
+    else { R(g, sx0, sy, sw, 14, C.wood1); R(g, sx0 + 1, sy + 1, sw - 2, 12, C.wood2); for (let x = sx0 + 4; x < sx0 + sw - 4; x += 9) hl(g, x, sy + 4 + (x % 3), 5, C.wood1); drawTxt(g, nm, sx0 + sw / 2, ty, sz, C.sun, 'c', sb, C.wood0); }
+    const vx = 8, vy = 74, vw = 68, vh = 28;
+    R(g, vx - 3, vy - 3, vw + 6, vh + 6, trim); R(g, vx, vy, vw, vh, night ? C.butter : C.tan);
+    R(g, vx, vy + 18, vw, 10, C.wood2); hl(g, vx, vy + 18, vw, C.wood3);
+    for (let i = 0; i < 3; i++) { vl(g, vx + 12 + i * 22, vy, 4, C.plum); R(g, vx + 9 + i * 22, vy + 4, 7, 3, C.green1); P(g, vx + 12 + i * 22, vy + 7, C.butter); }
+    if (!S._closed) { R(g, vx + 26, vy + 8, 6, 10, C.terra); R(g, vx + 27, vy + 4, 4, 4, C.skin1); R(g, vx + 46, vy + 10, 6, 8, C.petrol); R(g, vx + 47, vy + 6, 4, 4, C.skin2); }
+    if (!night) { ln(g, vx + 4, vy + 24, vx + 18, vy + 4, C.paper); ln(g, vx + 10, vy + 26, vx + 24, vy + 6, C.cream); }
+    vl(g, vx + vw / 2, vy, vh, trim); R(g, vx - 4, vy + vh + 3, vw + 8, 3, C.wood2);
+    const dx = 86, dw = 24, dy = 66;
+    R(g, dx - 3, dy - 3, dw + 6, h - dy + 4, trim); R(g, dx, dy, dw, h - dy + 1, door);
+    R(g, dx + 3, dy + 3, dw - 6, 18, night ? C.butter : C.tan); vl(g, dx + dw / 2, dy + 3, 18, door);
+    R(g, dx + 4, dy + 25, dw - 8, 16, tone(door, -1)); R(g, dx + 5, dy + 26, dw - 10, 14, door); hl(g, dx + 5, dy + 26, dw - 10, tone(door, 1));
+    R(g, dx + dw - 6, dy + 22, 2, 3, C.sun);
+    R(g, dx + 1, dy + 8, 22, 9, C.paper); drawTxt(g, S._closed ? 'FECHADO' : 'ABERTO', dx + dw / 2, dy + 7, 6, S._closed ? C.petrol : C.terra, 'c');
+    R(g, 118, 76, 20, 22, trim); R(g, 120, 78, 16, 18, glass); R(g, 120, 88, 16, 8, glass2); vl(g, 128, 78, 18, trim);
+    R(g, 116, 96, 24, 3, C.terra); for (let k = 0; k < 7; k++) flower(g, 118 + k * 3, 95, 0);
+  } else {
+    if (F.mural) {
+      R(g, 6, 58, w - 12, 44, tone(wall, 1));
+      for (let i = 0; i < 5; i++) { const fx = 14 + i * 17, fy = 70 + (i % 2) * 8; ln(g, fx, fy + 6, fx + (i % 2 ? 2 : -2), 102, C.green1); ell(g, fx - 4, fy + 14, 4, 2, C.leaf); for (let a = 0; a < 12; a++) { const an = a / 12 * Math.PI * 2; ell(g, fx + Math.cos(an) * 5, fy + Math.sin(an) * 5, 2, 2, a % 2 ? C.sun : C.butter); } ell(g, fx, fy, 3.5, 3.5, C.wood1); dith(g, fx - 3, fy - 3, 6, 6, C.wood0, 1); }
     } else {
-      poly(g, [[x - 6, 24], [x - 2, 17], [x + 2, 17], [x + 6, 24]], '#2b5b40'); hl(g, x - 6, 24, 12, '#1d3a34'); hl(g, x - 2, 17, 4, '#4a8648');
-      ell(g, x, 25, 2, 1.2, on ? '#fff4b8' : '#f3dcab');
+      R(g, 30, 72, 34, 24, trim); R(g, 32, 74, 30, 20, glass); R(g, 32, 84, 30, 10, glass2); vl(g, 47, 74, 20, trim); R(g, 28, 94, 38, 3, C.wood2);
+      drawTxt(g, 'cafés', 47, 54, 6, tone(trim, -1), 'c', true); drawTxt(g, 'quitandas', 47, 62, 6, tone(trim, -1), 'c');
     }
+    vl(g, w - 4, 10, h - 10, C.rosegrey); vl(g, w - 3, 10, h - 10, C.offwhite); for (let y = 20; y < h; y += 18) R(g, w - 5, y, 4, 2, C.mauve);
   }
+  for (let x = 0; x < w; x++) for (let y = h - 6; y <= h; y++) P(g, x, y, ((Math.floor(x / 7) + Math.floor(y / 3)) % 2) ? C.rosegrey : C.offwhite);
+  return g.canvas;
 }
-function drawTable(g, x, y, kind, S, slot, time) {
-  const iron = kind === 'ferro';
-  const top = iron ? '#efe8dc' : '#a56540';
-  // cadeiras
-  for (const sx of [-15, 15]) { R(g, x + sx - 3, y - 14, 6, 14, iron ? '#2a242f' : '#7c4635'); R(g, x + sx - 4, y - 3, 8, 2, iron ? '#4a4250' : '#59302d'); vl(g, x + sx - 3, y - 1, 4, '#3a1f26'); vl(g, x + sx + 2, y - 1, 4, '#3a1f26'); }
-  const occ = S._tables && S._tables[slot];
-  if (occ) { drawMini(g, x - 13, y - 2, occ.seed, true, Math.floor(time / 2 + slot) % 2); if (occ.two) drawMini(g, x + 13, y - 2, occ.seed + 7, true, Math.floor(time / 2.3) % 2); }
-  ell(g, x, y - 6, 12, 3, top); hl(g, x - 10, y - 4, 20, tone(top, -1)); ell(g, x - 2, y - 7, 6, 1, tone(top, 1));
-  vl(g, x, y - 4, 6, iron ? '#2a242f' : '#59302d'); hl(g, x - 4, y + 2, 9, iron ? '#2a242f' : '#59302d');
-  if (S.gifts.toalha) { ell(g, x, y - 6, 9, 2, '#fdf0cf'); for (let i = -8; i <= 8; i += 2) P(g, x + i, y - 4, '#fdf0cf'); }
-  if (occ) { R(g, x - 4, y - 9, 3, 3, PAL.paper); R(g, x + 2, y - 9, 3, 3, PAL.paper); P(g, x - 3, y - 9, PAL.coffee[2]); }
-}
-function drawCat(g, x, y, time) {
-  const c = '#e39b4a', d = '#b8652f', br = Math.round(Math.sin(time * 1.5) + 1) / 2;
-  ell(g, x, y - 4 - br, 9, 4 + br, c); ell(g, x + 7, y - 6, 4, 3.5, c); P(g, x + 5, y - 10, c); P(g, x + 9, y - 10, c); P(g, x + 5, y - 9, d); P(g, x + 9, y - 9, d);
-  hl(g, x + 6, y - 6, 2, PAL.ink); hl(g, x + 9, y - 6, 1, PAL.ink); for (let i = -6; i < 4; i += 3) vl(g, x + i, y - 7, 3, d);
-  ln(g, x - 9, y - 3, x - 13, y - 2, c); ln(g, x - 13, y - 2, x - 12, y - 5, c);
-  if (Math.floor(time / 2) % 3 === 0) drawTxt(g, 'z', x + 12, y - 16 - (time % 2) * 2, 6, '#fdf0cf');
-}
-
-/* ---------- balcão (primeiro plano) ---------- */
-function drawCounter(g, S, kitId, time) {
-  const D = S.decor.interior;
-  const kinds = { madeira: ['#c98b52', '#a56540', '#7c4635'], escura: ['#7c4635', '#59302d', '#3a1f26'], azulejo: ['#efe8dc', '#3f6fa6', '#24526b'], marmore: ['#f2ede6', '#dad3cc', '#a9a0a3'] };
-  const k = kinds[D.counter] || kinds.madeira;
-  R(g, 0, 138, W, 42, k[2]);
-  R(g, 0, 132, W, 8, k[0]); hl(g, 0, 132, W, tone(k[0], 1)); hl(g, 0, 139, W, tone(k[2], -1));
-  if (D.counter === 'marmore') { const r = rng(3); for (let i = 0; i < 18; i++) ln(g, r() * W, 133, r() * W, 138, '#c9c0bd'); }
-  if (D.counter === 'azulejo') { for (let x = 0; x < W; x += 10) for (let y = 141; y < 180; y += 10) { R(g, x, y, 10, 10, '#efe8dc'); R(g, x + 3, y + 3, 4, 4, '#3f6fa6'); hl(g, x, y, 10, '#9bb9da'); vl(g, x, y, 10, '#9bb9da'); } }
-  else { for (let x = 0; x < W; x += 24) { vl(g, x, 141, 39, tone(k[2], -1)); vl(g, x + 1, 141, 39, tone(k[2], 1)); } }
-  // máquina/kit à esquerda, caixa e vitrine à direita
-  drawKitIcon(g, 26, 132, kitId, 1, time);
-  // vitrine de quitandas
-  const vx = 244, vy = 108;
-  R(g, vx, vy, 60, 24, 'rgba(210,235,240,0.35)'); R(g, vx, vy, 60, 1, '#eef2f5'); vl(g, vx, vy, 24, '#c3cad6'); vl(g, vx + 59, vy, 24, '#8d94a8');
-  hl(g, vx + 2, vy + 14, 56, '#c3cad6');
-  drawFood(g, vx + 10, vy + 13, 'paodequeijo'); drawFood(g, vx + 26, vy + 13, 'bolo'); drawFood(g, vx + 44, vy + 13, 'broa');
-  drawFood(g, vx + 12, vy + 23, 'biscoito'); drawFood(g, vx + 30, vy + 23, 'paodequeijo'); drawFood(g, vx + 46, vy + 23, 'bolo');
-  ln(g, vx + 4, vy + 3, vx + 12, vy + 11, 'rgba(255,255,255,0.4)');
-  if (S.flags && S.flags.gato) drawCat(g, vx + 40, vy, time);
-  // cofrinho/caixa
-  R(g, 206, 118, 26, 14, '#555a70'); R(g, 208, 114, 22, 6, '#8d94a8'); R(g, 210, 115, 18, 3, '#2f3142'); drawTxt(g, String(S.coins % 1000).padStart(3, '0'), 219, 111, 6, '#6cc0b1', 'c');
-  hl(g, 206, 118, 26, '#c3cad6'); R(g, 210, 122, 4, 2, '#cd5b3b'); R(g, 216, 122, 4, 2, '#f7c232'); R(g, 222, 122, 4, 2, '#6cc0b1');
-  // pote de açúcar e xícaras empilhadas
-  R(g, 80, 124, 10, 8, '#efe8dc'); ell(g, 85, 124, 5, 1.5, '#dad3cc'); P(g, 85, 122, '#a9a0a3');
-  for (let i = 0; i < 3; i++) { R(g, 96, 128 - i * 4, 9, 4, '#fdf0cf'); hl(g, 96, 128 - i * 4, 9, '#ffffff'); vl(g, 104, 128 - i * 4, 4, '#dad3cc'); }
-}
-function drawFood(g, x, y, kind) {
-  if (kind === 'paodequeijo') { for (const [dx, dy] of [[-3, 0], [3, 0], [0, -3]]) { ell(g, x + dx, y + dy - 2, 3, 2.5, '#e9b96a'); P(g, x + dx - 1, y + dy - 3, '#fbe3a6'); P(g, x + dx + 1, y + dy - 1, '#c08038'); } }
-  else if (kind === 'bolo') { R(g, x - 6, y - 6, 12, 6, '#f2c14e'); hl(g, x - 6, y - 6, 12, '#ffe274'); vl(g, x + 5, y - 6, 6, '#dc941b'); dith(g, x - 5, y - 5, 10, 4, '#e3a43a', 2); }
-  else if (kind === 'broa') { ell(g, x, y - 3, 5, 3, '#d9a64a'); dith(g, x - 4, y - 5, 8, 4, '#b9822d', 1); P(g, x - 2, y - 5, '#f4d79a'); }
-  else if (kind === 'biscoito') { for (let i = -1; i <= 1; i++) { R(g, x + i * 5 - 2, y - 3, 4, 3, '#f6ead2'); P(g, x + i * 5 - 2, y - 3, '#ffffff'); } }
-}
-
-/* ---------- kits de café ---------- */
-const KIT_ICON = {
-  coador(g, x, y, s) { // suporte de madeira + coador de pano + bule
-    R(g, x - 9, y - 2, 18, 2, '#7c4635'); vl(g, x - 8, y - 24, 22, '#7c4635'); vl(g, x + 7, y - 24, 22, '#59302d'); hl(g, x - 8, y - 24, 16, '#a56540');
-    poly(g, [[x - 6, y - 23], [x + 6, y - 23], [x + 1, y - 14], [x - 1, y - 14]], '#fdf0cf'); hl(g, x - 6, y - 23, 12, '#f3dcab'); ell(g, x, y - 23, 6, 1, '#3b1d17');
-    R(g, x - 5, y - 10, 10, 8, '#efe8dc'); hl(g, x - 5, y - 10, 10, '#ffffff'); vl(g, x + 4, y - 10, 8, '#dad3cc'); R(g, x + 5, y - 8, 2, 4, '#dad3cc'); poly(g, [[x - 5, y - 9], [x - 8, y - 11], [x - 5, y - 7]], '#efe8dc');
-  },
-  moka(g, x, y) { poly(g, [[x - 5, y - 1], [x + 5, y - 1], [x + 4, y - 10], [x - 4, y - 10]], '#c3cad6'); R(g, x - 5, y - 12, 10, 2, '#555a70'); poly(g, [[x - 4, y - 12], [x + 4, y - 12], [x + 5, y - 21], [x - 5, y - 21]], '#c3cad6'); vl(g, x + 3, y - 20, 18, '#8d94a8'); poly(g, [[x - 5, y - 21], [x + 5, y - 21], [x, y - 24]], '#8d94a8'); R(g, x + 5, y - 18, 3, 6, PAL.ink2); poly(g, [[x - 5, y - 20], [x - 8, y - 21], [x - 5, y - 18]], '#c3cad6'); vl(g, x - 3, y - 20, 18, '#eef2f5'); },
-  prensa(g, x, y) { R(g, x - 5, y - 18, 10, 17, 'rgba(200,225,235,0.55)'); R(g, x - 5, y - 10, 10, 9, '#5e3120'); hl(g, x - 5, y - 10, 10, '#8a5231'); vl(g, x - 5, y - 18, 17, '#c3cad6'); vl(g, x + 4, y - 18, 17, '#8d94a8'); R(g, x - 6, y - 20, 12, 2, '#555a70'); vl(g, x, y - 25, 5, '#8d94a8'); ell(g, x, y - 25, 1.5, 1, '#2f3142'); R(g, x + 5, y - 16, 3, 10, PAL.ink2); hl(g, x - 6, y - 1, 12, '#555a70'); },
-  espresso(g, x, y) { R(g, x - 13, y - 26, 26, 25, '#c3cad6'); R(g, x - 13, y - 26, 26, 3, '#eef2f5'); vl(g, x + 12, y - 26, 25, '#8d94a8'); R(g, x - 10, y - 21, 20, 5, '#2f3142'); P(g, x - 7, y - 19, '#ea8b58'); P(g, x - 4, y - 19, '#6cc0b1'); ell(g, x + 5, y - 19, 2, 2, '#eef2f5'); R(g, x - 6, y - 14, 12, 3, '#555a70'); R(g, x - 9, y - 13, 4, 2, PAL.ink2); vl(g, x - 2, y - 11, 3, '#555a70'); vl(g, x + 1, y - 11, 3, '#555a70'); R(g, x - 3, y - 6, 6, 5, '#fdf0cf'); R(g, x - 13, y - 2, 26, 2, '#555a70'); vl(g, x + 10, y - 14, 8, '#8d94a8'); },
-  v60(g, x, y) { R(g, x - 5, y - 9, 10, 8, 'rgba(200,225,235,0.6)'); R(g, x - 5, y - 6, 10, 5, '#5e3120'); poly(g, [[x - 7, y - 18], [x + 7, y - 18], [x + 2, y - 10], [x - 2, y - 10]], '#efe8dc'); for (let i = 0; i < 3; i++) ln(g, x - 4 + i * 3, y - 17, x - 1 + i, y - 11, '#c9c0bd'); hl(g, x - 7, y - 18, 14, '#ffffff'); R(g, x - 6, y - 10, 12, 1, '#dad3cc'); },
-  coldbrew(g, x, y) { R(g, x - 6, y - 20, 12, 19, 'rgba(200,225,235,0.55)'); R(g, x - 6, y - 15, 12, 14, '#3b1d17'); for (let i = 0; i < 3; i++) R(g, x - 4 + i * 3, y - 13 + (i % 2) * 4, 3, 3, '#c2ead6'); R(g, x - 6, y - 22, 12, 3, '#cd5b3b'); vl(g, x - 6, y - 20, 19, '#eef2f5'); R(g, x + 6, y - 16, 3, 9, 'rgba(200,225,235,0.7)'); },
-  aeropress(g, x, y) { R(g, x - 4, y - 8, 8, 7, 'rgba(200,225,235,0.6)'); R(g, x - 4, y - 5, 8, 4, '#8a5231'); R(g, x - 5, y - 10, 10, 2, '#2f3142'); R(g, x - 4, y - 22, 8, 12, '#555a70'); R(g, x - 3, y - 22, 6, 12, 'rgba(160,170,190,0.9)'); R(g, x - 3, y - 15, 6, 5, '#5e3120'); R(g, x - 3, y - 27, 6, 6, '#2f3142'); R(g, x - 5, y - 28, 10, 2, '#2f3142'); },
-  chemex(g, x, y) { poly(g, [[x - 8, y - 1], [x + 8, y - 1], [x + 3, y - 11], [x + 8, y - 22], [x - 8, y - 22], [x - 3, y - 11]], 'rgba(200,225,235,0.55)'); poly(g, [[x - 7, y - 1], [x + 7, y - 1], [x + 3, y - 7], [x - 3, y - 7]], '#5e3120'); R(g, x - 4, y - 13, 8, 4, '#a56540'); P(g, x, y - 11, '#3a1f26'); poly(g, [[x - 8, y - 22], [x + 8, y - 22], [x + 3, y - 14], [x - 3, y - 14]], '#fff8e4'); },
-  ibrik(g, x, y) { poly(g, [[x - 6, y - 1], [x + 6, y - 1], [x + 4, y - 12], [x - 4, y - 12]], '#c98b52'); hl(g, x - 4, y - 12, 8, '#f4d79a'); vl(g, x + 4, y - 11, 10, '#a35f12'); ln(g, x + 5, y - 9, x + 14, y - 14, '#7c4635'); ln(g, x + 5, y - 8, x + 14, y - 13, '#59302d'); poly(g, [[x - 4, y - 12], [x - 7, y - 14], [x - 4, y - 10]], '#c98b52'); dith(g, x - 5, y - 8, 10, 6, '#a35f12', 2); },
-  sifao(g, x, y) { R(g, x - 2, y - 2, 4, 2, '#2f3142'); ell(g, x, y - 8, 6, 6, 'rgba(200,225,235,0.6)'); ell(g, x, y - 7, 5, 4, '#3b1d17'); vl(g, x, y - 18, 6, '#c3cad6'); poly(g, [[x - 4, y - 30], [x + 4, y - 30], [x + 3, y - 17], [x - 3, y - 17]], 'rgba(200,225,235,0.6)'); R(g, x - 3, y - 26, 6, 6, '#8a5231'); vl(g, x - 9, y - 20, 18, '#555a70'); hl(g, x - 9, y - 20, 9, '#555a70'); R(g, x - 2, y + 0, 4, 1, '#ea8b58'); },
-};
-function drawKitIcon(g, x, y, id, scale, time) { const f = KIT_ICON[id] || KIT_ICON.coador; f(g, x, y, time || 0); }
-function kitIconCanvas(id, sz) {
-  sz = sz || 32;
-  const g = mk(sz, sz); drawKitIcon(g, sz / 2, sz - 2, id); outline(g, .5); return g.canvas;
-}
-
-/* ---------- xícaras e bebidas ---------- */
-const CUPS = { xicara: 1, caneca: 1, americano: 1, copoalto: 1, taca: 1 };
-function drawDrink(g, x, y, d, time, big) {
-  // d: {cup, layers:[{c,h}], foam, art, ice, top:'chantilly'|'canela'|'choco'|null, steam}
-  const cup = d.cup || 'xicara', glass = cup === 'americano' || cup === 'copoalto' || cup === 'taca';
-  let w, h;
-  if (cup === 'xicara') { w = 14; h = 9; } else if (cup === 'caneca') { w = 14; h = 15; } else if (cup === 'americano') { w = 12; h = 15; } else if (cup === 'taca') { w = 14; h = 13; } else { w = 12; h = 22; }
-  const k = big ? 2 : 1;
-  const G = big ? mk(40, 50) : g, ox = big ? 20 : x, oy = big ? 46 : y;
-  const L = ox - w / 2, T = oy - h;
-  const cupC = d.cupColor || '#fdf0cf';
-  if (cup === 'xicara') { ell(G, ox, oy, w / 2 + 4, 2, '#efe8dc'); hl(G, L - 3, oy, w + 6, '#dad3cc'); }
-  // corpo
-  if (!glass) {
-    R(G, L, T, w, h, cupC); vl(G, L + w - 2, T, h, tone(cupC, -1)); vl(G, L + w - 1, T, h, tone(cupC, -2)); vl(G, L + 1, T + 1, h - 2, tone(cupC, 1));
-    if (cup === 'xicara') { R(G, L + 1, oy - 1, w - 2, 1, tone(cupC, -1)); }
-    if (d.cupColor && d.cupColor !== '#fdf0cf') hl(G, L, T + 3, w, tone(cupC, 1));
-    // alça
-    R(G, L + w, T + 2, 3, 2, cupC); R(G, L + w + 2, T + 3, 2, Math.max(3, h - 6), tone(cupC, -1)); R(G, L + w, T + h - 4, 3, 2, tone(cupC, -1));
-    // topo: superfície da bebida
-    ell(G, ox, T, w / 2, 2, tone(cupC, -1));
-    const top = d.foam ? '#e8c9a0' : (d.layers && d.layers.length ? d.layers[d.layers.length - 1].c : PAL.coffee[2]);
-    ell(G, ox, T + .5, w / 2 - 1, 1.5, top);
-    if (d.art) { P(G, ox, T, '#fdf0cf'); P(G, ox - 1, T, '#fdf0cf'); P(G, ox + 1, T + 1, '#fdf0cf'); }
+function neighborTex(kind, w, h, light) {
+  const g = mk(w, h + 1), night = light === 'noite';
+  const wall = kind === 'cris' ? C.rose : C.skylight, trim = kind === 'cris' ? C.wine : C.petrol;
+  R(g, 0, 0, w, h + 1, wall);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if ((x * 5 + y * 3) % 13 === 0) P(g, x, y, tone(wall, 1));
+  R(g, 0, 0, w, 6, trim);
+  if (kind === 'cris') {
+    R(g, 8, 12, w - 16, 12, C.paper); drawTxt(g, 'Flores da Cris', w / 2, 12, 6, C.wine, 'c', true);
+    R(g, 10, 34, w - 20, h - 40, trim); R(g, 12, 36, w - 24, h - 44, night ? C.butter : C.mint); R(g, 12, h - 18, w - 24, 10, C.wood2);
+    for (let i = 0; i < 7; i++) { const fx = 18 + i * 10; vl(g, fx, h - 24, 6, C.green1); flower(g, fx, h - 25, 0); }
+    poly(g, [[6, 28], [w - 6, 28], [w - 10, 34], [10, 34]], C.leaf); for (let x = 8; x < w - 8; x += 6) poly(g, [[x, 34], [x + 6, 34], [x + 3, 37]], C.green1);
   } else {
-    // vidro com camadas
-    const glassC = 'rgba(220,240,248,0.45)';
-    let yy = oy - 1;
-    const layers = d.layers || [{ c: PAL.coffee[2], h: .7 }];
-    const fill = Math.round((h - 3) * layers.reduce((a, b) => a + b.h, 0));
-    for (const l of layers) {
-      const lh = Math.round((h - 3) * l.h);
-      R(G, L + 1, yy - lh + 1, w - 2, lh, l.c); yy -= lh;
-    }
-    if (d.ice) { for (let i = 0; i < 3; i++) { R(G, L + 2 + i * 3, oy - fill + 1 + (i % 2) * 3, 3, 3, 'rgba(235,250,255,0.75)'); P(G, L + 2 + i * 3, oy - fill + 1 + (i % 2) * 3, '#ffffff'); } }
-    if (cup === 'americano') for (let i = 0; i < 4; i++) vl(G, L + 2 + i * 3, T + 1, h - 2, 'rgba(255,255,255,0.22)');
-    R(G, L, T, 1, h, glassC); R(G, L + w - 1, T, 1, h, 'rgba(180,200,215,0.7)'); R(G, L, oy - 1, w, 1, 'rgba(180,200,215,0.8)'); hl(G, L, T, w, 'rgba(240,250,255,0.8)');
-    vl(G, L + 2, T + 2, h - 5, 'rgba(255,255,255,0.45)');
+    R(g, 6, 12, 18, 20, C.paper); R(g, 7, 13, 16, 18, night ? C.butter : C.sky); R(g, w - 24, 12, 18, 20, C.paper); R(g, w - 23, 13, 16, 18, night ? C.mustard : C.sky);
+    R(g, 4, 38, w - 8, 10, C.wood1); drawTxt(g, 'Sapataria', w / 2, 37, 6, C.cream, 'c', true);
+    R(g, 8, 50, w - 16, h - 56, trim); R(g, 10, 52, w - 20, h - 60, night ? C.sun : C.skylight); R(g, 12, h - 14, 10, 6, C.wood1); R(g, 26, h - 12, 8, 4, C.terra);
   }
-  // coberturas
-  if (d.top === 'chantilly') { ell(G, ox, T - 1, w / 2 - 1, 2.5, '#fff8ee'); ell(G, ox - 1, T - 3, w / 2 - 3, 2, '#ffffff'); P(G, ox, T - 5, '#ffffff'); dith(G, ox - 3, T - 2, 6, 2, '#efe2cf', 2); }
-  if (d.top === 'canela') { dith(G, ox - w / 2 + 2, T, w - 4, 1, '#8a5231', 1); }
-  if (d.top === 'choco') { dith(G, ox - w / 2 + 2, T - 1, w - 4, 2, '#5a2e22', 2); }
-  if (d.top === 'chantilly' && d.syrup) { P(G, ox - 2, T - 2, d.syrup); P(G, ox + 1, T - 3, d.syrup); P(G, ox + 2, T - 1, d.syrup); }
-  if (d.straw) { R(G, ox + 2, T - 7, 2, h + 4, d.straw); }
-  if (big) { outline(G, .5); g.drawImage(G.canvas, x - 40, y - 92, 80, 100); }
-  // vapor
-  if (d.steam && time != null) steam(g, x, y - (big ? h * 2 + 6 : h + 1), time, big ? 4 : 2);
+  for (let x = 0; x < w; x++) for (let y = h - 5; y <= h; y++) P(g, x, y, ((Math.floor(x / 7) + Math.floor(y / 3)) % 2) ? C.rosegrey : C.offwhite);
+  return g.canvas;
 }
-function steam(g, x, y, time, n) {
-  for (let i = 0; i < n; i++) {
-    const ph = (time * .8 + i * .37) % 1;
-    const yy = y - ph * 14, xx = x - 3 + i * 3 + Math.round(Math.sin(ph * 7 + i * 2) * 2);
-    g.globalAlpha = (1 - ph) * .7; P(g, xx, yy, '#ffffff'); P(g, xx, yy - 1, '#ffffff'); g.globalAlpha = 1;
-  }
+function blitWall(g, tex, x0, y0, dir) {
+  const th = tex.height;
+  for (let u = 0; u < tex.width; u++) g.drawImage(tex, u, 0, 1, th, x0 + u, y0 + (dir > 0 ? Math.floor(u / 2) : -Math.floor((u + 1) / 2)), 1, th);
 }
-
-/* ---------- fachada ---------- */
-function drawFacade(g, S, t, time) {
-  const F = S.decor.facade;
-  drawSkyline(g, 0, 0, W, 152, t, 41, S.weather);
-  const night = t > .84;
-  const season = S.season;
-  // árvore (ipê no inverno/primavera)
-  const tx = 18;
-  R(g, tx - 2, 80, 5, 72, '#59302d'); vl(g, tx + 2, 80, 72, '#3a1f26');
-  const ipe = season === 'inverno' || season === 'primavera';
-  const leafC = ipe ? (season === 'inverno' ? '#f7c232' : '#e88cb0') : season === 'outono' ? '#c98b52' : '#4a8648';
-  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; ell(g, tx + Math.cos(a) * 14, 66 + Math.sin(a) * 10, 9, 7, i % 3 ? leafC : tone(leafC, -1)); }
-  ell(g, tx, 64, 14, 10, tone(leafC, 1));
-  if (ipe) { const r = rng(Math.floor(time * 2)); for (let i = 0; i < 4; i++) P(g, tx - 20 + r() * 60, 80 + r() * 70, leafC); }
-  // vizinhos: banca (esq.) e floricultura da Cris (dir.)
-  R(g, 32, 70, 42, 82, '#cfa77a'); R(g, 32, 70, 42, 3, '#a56540'); R(g, 36, 96, 34, 40, '#3f6f6a'); R(g, 36, 92, 34, 6, '#cd5b3b'); for (let x = 36; x < 70; x += 6) R(g, x, 92, 3, 6, '#efe8dc');
-  drawTxt(g, 'BANCA', 53, 78, 6, '#59302d', 'c');
-  for (let i = 0; i < 5; i++) R(g, 40 + i * 6, 104, 4, 6, ['#cd5b3b', '#f7c232', '#6ba3d7', '#e7a3a8', '#84b752'][i]);
-  R(g, 248, 64, 72, 88, '#e7a3a8'); R(g, 248, 64, 72, 3, '#b8657a'); R(g, 256, 100, 54, 40, '#fdf0cf'); poly(g, [[252, 92], [316, 92], [312, 100], [256, 100]], '#4a8648');
-  for (let x = 256; x < 312; x += 8) poly(g, [[x, 100], [x + 8, 100], [x + 4, 104]], '#4a8648');
-  drawTxt(g, 'Flores da Cris', 284, 71, 6, '#7a2638', 'c');
-  for (let i = 0; i < 6; i++) drawPlant(g, 262 + i * 9, 150, ['girassol', 'lavanda', 'orquidea', 'girassol', 'samambaia', 'lavanda'][i], Math.round(Math.sin(time + i)));
-  // prédio do café (sobrado)
-  const bx = 80, bw = 164, wallC = DECOR_COLORS.wall[F.wall] || '#f2c14e', trim = DECOR_COLORS.accent[F.trim] || '#2b5b40';
-  R(g, bx, 24, bw, 128, wallC); vl(g, bx + bw - 3, 24, 128, tone(wallC, -1)); vl(g, bx, 24, 2, tone(wallC, 1));
-  dith(g, bx, 24, bw, 128, tone(wallC, -1), 0);
-  // platibanda e ornamentos
-  R(g, bx - 4, 18, bw + 8, 8, trim); hl(g, bx - 4, 18, bw + 8, tone(trim, 1)); hl(g, bx - 4, 25, bw + 8, tone(trim, -1));
-  poly(g, [[bx + bw / 2 - 18, 18], [bx + bw / 2, 8], [bx + bw / 2 + 18, 18]], trim); ell(g, bx + bw / 2, 15, 4, 4, wallC); flower(g, bx + bw / 2, 15, 1);
-  drawTxt(g, String(S.foundedYear || 1974), bx + bw / 2, 16, 6, wallC, 'c');
-  // janelas do andar de cima
-  for (let i = 0; i < 3; i++) {
-    const wx = bx + 16 + i * 50, wy = 32;
-    R(g, wx - 2, wy - 2, 32, 30, trim); R(g, wx, wy, 28, 26, night ? '#ffcf7a' : '#7fa9cf'); if (!night) { R(g, wx, wy + 14, 28, 12, '#6b8fb8'); ln(g, wx + 3, wy + 20, wx + 12, wy + 2, '#a7d2ee'); }
-    vl(g, wx + 13, wy, 26, trim); hl(g, wx, wy + 12, 28, trim);
-    R(g, wx - 4, wy + 26, 36, 3, tone(trim, -1));
-    // floreira
-    R(g, wx - 1, wy + 22, 30, 4, '#b85a3a'); for (let k = 0; k < 7; k++) flower(g, wx + 2 + k * 4, wy + 21, 0);
-  }
-  // letreiro
-  const sy = 64, nm = S.cafeName || 'Café Girassol';
-  const sz = fitTxt(nm, bw - 30, 10), sb = sz === 8, ty = sy + (sz >= 10 ? -1 : 3);
-  if (F.sign === 'neon') {
-    R(g, bx + 10, sy, bw - 20, 18, '#1b1726'); const glow = night || t > .7;
-    const col = '#ff8fb1';
-    if (glow) { g.globalAlpha = .35; drawTxt(g, nm, bx + bw / 2 + 1, ty, sz, col, 'c', sb); drawTxt(g, nm, bx + bw / 2 - 1, ty, sz, col, 'c', sb); g.globalAlpha = 1; }
-    drawTxt(g, nm, bx + bw / 2, ty, sz, glow ? '#ffe3ec' : '#b06a82', 'c', sb);
-  } else if (F.sign === 'pintado') {
-    drawTxt(g, nm, bx + bw / 2, ty, sz, tone(trim, -1), 'c', sb, tone(wallC, -2));
-    flower(g, bx + 14, sy + 9, 1); flower(g, bx + bw - 14, sy + 9, 1);
-  } else {
-    R(g, bx + 10, sy, bw - 20, 18, '#7c4635'); hl(g, bx + 10, sy, bw - 20, '#a56540'); hl(g, bx + 10, sy + 17, bw - 20, '#3a1f26');
-    for (let x = bx + 14; x < bx + bw - 14; x += 12) hl(g, x, sy + 4 + (x % 3), 6, '#8a5133');
-    drawTxt(g, nm, bx + bw / 2, ty, sz, '#f7c232', 'c', sb, '#3a1f26');
-    vl(g, bx + 30, 58, 6, PAL.ink2); vl(g, bx + bw - 30, 58, 6, PAL.ink2);
-  }
+const _fbake = { key: '', bg: {} };
+function facadeKey(S) { return JSON.stringify([S.decor.facade, S.cafeName, S._closed, S.weather, S.foundedYear]); }
+function bakeFacade(S, light) {
+  const g = mk(W, H), o = FAC.o, { BX, BY, HT } = FAC;
+  const gx0 = -6, gy0 = -7, gx1 = BX + 3.4, gy1 = BY + 3.4;
+  const pL = isoXY(o, gx0, gy1, 0), pB = isoXY(o, gx1, gy1, 0), pR = isoXY(o, gx1, gy0, 0);
+  const scene = mk(W, H);
+  texPara(scene, isoXY(o, gx0, gy0, 0), [(gx1 - gx0) * 16, (gx1 - gx0) * 8], [-(gy1 - gy0) * 16, (gy1 - gy0) * 8], (s, t) => groundColor(gx0 + s * (gx1 - gx0), gy0 + t * (gy1 - gy0)));
+  texPara(scene, pL, [pB[0] - pL[0], pB[1] - pL[1]], [0, 10], (s, t, u, v) => t < .15 ? C.leaf : ((u * 3 + v * 7 | 0) % 7 === 0 ? C.wood2 : C.wood1));
+  texPara(scene, pB, [pR[0] - pB[0], pR[1] - pB[1]], [0, 10], (s, t, u, v) => t < .15 ? C.green1 : ((u * 3 + v * 7 | 0) % 7 === 0 ? C.wood1 : C.wood0));
+  // floricultura da Cris (atrás, à direita)
+  const ch = 58;
+  texPara(scene, isoXY(o, 2, -6, ch), [(BX - 2) * 16, (BX - 2) * 8], [-6 * 16, 6 * 8], (s, t, u, v) => (u % 10 < 1 || v % 10 < 1) ? C.mauve : (((u + v) | 0) % 7 === 0 ? C.offwhite : C.rosegrey));
+  isoBox(scene, o, 2, -.3, ch, BX - 2, .3, 4, { top: C.rose, left: C.wine, right: C.wine });
+  isoBox(scene, o, 3.5, -4.2, ch, 1.4, 1.2, 10, { top: C.skylight, left: C.sky, right: C.petrol, edge: C.ink });
+  const nr = neighborTex('cris', 6 * 16, ch, light), nrp = isoXY(o, BX, 0, ch); blitWall(scene, nr, nrp[0], nrp[1], -1);
+  // sapataria (à esquerda)
+  const nh = 70, nl = neighborTex('sapataria', 5 * 16, nh, light), nlp = isoXY(o, -5, BY, nh);
+  texPara(scene, isoXY(o, -5, 1, nh), [5 * 16, 5 * 8], [-(BY - 1) * 16, (BY - 1) * 8], (s, t, u, v) => (v % 6 < 1) ? C.wine : (u % 12 < 1 ? C.terra : C.orange));
+  isoBox(scene, o, -5, BY - .3, nh, 5, .3, 4, { top: C.skylight, left: C.petrol, right: C.petrol });
+  blitWall(scene, nl, nlp[0], nlp[1], 1);
+  // prédio do café
+  const lt = facadeTex(S, 'left', light), rt = facadeTex(S, 'right', light);
+  const lp = isoXY(o, 0, BY, HT); blitWall(scene, lt, lp[0], lp[1], 1);
+  const rp = isoXY(o, BX, BY, HT); blitWall(scene, rt, rp[0], rp[1], -1);
+  texPara(scene, isoXY(o, 0, 0, HT), [BX * 16, BX * 8], [-BY * 16, BY * 8], (s, t, u, v) => ((u * 3 + v * 5) | 0) % 11 === 0 ? C.rosegrey : C.mauve);
+  const trim = ACCENT[S.decor.facade.trim] || C.green1;
+  isoBox(scene, o, 0, 0, HT, BX, .25, 6, { top: tone(trim, 1), left: trim, right: tone(trim, -1) });
+  isoBox(scene, o, 0, 0, HT, .25, BY, 6, { top: tone(trim, 1), left: trim, right: tone(trim, -1) });
+  isoBox(scene, o, 1.0, .8, HT, 1.6, 1.4, 16, { top: C.sky, left: C.petrol, right: C.navy, edge: C.ink });
+  isoBox(scene, o, 1.2, 1.0, HT + 16, 1.2, 1.0, 2, { top: C.skylight, left: C.sky, right: C.petrol });
+  for (const [px, py] of [[4.5, 1.6], [6.2, 2.0], [7.6, 3.6]]) { const p = isoR(o, px, py, HT); bigPlant(scene, p[0], p[1], px > 7 ? 'samambaia' : 'costela'); }
+  isoBox(scene, o, 0, BY - .25, HT, BX, .25, 6, { top: tone(trim, 1), left: trim, right: tone(trim, -1) });
+  isoBox(scene, o, BX - .25, 0, HT, .25, BY, 6, { top: tone(trim, 1), left: trim, right: tone(trim, -1) });
   // toldo
-  const aw = F.awning || 'listras', ac = DECOR_COLORS.accent[F.awningColor] || '#7a2638';
-  const ay = 84;
-  for (let y = 0; y < 10; y++) for (let x = bx + 4 - y; x < bx + bw - 4 + y; x++) {
-    let c = ac;
-    if (aw === 'listras') c = Math.floor((x - bx) / 8) % 2 ? ac : '#f6ead2';
-    else if (aw === 'ondas') c = (y + Math.round(Math.sin(x / 3) * 1.5)) % 4 < 2 ? ac : tone(ac, 1);
-    if (y < 2) c = tone(c, 1);
-    P(g, x, ay + y, c);
-  }
-  for (let x = bx - 6; x < bx + bw + 6; x += 8) { const c = aw === 'listras' ? (Math.floor((x - bx + 6) / 8) % 2 ? ac : '#f6ead2') : ac; poly(g, [[x, ay + 10], [x + 8, ay + 10], [x + 4, ay + 14]], tone(c, -1)); }
-  // vitrine e porta
-  const vx = bx + 10, vy = 100, vw = 92, vh = 46;
-  R(g, vx - 3, vy - 3, vw + 6, vh + 3, trim);
-  const inside = night ? '#ffd38a' : t > .7 ? '#f3c27e' : '#e9c592';
-  R(g, vx, vy, vw, vh, inside);
-  // interior visto da rua: balcão, luminárias, silhuetas
-  R(g, vx, vy + 30, vw, 16, '#7c4635'); hl(g, vx, vy + 30, vw, '#a56540');
-  for (let i = 0; i < 3; i++) { vl(g, vx + 16 + i * 30, vy, 6, PAL.ink2); ell(g, vx + 16 + i * 30, vy + 7, 4, 2, '#2b5b40'); ell(g, vx + 16 + i * 30, vy + 9, 2, 1, '#fff4b8'); }
-  if (!S._closed) { drawMini(g, vx + 30, vy + 30, 77, false, Math.floor(time) % 2); drawMini(g, vx + 64, vy + 32, 78, true, 0); }
-  ln(g, vx + 6, vy + 40, vx + 30, vy + 4, 'rgba(255,255,255,0.35)'); ln(g, vx + 12, vy + 42, vx + 36, vy + 6, 'rgba(255,255,255,0.2)');
-  vl(g, vx + vw / 2, vy, vh, trim);
-  drawTxt(g, 'cafés', vx + vw / 4 + 1, vy + 14, 6, tone(trim, -1), 'c');
-  // porta
-  const dx = bx + 116, dw = 36, dc = DECOR_COLORS.accent[F.door] || '#7a2638';
-  R(g, dx - 3, vy - 3, dw + 6, 55, trim); R(g, dx, vy, dw, 52, dc); R(g, dx + 4, vy + 4, dw - 8, 22, inside); vl(g, dx + dw / 2, vy + 4, 22, dc); R(g, dx + 5, vy + 30, dw - 10, 18, tone(dc, -1)); R(g, dx + 6, vy + 31, dw - 12, 16, dc);
-  R(g, dx + dw - 7, vy + 27, 3, 4, PAL.gold);
-  R(g, dx + 4, vy + 10, 28, 9, PAL.paper); drawTxt(g, S._closed ? 'FECHADO' : 'ABERTO', dx + dw / 2, vy + 9, 6, S._closed ? '#24526b' : '#a2352f', 'c');
-  // luzinhas
-  if (F.lights) { for (let x = bx; x < bx + bw; x++) { const y = 94 + Math.round(Math.sin((x - bx) / bw * Math.PI * 3) * 2 + 2); if (x % 2) P(g, x, y, '#3a2130'); if (x % 7 === 0) { const on = night || t > .7; const c = ['#fff4b8', '#ffd27a', '#ffb18a'][(x + Math.floor(time * 2)) % 3]; R(g, x, y + 1, 2, 2, on ? c : '#c9b98a'); } } }
-  // mural de girassol (lateral)
-  if (F.mural) { for (let i = 0; i < 3; i++) { const fx = bx + bw - 14, fy = 104 + i * 14; ln(g, fx, fy + 6, fx, fy + 14, '#2b5b40'); flower(g, fx, fy + 3, 1); } }
-  // calçada portuguesa (ondas)
-  R(g, 0, 152, W, 18, '#efe8dc');
-  for (let x = 0; x < W; x++) { const y0 = 158 + Math.round(Math.sin(x / 9) * 3); R(g, x, y0, 1, 3, '#2a242f'); }
-  hl(g, 0, 152, W, '#c9c0bd'); hl(g, 0, 169, W, '#8d94a8');
-  R(g, 0, 170, W, 10, '#4a4250'); for (let x = 6; x < W; x += 30) R(g, x, 175, 14, 1, '#dad3cc');
-  // canteiros de girassol (jardim)
-  const beds = S.garden || [];
-  for (let i = 0; i < 4; i++) {
-    const gx = bx + 6 + i * 22 + (i > 1 ? 0 : 0), gy = 152;
-    R(g, gx - 8, gy - 4, 17, 5, '#7c4635'); hl(g, gx - 8, gy - 4, 17, '#a56540'); R(g, gx - 7, gy - 3, 15, 2, '#3b1d17');
-    const b = beds[i];
-    if (b) drawSunflowerStage(g, gx, gy - 4, b.stage, Math.round(Math.sin(time * 1.2 + i)));
-  }
-  if (F.bench) { R(g, 214, 140, 30, 3, '#a56540'); R(g, 214, 133, 30, 2, '#a56540'); vl(g, 216, 143, 8, PAL.ink2); vl(g, 241, 143, 8, PAL.ink2); }
-  if (F.bike) { const x = 300, y = 160; ell(g, x - 8, y, 5, 5, PAL.ink2); ell(g, x - 8, y, 4, 4, '#efe8dc'); ell(g, x + 8, y, 5, 5, PAL.ink2); ell(g, x + 8, y, 4, 4, '#efe8dc'); ln(g, x - 8, y, x, y - 7, '#cd5b3b'); ln(g, x, y - 7, x + 8, y, '#cd5b3b'); ln(g, x - 2, y - 8, x + 6, y - 8, '#cd5b3b'); R(g, x + 5, y - 13, 7, 4, '#c98b52'); flower(g, x + 8, y - 13, 0); }
-  // poste
-  R(g, 74, 60, 2, 92, '#2f3142'); R(g, 70, 56, 10, 4, '#2f3142'); ell(g, 75, 61, 4, 2, night || t > .78 ? '#fff4b8' : '#d9d2b8');
-  if (S.flags && S.flags.gato) drawCat(g, dx + dw + 10, 152, time);
-  // chuva
-  if (S.weather === 'chuva') { const r = rng(Math.floor(time * 14)); for (let i = 0; i < 90; i++) { const rx = r() * W, ry = r() * 170; vl(g, rx, ry, 4, 'rgba(210,225,245,0.7)'); } }
-  // decoração sazonal
-  if (S.festa === 'junina') { for (let x = 0; x < W; x += 1) { const y = 4 + Math.round(Math.sin(x / W * Math.PI * 2) * 3 + 3); if (x % 2) P(g, x, y, '#3a2130'); if (x % 8 === 0) poly(g, [[x, y + 1], [x + 6, y + 1], [x + 3, y + 7]], ['#cd5b3b', '#f7c232', '#6cc0b1', '#e7a3a8', '#84b752'][(x / 8) % 5]); } }
-  if (S.festa === 'natal') { for (let x = bx; x < bx + bw; x += 6) P(g, x, 27, ['#cd5b3b', '#84b752', '#f7c232'][(x / 6 + Math.floor(time * 2)) % 3]); }
+  const F = S.decor.facade, ac = ACCENT[F.awningColor] || C.wine, aw = F.awning || 'listras';
+  const a0 = .35, a1 = 7.1, az = 42, ad = 1.05, adz = 11;
+  const A = isoXY(o, a0, BY, az), Bp = isoXY(o, a1, BY, az), Cp = isoXY(o, a0, BY + ad, az - adz);
+  texPara(scene, A, [Bp[0] - A[0], Bp[1] - A[1]], [Cp[0] - A[0], Cp[1] - A[1]], (s, t, u) => {
+    let c = aw === 'listras' ? (Math.floor(u / 8) % 2 ? ac : C.paper) : aw === 'ondas' ? ((Math.floor(u / 4) + Math.floor(t * 6)) % 2 ? ac : tone(ac, 1)) : ac;
+    if (t < .12) c = tone(c, 1);
+    if (t > .8) { const m = u % 8; if (t > .8 + (Math.abs(m - 4) / 4) * .2) return null; c = tone(c, -1); }
+    return c;
+  });
+  const corner = isoR(o, BX, BY, 0); vl(scene, corner[0], corner[1] - HT, HT, tone(WALL_C[F.wall] || C.sun, 1));
+  for (let i = 0; i < 4; i++) isoBox(scene, o, .7 + i * 1.6, BY + .12, 0, 1.1, .45, 6, { top: C.wood0, left: C.terra, right: C.wine, edge: C.ink });
+  isoBox(scene, o, -4.6, BY + .35, 0, 1.4, .9, 24, { top: C.green1, left: (s, t, u, v) => v > 6 && v < 18 && u > 2 && u < 20 ? [C.terra, C.sun, C.sky, C.rose, C.lime][Math.floor(u / 4) % 5] : C.green1, right: C.green0, edge: C.ink });
+  isoBox(scene, o, -4.75, BY + .25, 24, 1.7, 1.1, 3, { top: C.terra, left: C.wine, right: C.wine });
+  { const p = isoR(o, -3.9, BY + 1.2, 28); drawTxt(scene, 'BANCA', p[0] - 4, p[1] - 4, 6, C.paper, 'c'); }
+  quantize(scene);
+  drawSky(g, light, S.weather);
+  g.drawImage(light === 'dia' ? scene.canvas : lit(scene.canvas, light, [C.butter]), 0, 0);
+  quantize(g);
+  return g.canvas;
 }
-
-/* ---------- partículas ---------- */
-const FX = [];
-function fxAdd(p) { FX.push(p); if (FX.length > 180) FX.shift(); }
-function fxBurst(x, y, kind, n) {
-  for (let i = 0; i < (n || 10); i++) {
-    const a = Math.random() * Math.PI * 2, sp = .3 + Math.random() * 1.2;
-    fxAdd({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - .8, life: 1, decay: .012 + Math.random() * .015, kind });
-  }
+function facadeBg(S, light) {
+  const k = facadeKey(S);
+  if (_fbake.key !== k) { _fbake.key = k; _fbake.bg = {}; }
+  if (!_fbake.bg[light]) _fbake.bg[light] = bakeFacade(S, light);
+  return _fbake.bg[light];
 }
-function fxStep(g) {
-  for (let i = FX.length - 1; i >= 0; i--) {
-    const p = FX[i];
-    p.x += p.vx; p.y += p.vy; p.vy += p.kind === 'heart' ? -.01 : .03; p.vx *= .97; p.life -= p.decay;
-    if (p.life <= 0) { FX.splice(i, 1); continue; }
-    if (p.kind === 'heart') { const c = '#e2605c'; P(g, p.x - 1, p.y, c); P(g, p.x + 1, p.y, c); P(g, p.x, p.y + 1, c); P(g, p.x - 1, p.y - 1, '#f8a0a0'); P(g, p.x + 1, p.y - 1, c); }
-    else if (p.kind === 'coin') { P(g, p.x, p.y, '#f7c232'); P(g, p.x + 1, p.y, '#a35f12'); }
-    else if (p.kind === 'petal') { P(g, p.x, p.y, p.life > .5 ? '#f7c232' : '#ffe274'); }
-    else if (p.kind === 'grounds') { P(g, p.x, p.y, '#5e3120'); }
-    else { P(g, p.x, p.y, p.life > .5 ? '#fff4b8' : '#ffffff'); }
-  }
+function drawStreet(g, S, t, time, walkers) {
+  const light = lightOf(t, false), Lk = light === 'dia' ? null : light, o = FAC.o, { BX, BY, HT } = FAC;
+  g.drawImage(facadeBg(S, light), 0, 0);
+  const on = light === 'noite' || light === 'tarde';
+  const L = c => litColor(c, Lk);
+  const list = [];
+  (S.garden || []).forEach((b, i) => { if (!b) return; list.push({ k: BY + .4 + 1.25 + i * 1.6, draw: () => { const p = isoR(o, 1.25 + i * 1.6, BY + .35, 6); const c = mk(40, 50); drawSunflowerStage(c, 20, 46, b.stage, Math.round(Math.sin(time * 1.2 + i))); g.drawImage(lit(quantize(c), Lk, [C.butter]), p[0] - 20, p[1] - 46); } }); });
+  const season = S.season, ipe = season === 'inverno' || season === 'primavera';
+  const leaf = ipe ? (season === 'inverno' ? C.sun : C.rose) : season === 'outono' ? C.orange : C.leaf;
+  list.push({ k: BY + 1.45 - 1.6, draw: () => { const p = isoR(o, -1.6, BY + 1.45, 0); isoShadow(g, p[0], p[1], 14); R(g, p[0] - 2, p[1] - 40, 5, 40, L(C.wood1)); vl(g, p[0] + 2, p[1] - 40, 40, L(C.wood0)); ln(g, p[0], p[1] - 30, p[0] - 10, p[1] - 44, L(C.wood1)); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; ell(g, p[0] + Math.cos(a) * 16, p[1] - 52 + Math.sin(a) * 9, 10, 8, L(i % 3 ? leaf : tone(leaf, -1))); } ell(g, p[0] - 3, p[1] - 56, 14, 9, L(tone(leaf, 1))); } });
+  list.push({ k: BX + BY + 3.2, draw: () => { const p = isoR(o, BX + 1.6, BY + 1.6, 0); R(g, p[0] - 1, p[1] - 70, 3, 70, L(C.navy)); R(g, p[0] - 1, p[1] - 70, 12, 2, L(C.navy)); R(g, p[0] + 7, p[1] - 68, 6, 3, on ? C.butter : L(C.offwhite)); if (on) { g.fillStyle = C.butter; for (let a = 0; a < 20; a++) { const an = a / 20 * Math.PI * 2; g.fillRect(Math.round(p[0] + 10 + Math.cos(an) * 10), Math.round(p[1] - 64 + Math.sin(an) * 6), 1, 1); } } } });
+  const F = S.decor.facade;
+  if (F.bench) list.push({ k: BX + 2.4, draw: () => { const c = mk(W, H); isoBox(c, o, BX + .35, 1.4, 6, .45, 1.6, 2, { top: C.wood3, left: C.wood2, right: C.wood1, edge: C.ink }); isoBox(c, o, BX + .35, 1.4, 8, .08, 1.6, 8, { top: C.wood3, left: C.wood2, right: C.wood1, edge: C.ink }); for (const yy of [1.5, 2.9]) { const p = isoR(o, BX + .55, yy, 0); vl(c, p[0], p[1] - 6, 6, C.plum); } g.drawImage(lit(quantize(c), Lk), 0, 0); if (S.flags && S.flags.gato) { const p = isoR(o, BX + .6, 2.2, 8); drawCatIso(g, p[0], p[1], time); } } });
+  else if (S.flags && S.flags.gato) list.push({ k: BY + 8.2, draw: () => { const p = isoR(o, 7.7, BY + .5, 0); drawCatIso(g, p[0], p[1], time); } });
+  if (F.bike) list.push({ k: BX + 5.7, draw: () => { const p = isoR(o, BX + 1.1, 4.6, 0); const x = p[0], y = p[1] - 6; ell(g, x - 8, y, 5, 5, L(C.plum)); ell(g, x - 8, y, 4, 4, L(C.offwhite)); ell(g, x + 8, y, 5, 5, L(C.plum)); ell(g, x + 8, y, 4, 4, L(C.offwhite)); ln(g, x - 8, y, x, y - 7, L(C.orange)); ln(g, x, y - 7, x + 8, y, L(C.orange)); ln(g, x - 2, y - 8, x + 6, y - 8, L(C.orange)); R(g, x + 5, y - 13, 7, 4, L(C.wood3)); flower(g, x + 8, y - 13, 0); } });
+  for (let i = 0; i < 4; i++) list.push({ k: BX + .45 - 4.6 + i * 1.1, draw: () => { const p = isoR(o, BX + .45, -4.6 + i * 1.1, 0); R(g, p[0] - 3, p[1] - 6, 7, 6, L(C.sage)); hl(g, p[0] - 3, p[1] - 6, 7, L(C.mint)); for (let k = 0; k < 3; k++) { vl(g, p[0] - 2 + k * 2, p[1] - 11, 5, L(C.green1)); P(g, p[0] - 2 + k * 2, p[1] - 12, L([C.rose, C.sun, C.lilac, C.peach][(i + k) % 4])); } } });
+  if (S.flags && S.flags.rafaPlaza && light !== 'noite') list.push({ k: BX + BY + 2.2, draw: () => { const p = isoR(o, BX + 1.0, BY + 1.2, 0); g.drawImage(lit(drawPerson(REGULARES.rafa.spec, { pose: 'sit' }), Lk), p[0] - 12, p[1] - 45); ell(g, p[0] + 3, p[1] - 18, 4, 4, L(C.wood3)); ln(g, p[0] + 4, p[1] - 20, p[0] - 6, p[1] - 28, L(C.wood1)); R(g, p[0] + 8, p[1] - 3, 10, 4, L(C.wood1)); R(g, p[0] + 9, p[1] - 2, 8, 2, L(C.wine)); } });
+  for (const w of walkers) list.push({ k: w.x + w.y, draw: () => { const p = isoR(o, w.x, w.y, 0); g.drawImage(lit(drawPerson(w.spec, { facing: w.facing, pose: 'walk', frame: w.frame }), Lk), p[0] - 12, p[1] - 39); } });
+  list.sort((a, b) => a.k - b.k);
+  for (const it of list) it.draw();
+  if (F.lights) for (let i = 0; i <= 28; i++) { const x = .3 + i * .24, sag = Math.sin(i / 7 * Math.PI) * 3; const p = isoR(o, x, BY + .02, 46 - sag); P(g, p[0], p[1], C.plum); if (i % 2 === 0) R(g, p[0], p[1] + 1, 2, 2, on ? [C.butter, C.sun, C.peach][(i + Math.floor(time * 2)) % 3] : L(C.offwhite)); }
+  if (S.festa === 'junina') for (let i = 0; i < 40; i++) { const x = -3 + i * .32, p = isoR(o, x, BY + 2.6, 80 - Math.sin(i / 39 * Math.PI) * 14); P(g, p[0], p[1], C.plum); if (i % 2 === 0) poly(g, [[p[0], p[1] + 1], [p[0] + 5, p[1] + 1], [p[0] + 2, p[1] + 6]], [C.terra, C.sun, C.teal, C.rose, C.lime][(i / 2) % 5]); }
+  if (S.festa === 'natal') for (let i = 0; i < 30; i++) { const p = isoR(o, i * .3, BY, HT + 3); if (i % 2 === 0) R(g, p[0], p[1], 2, 2, [C.terra, C.lime, C.sun][(i / 2 + Math.floor(time * 2)) % 3]); }
+  if (Math.random() < .06) { const p = isoR(o, -1.6, BY + 1.45, 52); fxAdd({ x: p[0] - 16 + Math.random() * 32, y: p[1], vx: .2 + Math.random() * .3, vy: .25, life: 1, decay: .004, kind: 'leaf', c: L(leaf) }); }
+  if (S.weather === 'chuva') { const r = rng(Math.floor(time * 14)); g.fillStyle = C.skylight; for (let i = 0; i < 120; i++) g.fillRect((r() * W) | 0, (r() * H) | 0, 1, 4); }
 }

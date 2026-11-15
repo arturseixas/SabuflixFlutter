@@ -1,6 +1,6 @@
 'use strict';
 /* Café Girassol — núcleo de pixel art procedural (sem imagens externas). */
-const W = 320, H = 180;
+const W = 480, H = 270;
 
 function mk(w, h) {
   const c = document.createElement('canvas');
@@ -57,70 +57,155 @@ function hueTo(h, target, t) {
   let d = ((target - h + 540) % 360) - 180;
   return h + d * t;
 }
-/* tom(): desce em direção ao roxo-azulado, sobe em direção ao amarelo (hue shifting). */
-const _toneCache = new Map();
-function tone(hex, step) {
-  if (!step) return hex;
-  const k = hex + step;
-  let v = _toneCache.get(k);
-  if (v) return v;
-  let [h, s, l] = rgb2hsl(...h2r(hex));
-  if (step < 0) {
-    const n = -step;
-    h = hueTo(h, 268, Math.min(.5, .11 * n));
-    l = l * Math.pow(.76, n);
-    s = Math.min(1, s * (1 + .10 * n) + .02 * n);
-  } else {
-    h = hueTo(h, 46, Math.min(.5, .12 * step));
-    l = l + (1 - l) * (1 - Math.pow(.74, step));
-    s = s * (1 - .05 * step);
+/* ---------- Paleta Girassol: 36 cores fixas ---------- */
+const PALETTE = {
+  ink: '#1b1018', plum: '#3a2430', mauve: '#5e3f45', rosegrey: '#8a6a6a', offwhite: '#ece2d4',
+  wood0: '#40231d', wood1: '#663a29', wood2: '#93583a', wood3: '#c07f4f', tan: '#e2ae76', cream: '#f6dfb0', paper: '#fff5df',
+  wine: '#6e2630', terra: '#a8402f', orange: '#d96a3a', peach: '#f39b5e', mustard: '#c4861d', sun: '#f2bd36', butter: '#ffe58a',
+  green0: '#1f3a31', green1: '#33613f', leaf: '#5a924b', lime: '#a3c463',
+  navy: '#1f2c45', petrol: '#2f5670', teal: '#4b8b93', sage: '#79a7a2', mint: '#b9dfd2',
+  sky: '#6f8fc4', skylight: '#b3cdea', rose: '#d9798c', lilac: '#8e6aa8',
+  skin0: '#f3caa3', skin1: '#c98a66', skin2: '#8f5440', skin3: '#5c3329',
+};
+const C = PALETTE;
+const PAL_LIST = Object.values(PALETTE);
+const PAL_RGB = PAL_LIST.map(h2r);
+/* rampas de luz: cada cor sobe para o amarelo e desce para o roxo/azul */
+const RAMPS = [
+  ['ink', 'plum', 'mauve', 'rosegrey', 'offwhite', 'paper'],
+  ['ink', 'wood0', 'wood1', 'wood2', 'wood3', 'tan', 'cream', 'paper'],
+  ['plum', 'wine', 'terra', 'orange', 'peach', 'skin0', 'paper'],
+  ['wood1', 'wood2', 'mustard', 'sun', 'butter', 'paper'],
+  ['navy', 'green0', 'green1', 'leaf', 'lime', 'butter'],
+  ['navy', 'petrol', 'teal', 'sage', 'mint', 'paper'],
+  ['navy', 'petrol', 'sky', 'skylight', 'paper'],
+  ['plum', 'lilac', 'rose', 'skin0', 'paper'],
+  ['wood0', 'skin3', 'skin2', 'skin1', 'skin0', 'paper'],
+].map(r => r.map(k => PALETTE[k]));
+const RAMP_OF = {};
+RAMPS.forEach((r, ri) => r.forEach((c, i) => { if (!(c in RAMP_OF)) RAMP_OF[c] = [ri, i]; }));
+RAMP_OF[C.wood3] = [1, 4]; RAMP_OF[C.tan] = [1, 5]; RAMP_OF[C.skin1] = [8, 3]; RAMP_OF[C.skin2] = [8, 2];
+RAMP_OF[C.rose] = [7, 2]; RAMP_OF[C.lilac] = [7, 1]; RAMP_OF[C.sky] = [6, 2]; RAMP_OF[C.skylight] = [6, 3];
+RAMP_OF[C.mustard] = [3, 2]; RAMP_OF[C.sun] = [3, 3]; RAMP_OF[C.butter] = [3, 4]; RAMP_OF[C.lime] = [4, 4];
+RAMP_OF[C.green0] = [4, 1]; RAMP_OF[C.green1] = [4, 2]; RAMP_OF[C.leaf] = [4, 3];
+RAMP_OF[C.petrol] = [5, 1]; RAMP_OF[C.teal] = [5, 2]; RAMP_OF[C.sage] = [5, 3]; RAMP_OF[C.mint] = [5, 4];
+RAMP_OF[C.wine] = [2, 1]; RAMP_OF[C.terra] = [2, 2]; RAMP_OF[C.orange] = [2, 3]; RAMP_OF[C.peach] = [2, 4]; RAMP_OF[C.skin0] = [2, 5];
+RAMP_OF[C.mauve] = [0, 2]; RAMP_OF[C.rosegrey] = [0, 3]; RAMP_OF[C.offwhite] = [0, 4]; RAMP_OF[C.plum] = [0, 1];
+RAMP_OF[C.wood0] = [1, 1]; RAMP_OF[C.wood1] = [1, 2]; RAMP_OF[C.wood2] = [1, 3]; RAMP_OF[C.cream] = [1, 6]; RAMP_OF[C.paper] = [1, 7];
+RAMP_OF[C.skin3] = [8, 1]; RAMP_OF[C.navy] = [5, 0]; RAMP_OF[C.ink] = [0, 0];
+
+/* tabela de cor mais próxima (5 bits por canal) */
+const QLUT = new Uint8Array(32768);
+(function () {
+  for (let r = 0; r < 32; r++) for (let g = 0; g < 32; g++) for (let b = 0; b < 32; b++) {
+    const R0 = r * 8 + 4, G0 = g * 8 + 4, B0 = b * 8 + 4;
+    let best = 0, bd = 1e9;
+    for (let i = 0; i < PAL_RGB.length; i++) {
+      const p = PAL_RGB[i], rm = (R0 + p[0]) / 2, dr = R0 - p[0], dg = G0 - p[1], db = B0 - p[2];
+      const d = (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db;
+      if (d < bd) { bd = d; best = i; }
+    }
+    QLUT[r << 10 | g << 5 | b] = best;
   }
-  v = hsl2hex(h, s, l);
-  _toneCache.set(k, v);
-  return v;
+})();
+const PAL_IDX = {}; PAL_LIST.forEach((c, i) => { PAL_IDX[c] = i; });
+function nearestIdx(r, g, b) { return QLUT[(r >> 3) << 10 | (g >> 3) << 5 | (b >> 3)]; }
+function snap(hex) { if (hex in PAL_IDX) return hex; if (hex[0] !== '#') return hex; const [r, g, b] = h2r(hex); return PAL_LIST[nearestIdx(r, g, b)]; }
+/* tom(): anda na rampa da paleta. Negativo escurece, positivo clareia. */
+function tone(hex, step) {
+  hex = snap(hex);
+  if (!step) return hex;
+  const rp = RAMP_OF[hex];
+  if (!rp) return hex;
+  const ramp = RAMPS[rp[0]];
+  return ramp[Math.max(0, Math.min(ramp.length - 1, rp[1] + step))];
 }
 function mix(a, b, t) {
-  const A = h2r(a), B = h2r(b);
-  return r2h(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t);
+  const A = h2r(snap(a)), B = h2r(snap(b));
+  return PAL_LIST[nearestIdx(Math.round(A[0] + (B[0] - A[0]) * t), Math.round(A[1] + (B[1] - A[1]) * t), Math.round(A[2] + (B[2] - A[2]) * t))];
 }
 function mixN(stops, t) {
   t = Math.max(0, Math.min(1, t));
   for (let i = 1; i < stops.length; i++) {
-    if (t <= stops[i][0]) {
-      const a = stops[i - 1], b = stops[i];
-      return mix(a[1], b[1], (t - a[0]) / (b[0] - a[0] || 1));
-    }
+    if (t <= stops[i][0]) { const a = stops[i - 1], b = stops[i]; return mix(a[1], b[1], (t - a[0]) / (b[0] - a[0] || 1)); }
   }
   return stops[stops.length - 1][1];
 }
+/* converte um canvas inteiro para a paleta (alfa vira 0 ou 1) */
+function quantize(g) {
+  const c = g.canvas || g, x = c.getContext('2d');
+  const im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 110) { d[i + 3] = 0; continue; }
+    const p = PAL_RGB[QLUT[(d[i] >> 3) << 10 | (d[i + 1] >> 3) << 5 | (d[i + 2] >> 3)]];
+    d[i] = p[0]; d[i + 1] = p[1]; d[i + 2] = p[2]; d[i + 3] = 255;
+  }
+  x.putImageData(im, 0, 0);
+  return c;
+}
+/* luz do dia: cada estado é uma troca de paleta, cor por cor */
+const LIGHTS = {
+  manha: { mul: [1.02, .94, .84], add: [10, 4, 0] },
+  dia: null,
+  tarde: { mul: [1.04, .84, .64], add: [14, 2, 0] },
+  noite: { mul: [.42, .46, .7], add: [0, 2, 16] },
+  noiteDentro: { mul: [.9, .76, .66], add: [6, 0, 0] },
+};
+const LIGHT_MAP = {};
+for (const k in LIGHTS) {
+  const L = LIGHTS[k];
+  LIGHT_MAP[k] = PAL_RGB.map((p, i) => {
+    if (!L) return i;
+    const r = Math.min(255, p[0] * L.mul[0] + L.add[0]), g = Math.min(255, p[1] * L.mul[1] + L.add[1]), b = Math.min(255, p[2] * L.mul[2] + L.add[2]);
+    return nearestIdx(r | 0, g | 0, b | 0);
+  });
+}
+const _litCache = new WeakMap();
+function lit(canvas, light, keep) {
+  if (!light || light === 'dia' || !LIGHTS[light]) return canvas;
+  let m = _litCache.get(canvas);
+  if (!m) { m = {}; _litCache.set(canvas, m); }
+  const key = light + (keep ? keep.join('') : '');
+  if (m[key]) return m[key];
+  const out = document.createElement('canvas'); out.width = canvas.width; out.height = canvas.height;
+  const x = out.getContext('2d'); x.drawImage(canvas, 0, 0);
+  const im = x.getImageData(0, 0, out.width, out.height), d = im.data, map = LIGHT_MAP[light].slice();
+  if (keep) for (const k of keep) map[PAL_IDX[k]] = PAL_IDX[k];
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const p = PAL_RGB[map[QLUT[(d[i] >> 3) << 10 | (d[i + 1] >> 3) << 5 | (d[i + 2] >> 3)]]];
+    d[i] = p[0]; d[i + 1] = p[1]; d[i + 2] = p[2];
+  }
+  x.putImageData(im, 0, 0);
+  m[key] = out;
+  return out;
+}
+function litColor(hex, light) { if (!light || !LIGHTS[light]) return snap(hex); return PAL_LIST[LIGHT_MAP[light][PAL_IDX[snap(hex)]]]; }
 
-/* ---------- Paleta base ---------- */
+/* ---------- Paleta por papel ---------- */
 const PAL = {
-  ink: '#22131c', ink2: '#3a2130',
-  wood: ['#3a1f26', '#59302d', '#7c4635', '#a56540', '#c98b52', '#e3b271', '#f4d79a'],
-  cream: '#fdf0cf', cream2: '#f3dcab', paper: '#fff8e4',
-  sun: ['#a35f12', '#dc941b', '#f7c232', '#ffe274', '#fff4b8'],
-  terra: ['#6c1f2d', '#a2352f', '#cd5b3b', '#ea8b58', '#f8ba8a'],
-  leaf: ['#1d3a34', '#2b5b40', '#4a8648', '#84b752', '#c3da78'],
-  teal: ['#1b3048', '#24526b', '#398290', '#6cc0b1', '#c2ead6'],
-  sky: ['#3d6caf', '#6ba3d7', '#a7d2ee', '#e2f2fa'],
-  dusk: ['#291f3e', '#4a2f60', '#8b4b7b', '#d67a8a', '#f7b68e'],
-  grey: ['#2a242f', '#4a4250', '#766d78', '#a9a0a3', '#dad3cc', '#f2ede6'],
-  metal: ['#2f3142', '#555a70', '#8d94a8', '#c3cad6', '#eef2f5'],
-  coffee: ['#1c0f12', '#3b1d17', '#5e3120', '#8a5231', '#b98250'],
-  milk: '#fbf3e3', choc: '#5a2e22', gold: '#e9b23a',
+  ink: C.ink, ink2: C.plum,
+  wood: [C.wood0, C.wood1, C.wood2, C.wood3, C.wood3, C.tan, C.cream],
+  cream: C.cream, cream2: C.tan, paper: C.paper,
+  sun: [C.wood2, C.mustard, C.sun, C.butter, C.paper],
+  terra: [C.wine, C.terra, C.orange, C.peach, C.skin0],
+  leaf: [C.green0, C.green1, C.leaf, C.lime, C.lime],
+  teal: [C.navy, C.petrol, C.teal, C.sage, C.mint],
+  sky: [C.petrol, C.sky, C.skylight, C.paper],
+  dusk: [C.navy, C.plum, C.lilac, C.rose, C.peach],
+  grey: [C.plum, C.mauve, C.rosegrey, C.rosegrey, C.offwhite, C.paper],
+  metal: [C.navy, C.petrol, C.sage, C.skylight, C.paper],
+  coffee: [C.ink, C.wood0, C.wood1, C.wood2, C.wood3],
+  milk: C.paper, choc: C.wood1, gold: C.sun,
   skin: [
-    ['#7a3f3c', '#c98a6b', '#e9b796', '#f8d6ba'],  // claro
-    ['#74403a', '#bd7f5d', '#dea57d', '#f1c7a0'],  // bege
-    ['#63332f', '#a5673f', '#c98a5c', '#e2ad7f'],  // moreno claro
-    ['#4f2828', '#885034', '#ab6d45', '#c98d5f'],  // moreno
-    ['#3c1e24', '#6a3a2a', '#8a5238', '#a66f4b'],  // negro
-    ['#2c1620', '#4f2a24', '#6c3d2e', '#87523c'],  // negro retinto
+    [C.skin2, C.skin1, C.skin0, C.paper],
+    [C.skin2, C.wood3, C.tan, C.skin0],
+    [C.wood1, C.wood2, C.skin1, C.tan],
+    [C.skin3, C.wood2, C.wood3, C.tan],
+    [C.wood0, C.skin3, C.skin2, C.wood2],
+    [C.plum, C.wood0, C.skin3, C.skin2],
   ],
-  hair: {
-    preto: '#2a1c26', castanho: '#5a3226', castclaro: '#8a5530', loiro: '#d8a445', ruivo: '#b4502a',
-    grisalho: '#9a939a', branco: '#e6e1dc', azul: '#3f7fa8', rosa: '#d0668a',
-  },
+  hair: { preto: C.plum, castanho: C.wood1, castclaro: C.wood2, loiro: C.mustard, ruivo: C.terra, grisalho: C.rosegrey, branco: C.offwhite, azul: C.sky, rosa: C.rose },
 };
 
 /* ---------- Primitivas ---------- */

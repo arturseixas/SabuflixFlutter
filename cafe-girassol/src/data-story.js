@@ -21,7 +21,7 @@ const REGULARES = {
   cris: {
     nome: 'Cris', nomeCompleto: 'Cristina', idade: 52, papel: 'Florista da loja ao lado',
     resumo: 'Tem a floricultura vizinha há quase trinta anos. Ri alto, fala com as plantas e sabe da vida de todo mundo na rua.',
-    spec: { age: 'adult', skin: 3, face: 'fino', hair: { style: 'chanel', color: 'ruivo' }, fringe: 'lado', clothes: { type: 'blusa', color: '#4a8648', color2: '#c3da78' }, acc: ['brincos', 'colar'], lashes: true, lip: '#b03a48', flower: '#f7c232' },
+    spec: { age: 'adult', skin: 3, face: 'fino', hair: { style: 'chanel', color: 'ruivo' }, fringe: 'lado', clothes: { type: 'blusa', color: '#5a924b', color2: '#a3c463' }, acc: ['brincos', 'colar'], lashes: true, lip: '#6e2630', flower: '#f2bd36' },
     sempre: 'adocado', intro: { dia: 1, ordem: 0 },
     conversa: [
       'Hoje chegou um carregamento de lírio que parece que viajou de ônibus em pé. Coitados.',
@@ -66,7 +66,7 @@ const REGULARES = {
   bene: {
     nome: 'Seu Bené', nomeCompleto: 'Benedito', idade: 78, papel: 'Relojoeiro aposentado',
     resumo: 'Pede sempre dois cafés coados e deixa um na banqueta vazia ao lado.',
-    spec: { age: 'elder', skin: 1, face: 'quadrado', hair: { style: 'calvo', color: 'branco' }, facial: 'bigode', glasses: 'redondo', clothes: { type: 'suspensorio', color: '#efe8dc', color2: '#59302d' }, hat: 'boina', hatColor: '#4a4250' },
+    spec: { age: 'elder', skin: 1, face: 'quadrado', hair: { style: 'calvo', color: 'branco' }, facial: 'bigode', glasses: 'redondo', clothes: { type: 'suspensorio', color: '#ece2d4', color2: '#663a29' }, hat: 'boina', hatColor: '#5e3f45' },
     sempre: 'coado', xicaras: 2, intro: { dia: 1, ordem: 1 },
     conversa: [
       'Bom dia. Tá frio ou é a idade?',
@@ -110,8 +110,8 @@ const REGULARES = {
   marina: {
     nome: 'Marina', nomeCompleto: 'Marina', idade: 34, papel: 'Enfermeira de UTI neonatal',
     resumo: 'Chega de manhã, depois do plantão da noite, com o cabelo preso de qualquer jeito.',
-    spec: { age: 'adult', skin: 2, hair: { style: 'coque', color: 'castanho' }, fringe: 'meio', eyes: 'cansado', clothes: { type: 'scrubs', color: '#398290' }, acc: ['cracha'], lashes: true },
-    specFinal: { eyes: null, clothes: { type: 'blusa', color: '#ea8b58', pattern: 'floral', color2: '#fdf0cf' }, acc: ['brincos'], hair: { style: 'longo', color: 'castanho' } },
+    spec: { age: 'adult', skin: 2, hair: { style: 'coque', color: 'castanho' }, fringe: 'meio', eyes: 'cansado', clothes: { type: 'scrubs', color: '#4b8b93' }, acc: ['cracha'], lashes: true },
+    specFinal: { eyes: null, clothes: { type: 'blusa', color: '#f39b5e', pattern: 'floral', color2: '#fff5df' }, acc: ['brincos'], hair: { style: 'longo', color: 'castanho' } },
     sempre: 'coado', intro: { dia: 1, ordem: 2 },
     conversa: [
       'Saí do plantão agora. Doze horas que pareceram trinta.',
@@ -154,7 +154,7 @@ const REGULARES = {
   kaua: {
     nome: 'Kauã', nomeCompleto: 'Kauã', idade: 17, papel: 'Estudante e entregador',
     resumo: 'Desenha em tudo, inclusive no guardanapo. Estuda de manhã, faz entrega de bicicleta à tarde.',
-    spec: { age: 'young', skin: 4, hair: { style: 'raspado', color: 'preto' }, clothes: { type: 'moletom', color: '#24526b', color2: '#c2ead6' }, acc: ['mochila', 'fones'] },
+    spec: { age: 'young', skin: 4, hair: { style: 'raspado', color: 'preto' }, clothes: { type: 'moletom', color: '#2f5670', color2: '#b9dfd2' }, acc: ['mochila', 'fones'] },
     sempre: 'chocolate', intro: { dia: 2, ordem: 1 },
     conversa: [
       'Desculpa a cara. Dormi três horas. Simulado de matemática.',
@@ -193,7 +193,7 @@ const REGULARES = {
   zelia: {
     nome: 'Dona Zélia', nomeCompleto: 'Zélia', idade: 72, papel: 'Costureira',
     resumo: 'Veio da Paraíba nos anos 70. Costura para o bairro inteiro e sempre "esquece os óculos em casa".',
-    spec: { age: 'elder', skin: 3, face: 'redondo', hair: { style: 'curto', color: 'grisalho' }, hat: 'lenco', hatColor: '#cd5b3b', hatColor2: '#f7c232', clothes: { type: 'blusa', color: '#8b4b7b', pattern: 'floral', color2: '#f7c232' }, acc: ['colar', 'brincos'], lashes: true },
+    spec: { age: 'elder', skin: 3, face: 'redondo', hair: { style: 'curto', color: 'grisalho' }, hat: 'lenco', hatColor: '#d96a3a', hatColor2: '#f2bd36', clothes: { type: 'blusa', color: '#8e6aa8', pattern: 'floral', color2: '#f2bd36' }, acc: ['colar', 'brincos'], lashes: true },
     sempre: 'pingado', comida: 'paodequeijo', intro: { dia: 3, ordem: 1 },
     conversa: [
       'Bom dia, meu bem. Hoje tô com três barras pra fazer e uma noiva que mudou de ideia sobre a manga.',
@@ -238,7 +238,7 @@ const REGULARES = {
   juca: {
     nome: 'Seu Juca', nomeCompleto: 'José Carlos', idade: 66, papel: 'Catador e poeta',
     resumo: 'Puxa uma carroça de recicláveis pelo bairro. Sabe o nome de todos os passarinhos da rua.',
-    spec: { age: 'elder', skin: 5, face: 'fino', build: 'magro', hair: { style: 'curto', color: 'branco' }, facial: 'barba', clothes: { type: 'camisa', color: '#24526b', pattern: 'xadrez', color2: '#7a2638' }, hat: 'bone', hatColor: '#4a8648' },
+    spec: { age: 'elder', skin: 5, face: 'fino', build: 'magro', hair: { style: 'curto', color: 'branco' }, facial: 'barba', clothes: { type: 'camisa', color: '#2f5670', pattern: 'xadrez', color2: '#6e2630' }, hat: 'bone', hatColor: '#5a924b' },
     sempre: 'adocado', intro: { dia: 4, ordem: 0 },
     conversa: [
       'O sabiá-laranjeira começou a cantar às quatro da manhã. É setembro chegando, ele sabe antes da gente.',
@@ -285,7 +285,7 @@ const REGULARES = {
   rafa: {
     nome: 'Rafa', nomeCompleto: 'Rafael', idade: 29, papel: 'Músico da praça',
     resumo: 'Toca violão na praça em frente nos fins de semana. Já foi engenheiro, mas não gosta de falar disso.',
-    spec: { age: 'young', skin: 2, hair: { style: 'cachos', color: 'castanho' }, fringe: 'cacheado', facial: 'porfazer', clothes: { type: 'camiseta', color: '#f7c232', color2: '#cd5b3b' }, acc: ['cordao'] },
+    spec: { age: 'young', skin: 2, hair: { style: 'cachos', color: 'castanho' }, fringe: 'cacheado', facial: 'porfazer', clothes: { type: 'camiseta', color: '#f2bd36', color2: '#d96a3a' }, acc: ['cordao'] },
     sempre: 'rapadura', intro: { dia: 5, ordem: 0 },
     conversa: [
       'Ontem uma criança dançou a música inteira na minha frente. Depois a mãe deu cinco reais e a criança deu uma bala. A bala valeu mais.',
@@ -325,7 +325,7 @@ const REGULARES = {
   osvaldo: {
     nome: 'Seu Osvaldo', nomeCompleto: 'Osvaldo', idade: 61, papel: 'Contador',
     resumo: 'Sempre de terno e gravata. Senta na banqueta da janela, abre o jornal e não vira a página.',
-    spec: { age: 'adult', skin: 2, face: 'quadrado', build: 'largo', hair: { style: 'curto', color: 'grisalho' }, facial: 'bigode', glasses: 'quadrado', clothes: { type: 'uniforme', color: '#efe8dc', color2: '#7a2638' }, browColor: '#766d78' },
+    spec: { age: 'adult', skin: 2, face: 'quadrado', build: 'largo', hair: { style: 'curto', color: 'grisalho' }, facial: 'bigode', glasses: 'quadrado', clothes: { type: 'uniforme', color: '#ece2d4', color2: '#6e2630' }, browColor: '#8a6a6a' },
     sempre: 'espresso', intro: { dia: 8, ordem: 1, kit: 'espresso' },
     conversa: [
       'Bom dia. Espresso. Curto.',
@@ -368,8 +368,8 @@ const REGULARES = {
   valentina: {
     nome: 'Valentina', nomeCompleto: 'Valentina', idade: 40, papel: 'Caixa de supermercado',
     resumo: 'Venezuelana, mora no bairro há dois anos com a filha, Sofía. Estuda com livros grossos enquanto toma café.',
-    spec: { age: 'adult', skin: 2, hair: { style: 'longo', color: 'preto' }, fringe: 'meio', clothes: { type: 'camisa', color: '#a2352f' }, acc: ['cracha', 'brincos'], lashes: true, lip: '#b03a48' },
-    specFinal: { clothes: { type: 'golav', color: '#f2ede6' }, acc: ['cracha', 'brincos'] },
+    spec: { age: 'adult', skin: 2, hair: { style: 'longo', color: 'preto' }, fringe: 'meio', clothes: { type: 'camisa', color: '#a8402f' }, acc: ['cracha', 'brincos'], lashes: true, lip: '#6e2630' },
+    specFinal: { clothes: { type: 'golav', color: '#ece2d4' }, acc: ['cracha', 'brincos'] },
     sempre: 'comleite', intro: { dia: 6, ordem: 0 },
     conversa: [
       'Hoje passei no caixa quarenta e dois pacotes de fralda. Quarenta e dois! O bairro está tendo muitos bebês.',
@@ -408,7 +408,7 @@ const REGULARES = {
   dani: {
     nome: 'Dani', nomeCompleto: 'Daniela', idade: 27, papel: 'Fotógrafa',
     resumo: 'Anda com uma câmera pendurada no pescoço e fotografa a rua como quem tenta segurar alguma coisa.',
-    spec: { age: 'young', skin: 0, hair: { style: 'rabo', color: 'castanho' }, fringe: 'lado', glasses: 'quadrado', clothes: { type: 'jaqueta', color: '#c4891c', color2: '#2f3142' }, acc: ['camera'], lashes: true },
+    spec: { age: 'young', skin: 0, hair: { style: 'rabo', color: 'castanho' }, fringe: 'lado', glasses: 'quadrado', clothes: { type: 'jaqueta', color: '#c4861d', color2: '#1f2c45' }, acc: ['camera'], lashes: true },
     sempre: 'mokapura', sempreFallback: ['chococanela', 'chocolate'], intro: { dia: 7, ordem: 0 },
     conversa: [
       'A luz das quatro da tarde nessa rua é a melhor da cidade. Pode anotar.',

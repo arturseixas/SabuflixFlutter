@@ -16,8 +16,9 @@ Abra `index.html` em qualquer navegador (computador ou celular). Não precisa de
 
 ## Código
 
-Tudo é desenhado e tocado em código (canvas 2D e Web Audio), sem imagens nem sons externos.
+Tudo é desenhado e tocado em código (canvas 2D e Web Audio), sem imagens nem sons externos. A arte usa uma paleta fixa de 36 cores (`PALETTE` em `src/art-core.js`): o salão e a esquina são cenas isométricas 2:1 em 480x270, e a hora do dia é uma troca de paleta, cor por cor.
 
 - `src/` contém os arquivos-fonte; `node build.js` junta tudo em `index.html` (e em `dist/artifact.html`, versão sem `<html>`/`<head>` para publicação).
+- `src/art-iso.js` faz a projeção isométrica; `src/art-scene.js` monta o salão e a fachada; `src/art-chars.js` desenha retratos e personagens de corpo inteiro.
 - `src/data-story.js` tem todas as falas e histórias; `src/data-game.js`, receitas, kits, grãos, decoração e visitantes.
 - `pesquisa/` guarda o relatório de design e as notas que embasaram o jogo.

@@ -3,7 +3,7 @@
 //   artifact.html -> mesmo conteúdo sem <html>/<head>/<body>, para publicar como Artifact
 const fs = require('fs'), path = require('path');
 const src = f => fs.readFileSync(path.join(__dirname, 'src', f), 'utf8');
-const JS = ['art-core.js', 'art-chars.js', 'art-scene.js', 'data-game.js', 'data-story.js', 'game-state.js', 'audio.js', 'game-main.js'];
+const JS = ['art-core.js', 'art-iso.js', 'art-chars.js', 'art-small.js', 'art-scene.js', 'data-game.js', 'data-story.js', 'game-state.js', 'audio.js', 'game-main.js'];
 const head = `<title>Café Girassol</title>
 <meta name="description" content="Jogo de cafeteria em pixel art: dez fregueses, dez histórias e um café para chamar de seu.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
