@@ -3,12 +3,16 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'addon_service.dart';
 
+typedef StreamProvider = ({String name, String brand, String baseUrl});
+
 class FrostStreamService {
   static const _penguPlayManifestUrl = String.fromEnvironment(
     'PENGUPLAY_MANIFEST_URL',
   );
 
-  static final List<({String name, String brand, String baseUrl})> _sources = [
+  /// Stremio add-ons queried for playable links, in no particular order:
+  /// [StreamScanner] ranks what they return.
+  static final List<StreamProvider> providers = [
     (name: 'Nebula', brand: 'Nebula', baseUrl: AddonService.fenixBase),
     (
       name: 'FrostStream',
@@ -51,8 +55,8 @@ class FrostStreamService {
     if (type != 'movie' && (season == null || episode == null)) return [];
 
     final results = await Future.wait(
-      _sources.map(
-        (source) => _fetchSource(
+      providers.map(
+        (source) => fetchProvider(
           source: source,
           imdbId: imdbId,
           type: type,
@@ -73,21 +77,24 @@ class FrostStreamService {
     }).toList();
   }
 
-  static Future<List<Map<String, dynamic>>> _fetchSource({
-    required ({String name, String brand, String baseUrl}) source,
+  /// Streams from a single add-on; an unreachable add-on yields none.
+  static Future<List<Map<String, dynamic>>> fetchProvider({
+    required StreamProvider source,
     required String imdbId,
     required String type,
     int? season,
     int? episode,
+    http.Client? client,
+    Duration timeout = const Duration(seconds: 12),
   }) async {
     final path = type == 'movie'
         ? '/stream/movie/$imdbId.json'
         : '/stream/series/$imdbId:$season:$episode.json';
 
     try {
-      final response = await http
-          .get(Uri.parse('${source.baseUrl}$path'))
-          .timeout(const Duration(seconds: 12));
+      final uri = Uri.parse('${source.baseUrl}$path');
+      final response =
+          await (client?.get(uri) ?? http.get(uri)).timeout(timeout);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List streams = data['streams'] ?? [];
@@ -114,7 +121,10 @@ class FrostStreamService {
             'Opção ${(entry.key + 1).toString().padLeft(2, '0')}',
           ].join('  •  ');
           stream['displayQuality'] = quality;
+          stream['displayAudio'] = audio;
           stream['sourceName'] = source.name;
+          stream['sourceOrder'] = entry.key;
+          stream['headers'] = requestHeadersOf(stream);
           return stream;
         }).toList();
       }
@@ -124,14 +134,32 @@ class FrostStreamService {
     return [];
   }
 
+  /// Request headers a Stremio stream declares it needs
+  /// (`behaviorHints.proxyHeaders.request`) — typically Referer, Origin or
+  /// User-Agent. Hosts that check them answer 403 without them.
+  static Map<String, String> requestHeadersOf(Map stream) {
+    final hints = stream['behaviorHints'];
+    if (hints is! Map) return const {};
+    final proxy = hints['proxyHeaders'];
+    if (proxy is! Map) return const {};
+    final request = proxy['request'];
+    if (request is! Map) return const {};
+    return {
+      for (final entry in request.entries)
+        if (entry.key is String && entry.value != null)
+          entry.key as String: entry.value.toString(),
+    };
+  }
+
   static String _qualityFrom(String label) {
     final match = RegExp(
       r'\b(4K|2160p|1440p|1080p|720p|480p|CAM)\b',
       caseSensitive: false,
     ).firstMatch(label);
     if (match == null) return 'Qualidade automática';
-    final value = match.group(1)!;
-    return value.toLowerCase() == '2160p' ? '4K' : value.toUpperCase();
+    final value = match.group(1)!.toLowerCase();
+    if (value == '2160p' || value == '4k') return '4K';
+    return value == 'cam' ? 'CAM' : value;
   }
 
   static String? _audioFrom(String label) {
