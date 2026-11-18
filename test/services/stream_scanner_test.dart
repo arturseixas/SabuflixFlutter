@@ -190,4 +190,15 @@ void main() {
     });
     expect(candidate.label, 'Nebula · 720p · Dublado');
   });
+
+  test('the Global add-on is queried at its base URL', () {
+    final global = FrostStreamService.providers
+        .firstWhere((provider) => provider.name == 'Global');
+    expect(global.brand, 'Global');
+    expect(
+      global.baseUrl,
+      'https://hdhub.thevolecitor.qzz.io/'
+      'eyJ0b3Jib3giOiJ1bnNldCIsInF1YWxpdGllcyI6IjIxNjBwLDEwODBwLDcyMHAiLCJzb3J0IjoiZGVzYyJ9',
+    );
+  });
 }

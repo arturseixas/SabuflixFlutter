@@ -12,6 +12,11 @@ class FrostStreamService {
 
   /// Stremio add-ons queried for playable links, in no particular order:
   /// [StreamScanner] ranks what they return.
+  // HDHub add-on; the path segment is its encoded configuration
+  // (qualities 2160p/1080p/720p, best first, no TorBox).
+  static const _globalManifestUrl =
+      'https://hdhub.thevolecitor.qzz.io/eyJ0b3Jib3giOiJ1bnNldCIsInF1YWxpdGllcyI6IjIxNjBwLDEwODBwLDcyMHAiLCJzb3J0IjoiZGVzYyJ9/manifest.json';
+
   static final List<StreamProvider> providers = [
     (name: 'Nebula', brand: 'Nebula', baseUrl: AddonService.fenixBase),
     (
@@ -23,6 +28,11 @@ class FrostStreamService {
       name: 'Wali',
       brand: 'Wali',
       baseUrl: 'https://bestcine.dpdns.org',
+    ),
+    (
+      name: 'Global',
+      brand: 'Global',
+      baseUrl: addonBaseUrl(_globalManifestUrl),
     ),
     if (_penguPlayManifestUrl.isNotEmpty)
       (
