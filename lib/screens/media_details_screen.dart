@@ -124,13 +124,25 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
     }
   }
 
-  /// Source picker, used both to start playback and to queue a download.
+  /// Plays the title, letting the player find and switch sources itself.
+  void _play({int? season, int? episode, String? episodeTitle}) {
+    Navigator.push(
+      context,
+      glassRoute(VideoPlayerScreen(
+        media: _detailedMedia ?? widget.media,
+        season: season,
+        episode: episode,
+        episodeTitle: episodeTitle,
+        autoSource: true,
+      )),
+    );
+  }
+
+  /// Quality picker for downloads, where the user chooses the file to keep.
   Future<void> _showStreamSelector({
     int? season,
     int? episode,
     String? episodeTitle,
-    bool forDownload = false,
-    Duration startAt = Duration.zero,
   }) async {
     final media = _detailedMedia ?? widget.media;
     final imdbId = media.imdbId;
@@ -179,9 +191,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      forDownload
-                          ? 'Escolha a qualidade do download'
-                          : 'Escolha como assistir',
+                      'Escolha a qualidade do download',
                       style: SabuflixTheme.of(context).title(fontSize: 20),
                     ),
                     SizedBox(height: 5),
@@ -212,9 +222,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                 borderRadius: SabuflixTheme.radiusSm,
                               ),
                               child: Icon(
-                                forDownload
-                                    ? Icons.download_rounded
-                                    : Icons.play_arrow_rounded,
+                                Icons.download_rounded,
                                 color: SabuflixTheme.of(context).accent,
                                 size: 22,
                               ),
@@ -243,26 +251,12 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                             ),
                             onTap: () {
                               Navigator.pop(ctx);
-                              if (forDownload) {
-                                _startDownload(
-                                  media: media,
-                                  stream: s,
-                                  season: season,
-                                  episode: episode,
-                                  episodeTitle: episodeTitle,
-                                );
-                                return;
-                              }
-                              Navigator.push(
-                                context,
-                                glassRoute(VideoPlayerScreen(
-                                  media: media,
-                                  videoUrl: s['url'],
-                                  season: season,
-                                  episode: episode,
-                                  episodeTitle: episodeTitle,
-                                  startAt: startAt,
-                                )),
+                              _startDownload(
+                                media: media,
+                                stream: s,
+                                season: season,
+                                episode: episode,
+                                episodeTitle: episodeTitle,
                               );
                             },
                           );
@@ -607,16 +601,20 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                     SizedBox(
                       width: isDesktop ? 320 : double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _loadingDetails || _detailsError != null
+                        // The player resolves the IMDb id itself when the
+                        // details request failed, so only loading blocks it.
+                        onPressed: _loadingDetails
                             ? null
                             : () {
                                 if (savedProgress != null) {
                                   resumeWatching(context, savedProgress);
                                 } else if (media.mediaType == 'tv') {
-                                  _showStreamSelector(
-                                      season: _seasonNumber, episode: 1);
+                                  _play(
+                                      season: _seasonNumber,
+                                      episode: 1,
+                                      episodeTitle: _episodeTitleFor(1));
                                 } else {
-                                  _showStreamSelector();
+                                  _play();
                                 }
                               },
                         icon: Icon(Icons.play_arrow_rounded,
@@ -680,7 +678,6 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                 media.mediaType == 'tv' ? _seasonNumber : null,
                             episode: media.mediaType == 'tv' ? 1 : null,
                             onStart: () => _showStreamSelector(
-                              forDownload: true,
                               season: media.mediaType == 'tv'
                                   ? _seasonNumber
                                   : null,
@@ -811,7 +808,7 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                 : media.fullBackdropPath;
 
                             return GestureDetector(
-                              onTap: () => _showStreamSelector(
+                              onTap: () => _play(
                                 season: _seasonNumber,
                                 episode: epNum,
                                 episodeTitle: epName,
@@ -867,7 +864,6 @@ class _MediaDetailsScreenState extends State<MediaDetailsScreen> {
                                                 episode: epNum,
                                                 onStart: () =>
                                                     _showStreamSelector(
-                                                  forDownload: true,
                                                   season: _seasonNumber,
                                                   episode: epNum,
                                                   episodeTitle: epName,

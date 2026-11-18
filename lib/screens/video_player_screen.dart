@@ -13,6 +13,7 @@ import '../providers/continue_watching_provider.dart';
 import '../providers/watched_provider.dart';
 import '../services/native_pip_service.dart';
 import '../services/addon_service.dart';
+import '../services/stream_scanner.dart';
 import '../services/tmdb_service.dart';
 import '../theme/sabuflix_theme.dart';
 import '../utils/formatters.dart';
@@ -32,6 +33,14 @@ class VideoPlayerScreen extends StatefulWidget {
   /// Where playback should pick up from.
   final Duration startAt;
 
+  /// Finds and switches sources by itself: scans every add-on when there is
+  /// no [videoUrl], and fails over to the next working link whenever the
+  /// current one (including a saved [videoUrl]) stops playing.
+  final bool autoSource;
+
+  /// Injectable for tests.
+  final StreamScanner? scanner;
+
   const VideoPlayerScreen({
     super.key,
     required this.media,
@@ -40,6 +49,8 @@ class VideoPlayerScreen extends StatefulWidget {
     this.episode,
     this.episodeTitle,
     this.startAt = Duration.zero,
+    this.autoSource = false,
+    this.scanner,
   });
 
   @override
@@ -64,6 +75,32 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   bool _showAudioMenu = false;
   bool _showSubtitleMenu = false;
+  bool _showSourceMenu = false;
+
+  // Source selection. [_currentUrl] is what the player has open; [_current]
+  // is its scan entry when it came from the scanner.
+  late final StreamScanner _scanner = widget.scanner ?? StreamScanner();
+  StreamSubscription<List<StreamCandidate>>? _scanSubscription;
+  List<StreamCandidate> _sources = [];
+  StreamCandidate? _current;
+  String? _currentUrl;
+  final _failedUrls = <String>{};
+  bool _scanning = false;
+  bool _scannedOnce = false;
+  bool _awaitingSource = false;
+  bool _startedCurrent = false;
+  bool _userPaused = false;
+  DateTime _openedAt = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastProgressAt = DateTime.now();
+  Timer? _stallWatchdog;
+  late Duration _resumeFrom = widget.startAt;
+  Future<String?>? _imdbId;
+
+  /// Browsers only start media from a user gesture; after the first Play,
+  /// later source switches may start on their own.
+  bool _userActivated = !kIsWeb;
+  String? _notice;
+  Timer? _noticeTimer;
 
   List<AudioTrack> _audioTracks = [];
   AudioTrack? _selectedAudioTrack;
@@ -140,7 +177,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       episodeTitle: widget.episodeTitle,
       positionSeconds: _currentPosition.toInt(),
       durationSeconds: _totalDuration.toInt(),
-      sourceUrl: widget.videoUrl,
+      sourceUrl: _currentUrl,
     );
     final progress = _currentPosition / _totalDuration;
     if (!_markedCompleted &&
@@ -151,19 +188,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
-  /// media_kit reports a duration only once the container has been parsed, so
-  /// the resume seek waits for the first real duration instead of firing
-  /// straight after `open` (where it would be dropped).
-  Future<void> _seekToStartOnce() async {
-    if (_seekedToStart) return;
-    if (_totalDuration <= 0) return;
+  /// The resume point travels inside [Media.start]; this only confirms it
+  /// once the container is parsed, and restarts titles saved at the very end.
+  void _confirmResumeOnce() {
+    if (_seekedToStart || _totalDuration <= 0) return;
     _seekedToStart = true;
-
     final start = widget.startAt.inSeconds;
-    if (start < 10 || start >= _totalDuration - 10) return;
-
-    await _player?.seek(widget.startAt);
-    if (!mounted) return;
+    if (start < 10) return;
+    if (start >= _totalDuration - 10) {
+      _player?.seek(Duration.zero);
+      return;
+    }
     setState(() => _resumeBannerVisible = true);
     Timer(const Duration(seconds: 4), () {
       if (mounted) setState(() => _resumeBannerVisible = false);
@@ -171,7 +206,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _initPlayer() async {
-    if (widget.videoUrl == null || widget.videoUrl!.isEmpty) {
+    final url = widget.videoUrl;
+    if ((url == null || url.isEmpty) && !widget.autoSource) {
       _playbackError = 'Nenhuma fonte de vídeo disponível.';
       return;
     }
@@ -187,25 +223,35 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             _showControls = true;
             _isBuffering = false;
           });
-        } else {
-          _failPlayback();
+        } else if (kIsWeb || _isFatalError(message)) {
+          // Stale errors from the media being replaced arrive right after
+          // `open`; the startup timer still covers the new link.
+          if (DateTime.now().difference(_openedAt) >
+              const Duration(milliseconds: 400)) {
+            _onSourceFailed(_currentUrl);
+          }
         }
+        // Anything else is mpv logging a recoverable hiccup (a corrupt
+        // frame, a TCP reconnect): the startup timer and the stall watchdog
+        // decide whether the link is really gone.
       });
-      if (!kIsWeb) {
-        _startupTimer = Timer(const Duration(seconds: 30), _failPlayback);
-      }
       _videoController = VideoController(_player!);
 
       _player!.stream.position.listen((Duration position) {
         if (!mounted) return;
-        if (position > Duration.zero) _startupTimer?.cancel();
+        if (position > Duration.zero && _currentUrl != null) {
+          _startupTimer?.cancel();
+          _startedCurrent = true;
+          if (position != _resumeFrom) _lastProgressAt = DateTime.now();
+          _resumeFrom = position;
+        }
         setState(() => _currentPosition = position.inSeconds.toDouble());
       });
 
       _player!.stream.duration.listen((Duration duration) {
         if (!mounted) return;
         setState(() => _totalDuration = duration.inSeconds.toDouble());
-        if (_totalDuration > 0) _seekToStartOnce();
+        if (_totalDuration > 0) _confirmResumeOnce();
       });
 
       _player!.stream.playing.listen((bool playing) {
@@ -239,27 +285,246 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           }
         });
       });
-
-      // Opening a route/awaiting a manifest can consume browser user activation.
-      // Load paused, then start from the visible Play button's gesture.
-      await _player!.open(Media(widget.videoUrl!), play: !kIsWeb);
-      unawaited(_loadExternalSubtitles());
     } catch (_) {
+      _failPlayback();
+      return;
+    }
+
+    if (url != null && url.isNotEmpty) {
+      await _open(url, const {});
+    } else {
+      unawaited(_startScan());
+    }
+    unawaited(_loadExternalSubtitles());
+  }
+
+  /// Opens [url] at the current resume point.
+  Future<void> _open(String url, Map<String, String> headers) async {
+    _startupTimer?.cancel();
+    _currentUrl = url;
+    _startedCurrent = false;
+    _openedAt = DateTime.now();
+    _lastProgressAt = _openedAt;
+    _stallWatchdog ??= Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _checkStall(),
+    );
+    if (mounted) setState(() => _isBuffering = true);
+    // Opening a route/awaiting a manifest can consume browser user activation.
+    // Until the first Play, load paused and start from the button's gesture.
+    if (_userActivated) _armStartupTimer();
+    try {
+      await _player!.open(
+        Media(
+          url,
+          httpHeaders: headers.isEmpty ? null : headers,
+          start: _resumeFrom > Duration.zero ? _resumeFrom : null,
+        ),
+        play: _userActivated,
+      );
+    } catch (_) {
+      _onSourceFailed(url);
+    }
+  }
+
+  /// mpv reports these when the link itself is unusable.
+  static bool _isFatalError(String message) {
+    final text = message.toLowerCase();
+    return text.contains('failed to open') ||
+        text.contains('failed to recognize file format') ||
+        text.contains('http error') ||
+        text.contains('server returned') ||
+        text.contains('connection refused') ||
+        text.contains('no such file');
+  }
+
+  /// A link that played and then froze (expired token, dropped CDN node)
+  /// is swapped for the next one at the same position.
+  void _checkStall() {
+    if (!mounted || _currentUrl == null || !_startedCurrent) return;
+    // Paused by any means (the user, PiP controls, a browser policy).
+    if (_userPaused ||
+        _waitingForBrowserPlay ||
+        (!_isPlaying && !_isBuffering)) {
+      _lastProgressAt = DateTime.now();
+      return;
+    }
+    if (DateTime.now().difference(_lastProgressAt) >
+        const Duration(seconds: 20)) {
+      _onSourceFailed(_currentUrl);
+    }
+  }
+
+  /// A link that hasn't produced a frame by now is treated as dead; with
+  /// alternatives at hand there is no reason to wait as long.
+  void _armStartupTimer() {
+    _startupTimer?.cancel();
+    final patience = widget.autoSource || _sources.length > 1
+        ? const Duration(seconds: 15)
+        : const Duration(seconds: 30);
+    final url = _currentUrl;
+    _startupTimer = Timer(patience, () => _onSourceFailed(url));
+  }
+
+  /// Marks the open link as failed and moves to the next one, keeping the
+  /// position; only when nothing is left does the error screen appear.
+  void _onSourceFailed([String? failedUrl]) {
+    if (!mounted || _player == null || _playbackError != null) return;
+    final url = failedUrl ?? _currentUrl;
+    // Late reports about a link that was already replaced, or repeated
+    // reports while the next one is being found.
+    if (url != _currentUrl) return;
+    if (url != null && _failedUrls.contains(url) && _awaitingSource) return;
+    _startupTimer?.cancel();
+    if (url != null) {
+      _failedUrls.add(url);
+      for (final candidate in _sources) {
+        if (candidate.url == url) candidate.health = StreamHealth.dead;
+      }
+    }
+    final next = _nextCandidate();
+    if (next != null) {
+      _switchTo(next,
+          notice: 'Fonte indisponível · trocando para ${next.label}');
+    } else if (widget.autoSource && !_scannedOnce) {
+      _awaitingSource = true;
+      _showNotice('Fonte indisponível · procurando outra');
+      unawaited(_startScan());
+    } else if (_scanning) {
+      setState(() {
+        _awaitingSource = true;
+        _isBuffering = true;
+      });
+      _showNotice('Procurando outra fonte');
+    } else {
       _failPlayback();
     }
   }
 
-  Future<void> _loadExternalSubtitles() async {
-    var imdbId = widget.media.imdbId;
-    if ((imdbId == null || imdbId.isEmpty) && widget.media.id > 0) {
-      try {
-        final details = await TMDBService().fetchMediaDetails(
-          widget.media.id,
-          widget.media.mediaType,
-        );
-        imdbId = details?.imdbId;
-      } catch (_) {}
+  StreamCandidate? _nextCandidate() {
+    for (final candidate in StreamScanner.rank(_sources)) {
+      if (_failedUrls.contains(candidate.url)) continue;
+      if (candidate.health == StreamHealth.dead) continue;
+      return candidate;
     }
+    return null;
+  }
+
+  bool get _needsSource =>
+      _awaitingSource ||
+      _currentUrl == null ||
+      _failedUrls.contains(_currentUrl);
+
+  Future<void> _switchTo(StreamCandidate candidate, {String? notice}) async {
+    if (!mounted) return;
+    setState(() {
+      _current = candidate;
+      _awaitingSource = false;
+      _showSourceMenu = false;
+    });
+    if (notice != null) _showNotice(notice);
+    await _open(candidate.url, candidate.headers);
+  }
+
+  void _pickSource(StreamCandidate candidate) {
+    _failedUrls.remove(candidate.url);
+    if (candidate.url == _currentUrl) {
+      setState(() => _showSourceMenu = false);
+      return;
+    }
+    _switchTo(candidate, notice: 'Trocando para ${candidate.label}');
+  }
+
+  Future<String?> _resolveImdbId() => _imdbId ??= () async {
+        final known = widget.media.imdbId;
+        if (known != null && known.isNotEmpty) return known;
+        if (widget.media.id <= 0) return null;
+        try {
+          final details = await TMDBService().fetchMediaDetails(
+            widget.media.id,
+            widget.media.mediaType,
+          );
+          return details?.imdbId;
+        } catch (_) {
+          return null;
+        }
+      }();
+
+  /// Scans the add-ons and starts the first link confirmed to answer,
+  /// without waiting for the slower ones.
+  Future<void> _startScan({bool fresh = false}) async {
+    _scannedOnce = true;
+    await _scanSubscription?.cancel();
+    if (mounted) setState(() => _scanning = true);
+    final imdbId = await _resolveImdbId();
+    if (!mounted) return;
+    if (imdbId == null || imdbId.isEmpty) {
+      setState(() => _scanning = false);
+      if (_needsSource) {
+        _failPlayback(message: 'Este título ainda não tem fontes disponíveis.');
+      }
+      return;
+    }
+    _scanSubscription = _scanner.scan(
+      (
+        imdbId: imdbId,
+        type: widget.media.mediaType == 'tv' ? 'series' : 'movie',
+        season: widget.season,
+        episode: widget.episode,
+      ),
+      fresh: fresh,
+    ).listen(
+      (list) {
+        if (!mounted) return;
+        setState(() => _sources = list);
+        if (!_needsSource) return;
+        final best = _nextCandidate();
+        if (best != null && best.health == StreamHealth.ok) {
+          _switchTo(best,
+              notice:
+                  _currentUrl == null ? null : 'Trocando para ${best.label}');
+        }
+      },
+      onDone: () {
+        if (!mounted) return;
+        setState(() => _scanning = false);
+        if (!_needsSource) return;
+        final best = _nextCandidate();
+        if (best != null) {
+          _switchTo(best);
+        } else {
+          _failPlayback();
+        }
+      },
+    );
+  }
+
+  void _showNotice(String text) {
+    _noticeTimer?.cancel();
+    setState(() => _notice = text);
+    _noticeTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _notice = null);
+    });
+  }
+
+  Future<void> _retry() async {
+    setState(() {
+      _playbackError = null;
+      _failedUrls.clear();
+      _awaitingSource = false;
+      _current = null;
+    });
+    if (widget.autoSource) {
+      _currentUrl = null;
+      _sources = [];
+      await _startScan(fresh: true);
+    } else if (widget.videoUrl?.isNotEmpty ?? false) {
+      await _open(widget.videoUrl!, const {});
+    }
+  }
+
+  Future<void> _loadExternalSubtitles() async {
+    final imdbId = await _resolveImdbId();
     if (imdbId == null || imdbId.isEmpty) return;
 
     final items = await const AddonService().subtitles(
@@ -310,17 +575,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
-  void _failPlayback() {
+  void _failPlayback({String? message}) {
     if (!mounted) return;
     _startupTimer?.cancel();
     _hideTimer?.cancel();
     _player?.pause();
+    // Links the probe already found down count as tested too.
+    final tried = {
+      ..._failedUrls,
+      for (final c in _sources)
+        if (c.health == StreamHealth.dead) c.url,
+    }.length;
     setState(() {
       _isPlaying = false;
       _isBuffering = false;
-      _playbackError = kIsWeb
-          ? 'O navegador não conseguiu reproduzir esta fonte. Tente outra opção: o servidor precisa permitir acesso pelo navegador e usar um formato compatível.'
-          : 'Não foi possível reproduzir esta fonte.';
+      _scanning = false;
+      _playbackError = message ??
+          (widget.autoSource
+              ? switch (tried) {
+                  0 => 'Nenhuma fonte encontrada para este título.',
+                  1 => 'A única fonte encontrada não funcionou.',
+                  _ => 'Nenhuma das $tried fontes funcionou agora.',
+                }
+              : kIsWeb
+                  ? 'O navegador não conseguiu reproduzir esta fonte.'
+                  : 'Não foi possível reproduzir esta fonte.');
     });
   }
 
@@ -342,7 +621,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Verifique sua conexão ou escolha outra fonte nos detalhes do título.',
+                  widget.autoSource
+                      ? 'As fontes mudam com frequência. Tente de novo em instantes.'
+                      : kIsWeb
+                          ? 'O servidor precisa permitir acesso pelo navegador e usar um formato compatível.'
+                          : 'Verifique sua conexão ou tente novamente.',
                   textAlign: TextAlign.center,
                   style: SabuflixTheme.body(),
                 ),
@@ -352,23 +635,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   runSpacing: 12,
                   alignment: WrapAlignment.center,
                   children: [
-                    if (widget.videoUrl?.isNotEmpty ?? false)
+                    if (_player != null &&
+                        (widget.autoSource ||
+                            (widget.videoUrl?.isNotEmpty ?? false)))
                       ElevatedButton(
-                        onPressed: () => Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (_) => VideoPlayerScreen(
-                              media: widget.media,
-                              videoUrl: widget.videoUrl,
-                              season: widget.season,
-                              episode: widget.episode,
-                              episodeTitle: widget.episodeTitle,
-                              startAt: _currentPosition > 0
-                                  ? Duration(seconds: _currentPosition.toInt())
-                                  : widget.startAt,
-                            ),
-                          ),
-                        ),
+                        onPressed: _retry,
                         child: const Text('Tentar novamente'),
                       ),
                     OutlinedButton(
@@ -391,6 +662,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           _showControls = false;
           _showAudioMenu = false;
           _showSubtitleMenu = false;
+          _showSourceMenu = false;
         });
       }
     });
@@ -410,12 +682,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     if (_player != null) {
       if (_isPlaying) {
         _startupTimer?.cancel();
+        _userPaused = true;
         _player!.pause();
       } else {
+        _userPaused = false;
         if (kIsWeb) {
           setState(() => _waitingForBrowserPlay = false);
-          _startupTimer?.cancel();
-          _startupTimer = Timer(const Duration(seconds: 30), _failPlayback);
+          if (!_startedCurrent && _currentUrl != null) _armStartupTimer();
+          _userActivated = true;
         }
         _player!.play();
       }
@@ -481,6 +755,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     NativePipService.instance.onPipChanged = null;
     NativePipService.instance.exit();
     _errorSubscription?.cancel();
+    _scanSubscription?.cancel();
+    _noticeTimer?.cancel();
+    _stallWatchdog?.cancel();
     _startupTimer?.cancel();
     _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -505,7 +782,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Widget _buildPlayer(BuildContext context) {
     if (_playbackError != null) return _errorView();
-    final hasVideo = _videoController != null;
+    final hasVideo = _videoController != null && _currentUrl != null;
+    final searching = _currentUrl == null;
 
     return CallbackShortcuts(
       bindings: {
@@ -547,9 +825,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 if (_isBuffering && hasVideo && !_waitingForBrowserPlay)
                   const Center(
                     child: CircularProgressIndicator(
-                      color: SabuflixTheme.accent,
+                      color: Colors.white,
+                      strokeWidth: 2.5,
                     ),
                   ),
+
+                if (searching) _SearchingSources(found: _sources.length),
 
                 // Brief confirmation that playback jumped to where it stopped.
                 Positioned(
@@ -559,7 +840,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   child: IgnorePointer(
                     child: AnimatedOpacity(
                       duration: SabuflixTheme.durationMed,
-                      opacity: _resumeBannerVisible ? 1.0 : 0.0,
+                      opacity:
+                          _resumeBannerVisible || _notice != null ? 1.0 : 0.0,
                       child: Center(
                         child: GlassContainer(
                           borderRadius: SabuflixTheme.radiusPill,
@@ -570,7 +852,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             vertical: 10,
                           ),
                           child: Text(
-                            'Retomando de ${_formatDuration(widget.startAt.inSeconds.toDouble())}',
+                            _notice ??
+                                'Retomando de ${_formatDuration(widget.startAt.inSeconds.toDouble())}',
                             style: SabuflixTheme.caption(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -651,6 +934,27 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               right: 12,
                               child: Row(
                                 children: [
+                                  if (widget.autoSource || _sources.isNotEmpty)
+                                    _SourceButton(
+                                      label: _current?.label ??
+                                          (searching
+                                              ? 'Fontes'
+                                              : 'Fonte atual'),
+                                      scanning: _scanning,
+                                      onPressed: () {
+                                        if (!_scannedOnce &&
+                                            widget.autoSource) {
+                                          unawaited(_startScan());
+                                        }
+                                        setState(() {
+                                          _showSourceMenu = !_showSourceMenu;
+                                          _showAudioMenu = false;
+                                          _showSubtitleMenu = false;
+                                        });
+                                        _startHideTimer();
+                                      },
+                                    ),
+                                  const SizedBox(width: 4),
                                   if (_pipSupported)
                                     IconButton(
                                       tooltip: _isInPip
@@ -706,6 +1010,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                           _showSubtitleMenu =
                                               !_showSubtitleMenu;
                                           _showAudioMenu = false;
+                                          _showSourceMenu = false;
                                         });
                                       },
                                     ),
@@ -719,66 +1024,73 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                         setState(() {
                                           _showAudioMenu = !_showAudioMenu;
                                           _showSubtitleMenu = false;
+                                          _showSourceMenu = false;
                                         });
                                       },
                                     ),
                                 ],
                               ),
                             ),
-                            Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  IconButton(
-                                    iconSize: 40,
-                                    icon: const Icon(
-                                      Icons.replay_10_rounded,
-                                      color: Colors.white,
-                                    ),
-                                    onPressed: () => _seek(-10),
-                                  ),
-                                  const SizedBox(width: 28),
-                                  Container(
-                                    width: 70,
-                                    height: 70,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: SabuflixTheme.accent,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: SabuflixTheme.accent
-                                              .withValues(alpha: 0.45),
-                                          blurRadius: 20,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                    child: IconButton(
-                                      tooltip:
-                                          _isPlaying ? 'Pausar' : 'Reproduzir',
-                                      iconSize: 38,
-                                      icon: Icon(
-                                        _isPlaying
-                                            ? Icons.pause_rounded
-                                            : Icons.play_arrow_rounded,
+                            if (!searching)
+                              Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    IconButton(
+                                      iconSize: 40,
+                                      icon: const Icon(
+                                        Icons.replay_10_rounded,
                                         color: Colors.white,
                                       ),
-                                      onPressed: _playPause,
+                                      onPressed: () => _seek(-10),
                                     ),
-                                  ),
-                                  const SizedBox(width: 28),
-                                  IconButton(
-                                    iconSize: 40,
-                                    icon: const Icon(
-                                      Icons.forward_10_rounded,
-                                      color: Colors.white,
+                                    const SizedBox(width: 28),
+                                    Container(
+                                      width: 70,
+                                      height: 70,
+                                      alignment: Alignment.center,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: IconButton(
+                                        tooltip: _isPlaying
+                                            ? 'Pausar'
+                                            : 'Reproduzir',
+                                        iconSize: 38,
+                                        icon: Icon(
+                                          _isPlaying
+                                              ? Icons.pause_rounded
+                                              : Icons.play_arrow_rounded,
+                                          color: Colors.black,
+                                        ),
+                                        onPressed: _playPause,
+                                      ),
                                     ),
-                                    onPressed: () => _seek(10),
-                                  ),
-                                ],
+                                    const SizedBox(width: 28),
+                                    IconButton(
+                                      iconSize: 40,
+                                      icon: const Icon(
+                                        Icons.forward_10_rounded,
+                                        color: Colors.white,
+                                      ),
+                                      onPressed: () => _seek(10),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                            if (_showSourceMenu)
+                              Positioned(
+                                right: 12,
+                                top: 64,
+                                child: _SourceMenu(
+                                  sources: _sources,
+                                  current: _currentUrl,
+                                  failed: _failedUrls,
+                                  scanning: _scanning,
+                                  onSelect: _pickSource,
+                                ),
+                              ),
                             if (_showAudioMenu)
                               Positioned(
                                 right: 56,
@@ -825,12 +1137,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                       thumbShape: const RoundSliderThumbShape(
                                         enabledThumbRadius: 7,
                                       ),
-                                      activeTrackColor: SabuflixTheme.accent,
+                                      activeTrackColor: Colors.white,
                                       inactiveTrackColor:
                                           Colors.white.withValues(alpha: 0.25),
-                                      thumbColor: SabuflixTheme.accent,
-                                      overlayColor: SabuflixTheme.accent
-                                          .withValues(alpha: 0.2),
+                                      thumbColor: Colors.white,
+                                      overlayColor:
+                                          Colors.white.withValues(alpha: 0.2),
                                     ),
                                     child: Slider(
                                       value: _currentPosition.clamp(
@@ -943,7 +1255,7 @@ class _TrackMenu<T> extends StatelessWidget {
               trailing: isSelected
                   ? const Icon(
                       Icons.check_rounded,
-                      color: SabuflixTheme.accent,
+                      color: Colors.white,
                       size: 18,
                     )
                   : null,
@@ -951,6 +1263,188 @@ class _TrackMenu<T> extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// Shown over the backdrop while the first link is being found.
+class _SearchingSources extends StatelessWidget {
+  final int found;
+  const _SearchingSources({required this.found});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+                color: Colors.white, strokeWidth: 2.5),
+          ),
+          const SizedBox(height: 18),
+          Text('Procurando a melhor fonte',
+              style: SabuflixTheme.title(fontSize: 16, color: Colors.white)),
+          const SizedBox(height: 6),
+          Text(
+            found == 0
+                ? 'Consultando os servidores'
+                : found == 1
+                    ? '1 fonte encontrada · testando'
+                    : '$found fontes encontradas · testando',
+            style: SabuflixTheme.caption(
+                fontSize: 13, color: SabuflixTheme.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact pill naming the source in use; opens [_SourceMenu].
+class _SourceButton extends StatelessWidget {
+  final String label;
+  final bool scanning;
+  final VoidCallback onPressed;
+
+  const _SourceButton({
+    required this.label,
+    required this.scanning,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Trocar fonte',
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.white.withValues(alpha: 0.12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          shape: RoundedRectangleBorder(borderRadius: SabuflixTheme.radiusSm),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (scanning)
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 1.6),
+              )
+            else
+              const Icon(Icons.layers_outlined, size: 16, color: Colors.white),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: SabuflixTheme.body(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Ranked list of links with a one-word health note each.
+class _SourceMenu extends StatelessWidget {
+  final List<StreamCandidate> sources;
+  final String? current;
+  final Set<String> failed;
+  final bool scanning;
+  final ValueChanged<StreamCandidate> onSelect;
+
+  const _SourceMenu({
+    required this.sources,
+    required this.current,
+    required this.failed,
+    required this.scanning,
+    required this.onSelect,
+  });
+
+  String _status(StreamCandidate source) {
+    if (failed.contains(source.url)) return 'falhou';
+    return switch (source.health) {
+      StreamHealth.ok =>
+        source.latency == null ? 'ok' : '${source.latency!.inMilliseconds} ms',
+      StreamHealth.pending => 'testando',
+      StreamHealth.unknown => 'não testada',
+      StreamHealth.dead => 'fora do ar',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      borderRadius: SabuflixTheme.radiusMd,
+      padding: const EdgeInsets.all(6),
+      child: SizedBox(
+        width: 280,
+        height: sources.length > 5 ? 280 : null,
+        child: sources.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.all(14),
+                child: Text(
+                  scanning
+                      ? 'Procurando fontes…'
+                      : 'Nenhuma outra fonte encontrada.',
+                  style: SabuflixTheme.body(
+                      fontSize: 13, color: SabuflixTheme.textSecondary),
+                ),
+              )
+            : ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: sources.length,
+                itemBuilder: (context, index) {
+                  final source = sources[index];
+                  final selected = source.url == current;
+                  final usable = !failed.contains(source.url) &&
+                      source.health != StreamHealth.dead;
+                  return ListTile(
+                    dense: true,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: SabuflixTheme.radiusSm),
+                    title: Text(
+                      source.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SabuflixTheme.body(
+                        fontSize: 13,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected || usable
+                            ? Colors.white
+                            : SabuflixTheme.textMuted,
+                      ),
+                    ),
+                    trailing: selected
+                        ? const Icon(Icons.check_rounded,
+                            color: Colors.white, size: 18)
+                        : Text(
+                            _status(source),
+                            style: SabuflixTheme.caption(
+                                fontSize: 11, color: SabuflixTheme.textMuted),
+                          ),
+                    onTap: () => onSelect(source),
+                  );
+                },
+              ),
       ),
     );
   }

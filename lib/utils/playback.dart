@@ -5,7 +5,6 @@ import '../models/download_item.dart';
 import '../models/watch_progress.dart';
 import '../providers/continue_watching_provider.dart';
 import '../providers/downloads_provider.dart';
-import '../screens/media_details_screen.dart';
 import '../screens/video_player_screen.dart';
 import '../theme/sabuflix_theme.dart';
 import 'app_route.dart';
@@ -54,9 +53,9 @@ Future<void> playDownload(BuildContext context, DownloadItem item) async {
 
 /// Resumes a "Continuar Assistindo" entry.
 ///
-/// Prefers the offline copy when the title has been downloaded, falls back to
-/// the source it was streaming from, and finally opens the details screen when
-/// neither is available any more.
+/// Prefers the offline copy when the title has been downloaded, then the link
+/// it was streaming from. Saved links often expire, so the player is allowed
+/// to find a fresh source on its own — also when none was saved.
 Future<void> resumeWatching(BuildContext context, WatchProgress entry) async {
   final downloads = context.read<DownloadsProvider>();
   final download = downloads.find(entry.media.id,
@@ -68,23 +67,18 @@ Future<void> resumeWatching(BuildContext context, WatchProgress entry) async {
   }
 
   final source = entry.sourceUrl;
-  if (source == null || source.isEmpty) {
-    if (!context.mounted) return;
-    Navigator.push(context, glassRoute(MediaDetailsScreen(media: entry.media)));
-    return;
-  }
-
   if (!context.mounted) return;
   Navigator.push(
     context,
     glassRoute(
       VideoPlayerScreen(
         media: entry.media,
-        videoUrl: source,
+        videoUrl: source == null || source.isEmpty ? null : source,
         season: entry.season,
         episode: entry.episode,
         episodeTitle: entry.episodeTitle,
         startAt: entry.position,
+        autoSource: true,
       ),
     ),
   );
